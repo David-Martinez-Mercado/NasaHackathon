@@ -1,6 +1,6 @@
 # Agentes Field Shift — NASA Space Apps 2026
 
-Equipo de 14 agentes (13 activos + 1 de nube bajo demanda) para construir la herramienta de rotación de cultivos con datos NASA.
+Equipo de 13 agentes (12 activos + 1 de nube bajo demanda) para construir la herramienta de rotación de cultivos con datos NASA.
 
 
 ## El equipo
@@ -13,19 +13,18 @@ Equipo de 14 agentes (13 activos + 1 de nube bajo demanda) para construir la her
 | 4 | **agronomo-reglas** | Tabla de cultivos, motor de rotación, puntajes, sliders |
 | 5 | **ingeniero-ia** | Asistente y explicador con LLM, captura en lenguaje natural, evals |
 | 6 | **frontend-agricultor** | Pantallas, mapa, tarjetas, sliders, UX para el campo |
-| 7 | **analista-dron** | Índices VARI/ExG/NDVI de fotos aéreas |
-| 8 | **ciberseguridad** | Auditoría OWASP, LLM, subida de archivos, secretos, privacidad |
-| 9 | **qa-tester** | Pruebas, casos agronómicos, guion de demo |
-| 10 | **devops-despliegue** | Repo, Docker, CI, laptop con Ubuntu Server (seguridad, túnel público, respaldos), plan B |
-| 11 | **pitch-presentacion** | Descripción, video, pitch, preguntas de jueces |
-| 12 | **revisor-final** | Analizador final contra el reto y los jueces |
+| 7 | **ciberseguridad** | Auditoría OWASP, LLM, secretos, privacidad |
+| 8 | **qa-tester** | Pruebas, casos agronómicos, guion de demo |
+| 9 | **devops-despliegue** | Repo, Docker, CI, laptop con Ubuntu Server (seguridad, túnel público, respaldos), plan B |
+| 10 | **pitch-presentacion** | Descripción, video, pitch, preguntas de jueces |
+| 11 | **revisor-final** | Analizador final contra el reto y los jueces |
 | — | **migracion-nube** | **Inactivo.** Solo cuando tú lo llames: evalúa, prepara y migra de la laptop a la nube, con reversa |
 
 ## Flujo
 ```
                        coordinador (dirige todo)
                                │
-RecursosNASA/ ──► analizador-recursos ──► docs/fichas/ + catalogo-datos.md
+F:/FieldShift-Recursos ──► analizador-recursos ──► docs/fichas/ + catalogo-datos.md
                                │
               ┌────────────────┴────────────────┐
               ▼                                 ▼
@@ -33,9 +32,9 @@ RecursosNASA/ ──► analizador-recursos ──► docs/fichas/ + catalogo-da
               └────────────────┬────────────────┘
                                ▼
                           backend-api
-              ┌────────────────┼────────────────┐
-              ▼                ▼                ▼
-     frontend-agricultor   ingeniero-ia   analista-dron (opcional)
+              ┌────────────────┴────────────────┐
+              ▼                                 ▼
+     frontend-agricultor                  ingeniero-ia
               └────────────────┬────────────────┘
                                ▼
                  qa-tester  +  ciberseguridad
@@ -51,8 +50,8 @@ RecursosNASA/ ──► analizador-recursos ──► docs/fichas/ + catalogo-da
 - **devops-despliegue** también conviene al inicio, para dejar listo el repositorio.
 
 ## Trabajo en paralelo
-1. **Día 0, todos a la vez:** devops-despliegue (repo y laptop) ∥ analizador-recursos ∥ agronomo-reglas (tabla de cultivos) ∥ analista-dron ∥ pitch (historia).
-2. **Contratos:** backend-api + ingeniero-datos + agronomo-reglas congelan `contrato-datos.md`, `schema.graphql` y el JSON del dron.
+1. **Día 0, todos a la vez:** devops-despliegue (repo y laptop) ∥ analizador-recursos ∥ agronomo-reglas (tabla de cultivos) ∥ pitch (historia).
+2. **Contratos:** backend-api + ingeniero-datos + agronomo-reglas congelan `contrato-datos.md` y `schema.graphql`.
 3. **Con mocks, todos a la vez:** ingeniero-datos ∥ backend-api ∥ frontend-agricultor ∥ ingeniero-ia ∥ qa-tester (pruebas primero) ∥ ciberseguridad (por PR).
 4. **Integración** I1–I4 → QA + seguridad tras cada una → revisor-final.
 
@@ -72,15 +71,15 @@ SALIDA ESPERADA: archivos, formato, nivel de detalle
 **Coordinador (para arrancar la semana)**
 ```
 OBJETIVO: Dejar listo para el viernes el núcleo: datos NASA + motor de rotación + API + sliders.
-CONTEXTO: Hackatón el 14 de nov. Somos 4. La NASA ya publicó recursos en RecursosNASA/.
-RESTRICCIONES: NestJS + GraphQL + PostgreSQL/PostGIS + Angular. IA y dron solo si sobra tiempo.
+CONTEXTO: Hackatón el 14 de nov. Somos 4. Los recursos NASA están en F:\FieldShift-Recursos\NASA\.
+RESTRICCIONES: NestJS + GraphQL + PostgreSQL/PostGIS + Angular. IA solo si sobra tiempo. Sin dron.
 SALIDA ESPERADA: docs/plan.md por día y responsable, y las primeras tareas delegadas.
 ```
 **Analizador**
 ```
 OBJETIVO: Analizar todos los recursos de la pestaña Resources del reto.
 CONTEXTO: Nos importa sobre todo clima, humedad del suelo y NDVI para Durango, México.
-ENTRADAS: RecursosNASA/ completo y estos enlaces: <pegar URLs>
+ENTRADAS: F:\FieldShift-Recursos\ completo y estos enlaces: <pegar URLs>
 RESTRICCIONES: Solo metadatos, no descargues datasets completos.
 SALIDA ESPERADA: Fichas + catálogo con las 4 fuentes mínimas para el MVP.
 ```
@@ -111,7 +110,7 @@ SALIDA ESPERADA: Tabla de opciones, recomendación y plan con reversa a la lapto
 ```
 **Ciberseguridad**
 ```
-OBJETIVO: Auditar el backend y la subida de imágenes antes de publicar la demo.
+OBJETIVO: Auditar el backend y la capa de IA antes de publicar la demo.
 RESTRICCIONES: Solo reporta; no modifiques código.
 SALIDA ESPERADA: Reporte con hallazgos críticos y altos, con evidencia.
 ```
