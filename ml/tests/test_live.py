@@ -255,7 +255,7 @@ def test_service_answers_with_data_age_and_says_which_models_are_missing(client)
     body = response.json()
     assert body["site_used"] == "greeley-riego" and body["data"]["age_days"] == 2 and body["data"]["stale"] is False
     assert {r["concept"] for r in body["results"]} == set(predictors.LIVE_CONCEPTS)
-    assert all(not r["available"] and "no está cargado" in r["reason"] for r in body["results"])  # nothing invented
+    assert all(not r["available"] and "not loaded" in r["reason"] for r in body["results"])  # nothing invented
     assert any("2 puntos de Weld" in w for w in body["warnings"])
     assert client.get("/health").json()["estado"] == "degradado"
 

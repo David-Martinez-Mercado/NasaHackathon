@@ -9,14 +9,14 @@ export class EscenariosResolver {
   constructor(private readonly servicio: EscenariosService) {}
 
   @Costoso()
-  @Mutation(() => EscenarioGuardado, { description: 'Calcula y guarda un escenario de lluvia y temperatura.' })
+  @Mutation(() => EscenarioGuardado, { description: 'Calculates and saves a rain and temperature scenario.' })
   guardarEscenario(@Args('input') input: GuardarEscenarioInput) {
     return this.servicio.guardar(input);
   }
 
   @Query(() => [EscenarioGuardado], {
     name: 'escenarios',
-    description: 'Escenarios guardados de una parcela (los 50 más recientes).',
+    description: 'Saved scenarios of a field (the 50 most recent).',
   })
   listar(@Args('parcelaId', { type: () => ID }, uuidPipe()) parcelaId: string) {
     return this.servicio.listar(parcelaId);

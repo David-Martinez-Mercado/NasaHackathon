@@ -3,13 +3,13 @@ import { Severidad, TipoCapa, TipoPunto } from '@prisma/client';
 import { ArrayMaxSize, ArrayMinSize, IsArray, IsNumber } from 'class-validator';
 import { JSONScalar } from '../common/json.scalar';
 
-registerEnumType(TipoCapa, { name: 'TipoCapa', description: 'Capas del mapa (las de la barra inferior de la app).' });
+registerEnumType(TipoCapa, { name: 'TipoCapa', description: 'Map layers (the ones in the bottom bar of the app).' });
 registerEnumType(TipoPunto, { name: 'TipoPunto' });
 registerEnumType(Severidad, { name: 'Severidad' });
 
 @ObjectType()
 export class ParadaColor {
-  @Field(() => Float, { description: 'Posición en la rampa, de 0 a 1' })
+  @Field(() => Float, { description: 'Position on the ramp, from 0 to 1' })
   en: number;
 
   @Field(() => String, { description: '#RRGGBB' })
@@ -27,7 +27,7 @@ export class RejillaCapa {
   @Field(() => Int)
   filas: number;
 
-  @Field(() => [Float], { nullable: 'items', description: 'columnas × filas valores, fila por fila desde el NORTE; null = sin dato' })
+  @Field(() => [Float], { nullable: 'items', description: 'columns × rows values, row by row from the NORTH; null = no data' })
   valores: (number | null)[];
 }
 
@@ -39,13 +39,13 @@ export class EscenarioAplicado {
   @Field(() => Float)
   tempDeltaC: number;
 
-  @Field(() => Boolean, { description: 'false = esta capa no cambia con los sliders (el modelo no usa lluvia ni temperatura)' })
+  @Field(() => Boolean, { description: 'false = this layer does not change with the sliders (the model uses neither rain nor temperature)' })
   aplica: boolean;
 
-  @Field(() => Boolean, { description: 'true = se interpoló entre dos escenarios precalculados' })
+  @Field(() => Boolean, { description: 'true = interpolated between two precomputed scenarios' })
   interpolado: boolean;
 
-  @Field(() => Boolean, { description: 'true = el valor pedido estaba fuera del rango calculado y se recortó al borde' })
+  @Field(() => Boolean, { description: 'true = the requested value was outside the computed range and was clipped to the edge' })
   recortado: boolean;
 }
 
@@ -54,7 +54,7 @@ export class CapaMapaTipo {
   @Field(() => TipoCapa)
   tipo: TipoCapa;
 
-  @Field(() => String, { description: 'Modelo de ml/ del que sale (p. ej. c05b)' })
+  @Field(() => String, { description: 'Model from ml/ it comes from (e.g. c05b)' })
   concepto: string;
 
   @Field(() => String)
@@ -75,7 +75,7 @@ export class CapaMapaTipo {
   @Field(() => [ParadaColor])
   rampa: ParadaColor[];
 
-  @Field(() => [String], { description: 'Etiquetas de arriba (máximo) hacia abajo (mínimo)' })
+  @Field(() => [String], { description: 'Labels from top (maximum) to bottom (minimum)' })
   leyenda: string[];
 
   @Field(() => RejillaCapa)
@@ -87,19 +87,19 @@ export class CapaMapaTipo {
   @Field(() => String)
   fuente: string;
 
-  @Field(() => Int, { description: 'Resolución real del dato de origen, en metros' })
+  @Field(() => Int, { description: 'Real resolution of the source data, in meters' })
   resolucionM: number;
 
-  @Field(() => Boolean, { description: 'true = el detalle dentro de la parcela es interpolación, no variación medida' })
+  @Field(() => Boolean, { description: 'true = the detail inside the field is interpolation, not measured variation' })
   interpolada: boolean;
 
-  @Field(() => String, { description: 'Fecha de los datos, AAAA-MM-DD' })
+  @Field(() => String, { description: 'Date of the data, YYYY-MM-DD' })
   datosAl: string;
 
   @Field(() => [String])
   notas: string[];
 
-  @Field(() => String, { description: 'Versión del export de ml/ de la que sale' })
+  @Field(() => String, { description: 'Version of the ml/ export it comes from' })
   version: string;
 }
 
@@ -162,7 +162,7 @@ export class PuntoSerie {
   @Field(() => Float, { nullable: true })
   b?: number | null;
 
-  @Field(() => Boolean, { description: 'true = es un pronóstico, no un dato observado' })
+  @Field(() => Boolean, { description: 'true = it is a forecast, not an observed value' })
   pronostico: boolean;
 }
 
@@ -216,7 +216,7 @@ export class TablaModeloTipo {
   @Field(() => [String])
   notas: string[];
 
-  @Field(() => JSONScalar, { description: 'Filas de la tabla (cada una es un objeto con las columnas de esa tabla)' })
+  @Field(() => JSONScalar, { description: 'Rows of the table (each one is an object with the columns of that table)' })
   filas: unknown;
 }
 
@@ -237,7 +237,7 @@ export class AlertaResumenTipo {
   @Field(() => String)
   detalle: string;
 
-  @Field(() => String, { description: 'Qué mide exactamente el valor' })
+  @Field(() => String, { description: 'What exactly the value measures' })
   definicion: string;
 
   @Field(() => String)
@@ -249,16 +249,16 @@ export class AlertaResumenTipo {
 
 @ObjectType()
 export class ResumenHumedad {
-  @Field(() => Float, { description: 'Humedad de la zona de raíces (%)' })
+  @Field(() => Float, { description: 'Root-zone moisture (%)' })
   raiz: number;
 
-  @Field(() => Float, { description: 'Humedad de la superficie (%)' })
+  @Field(() => Float, { description: 'Surface moisture (%)' })
   superficie: number;
 
-  @Field(() => Float, { description: 'Flujo de evapotranspiración (MJ/m²/día, EVPTRNS de MERRA-2)' })
+  @Field(() => Float, { description: 'Evapotranspiration flux (MJ/m²/day, EVPTRNS from MERRA-2)' })
   evaporacion: number;
 
-  @Field(() => Float, { description: '0-100: la humedad de los últimos 28 días contra los mismos días de años anteriores' })
+  @Field(() => Float, { description: '0-100: the moisture of the last 28 days against the same days of previous years' })
   percentil: number;
 
   @Field(() => String)
@@ -270,16 +270,16 @@ export class ResumenHumedad {
 
 @ObjectType()
 export class ResumenClima {
-  @Field(() => Float, { nullable: true, description: 'Probabilidad de lluvia mañana (%), modelo c08a' })
+  @Field(() => Float, { nullable: true, description: 'Chance of rain tomorrow (%), model c08a' })
   lluviaMananaPct?: number | null;
 
-  @Field(() => [Float], { description: 'Lluvia esperada en los próximos 6 meses (mm), climatología c08b' })
+  @Field(() => [Float], { description: 'Expected rain in the next 6 months (mm), climatology c08b' })
   lluviaMensualMm: number[];
 
-  @Field(() => Float, { nullable: true, description: 'Probabilidad de ola de calor en 7 días (%); null fuera de mayo–septiembre' })
+  @Field(() => Float, { nullable: true, description: 'Chance of a heat wave within 7 days (%); null outside May–September' })
   olaDeCalor7DiasPct?: number | null;
 
-  @Field(() => Float, { nullable: true, description: 'Climatología del próximo mes (no es un pronóstico)' })
+  @Field(() => Float, { nullable: true, description: 'Climatology of the next month (not a forecast)' })
   temperaturaMaxC?: number | null;
 
   @Field(() => Float, { nullable: true })
@@ -318,7 +318,7 @@ export class InfoModeloTipo {
   @Field(() => Float, { nullable: true })
   valor?: number | null;
 
-  @Field(() => Float, { nullable: true, description: 'Límite inferior del intervalo de confianza al 95 %' })
+  @Field(() => Float, { nullable: true, description: 'Lower limit of the 95 % confidence interval' })
   intervaloInf?: number | null;
 
   @Field(() => Float, { nullable: true })
@@ -330,7 +330,7 @@ export class InfoModeloTipo {
   @Field(() => Float, { nullable: true })
   valorBase?: number | null;
 
-  @Field(() => Float, { nullable: true, description: 'Reducción del error frente a la mejor base (> 0 = la supera)' })
+  @Field(() => Float, { nullable: true, description: 'Error reduction versus the best baseline (> 0 = it beats it)' })
   skill?: number | null;
 
   @Field(() => [String])
@@ -342,7 +342,7 @@ export class EstadoPrediccionesTipo {
   @Field(() => String)
   version: string;
 
-  @Field(() => String, { description: 'Fecha más reciente de los datos, AAAA-MM-DD' })
+  @Field(() => String, { description: 'Most recent date of the data, YYYY-MM-DD' })
   datosAl: string;
 
   @Field(() => Date)
@@ -354,7 +354,7 @@ export class EstadoPrediccionesTipo {
   @Field(() => [InfoModeloTipo])
   modelos: InfoModeloTipo[];
 
-  @Field(() => [String], { description: 'Lo que hay que saber antes de fiarse de las predicciones' })
+  @Field(() => [String], { description: 'What you need to know before trusting the predictions' })
   limitaciones: string[];
 }
 
@@ -362,8 +362,8 @@ export class EstadoPrediccionesTipo {
 export class CajaInput {
   @Field(() => [Float], { description: 'oeste, sur, este, norte (grados)' })
   @IsArray()
-  @ArrayMinSize(4, { message: 'La caja necesita 4 números: oeste, sur, este, norte.' })
-  @ArrayMaxSize(4, { message: 'La caja necesita 4 números: oeste, sur, este, norte.' })
+  @ArrayMinSize(4, { message: 'The box needs 4 numbers: west, south, east, north.' })
+  @ArrayMaxSize(4, { message: 'The box needs 4 numbers: west, south, east, north.' })
   @IsNumber({}, { each: true })
   bbox: number[];
 }

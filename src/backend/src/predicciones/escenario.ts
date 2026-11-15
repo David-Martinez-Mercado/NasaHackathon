@@ -37,13 +37,13 @@ function rodear(x: number, ejes: number[]): { bajo: number; alto: number; t: num
  * y se avisa con `recortado`.
  */
 export function elegirEscenario(rejillas: RejillaEscenario[], lluviaPct: number, tempDeltaC: number): EscenarioElegido {
-  if (!rejillas.length) throw new Error('La capa no tiene escenarios');
+  if (!rejillas.length) throw new Error('The layer has no scenarios');
   const lluvias = unicos(rejillas.map((r) => r.lluviaPct));
   const temps = unicos(rejillas.map((r) => r.tempDeltaC));
   const porClave = new Map(rejillas.map((r) => [`${r.lluviaPct}|${r.tempDeltaC}`, r]));
   const traer = (lluvia: number, temp: number) => {
     const r = porClave.get(`${lluvia}|${temp}`);
-    if (!r) throw new Error(`Falta el escenario ${lluvia} % de lluvia y ${temp} °C en la capa`);
+    if (!r) throw new Error(`The scenario ${lluvia} % rain and ${temp} °C is missing in the layer`);
     return r.valores;
   };
 

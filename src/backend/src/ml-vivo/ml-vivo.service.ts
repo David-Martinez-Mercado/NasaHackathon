@@ -36,19 +36,19 @@ export class MlVivoService {
     this.fallos += 1;
     if (this.fallos >= this.config.env.ML_SERVICE_BREAKER_FAILURES) {
       this.abiertoHasta = Date.now() + this.config.env.ML_SERVICE_BREAKER_RESET_MS;
-      this.log.warn(`Servicio de ML fuera de línea tras ${this.fallos} fallos: se usará el lote ${this.config.env.ML_SERVICE_BREAKER_RESET_MS / 1000} s`);
+      this.log.warn(`ML service offline after ${this.fallos} failures: the batch will be used for ${this.config.env.ML_SERVICE_BREAKER_RESET_MS / 1000} s`);
     }
   }
 
   async predecir(parcelaId: string, escenario?: { lluviaPct: number; tempDeltaC: number }): Promise<PrediccionesVivas> {
     const parcela = await this.prisma.parcela.findUnique({ where: { id: parcelaId }, select: { centroideLat: true, centroideLon: true } });
-    if (!parcela) throw noEncontrado('esa parcela');
+    if (!parcela) throw noEncontrado('That field');
     const advertencias: string[] = [];
     let enviado: { rain_pct: number; temp_delta: number } | undefined;
     if (escenario) {
       enviado = { rain_pct: limitar(escenario.lluviaPct, LLUVIA_PCT), temp_delta: limitar(escenario.tempDeltaC, TEMP_C) };
       if (enviado.rain_pct !== escenario.lluviaPct || enviado.temp_delta !== escenario.tempDeltaC) {
-        advertencias.push('El escenario se ajustó a lo que calculan los modelos (lluvia de −50 a +50 %, temperatura de −2 a +4 °C).');
+        advertencias.push('The scenario was adjusted to what the models calculate (rain −50 to +50 %, temperature −2 to +4 °C).');
       }
     }
 
@@ -64,17 +64,17 @@ export class MlVivoService {
         }
         this.registrarFallo();
         const motivo = error instanceof Error ? error.message : 'error desconocido';
-        this.log.warn(`Servicio de ML: ${motivo}`);
+        this.log.warn(`ML service: ${motivo}`);
         advertencias.push(
           error instanceof ErrorServicioMl && (error.estado === 401 || error.estado === 403)
-            ? 'El backend no tiene un token válido para el servicio de ML: se muestran las predicciones del último lote.'
-            : `No se pudo consultar los datos frescos (${motivo}): se muestran las predicciones del último lote.`,
+            ? 'The backend does not have a valid token for the ML service: the predictions of the last batch are shown.'
+            : `Fresh data could not be queried (${motivo}): the predictions of the last batch are shown.`,
         );
       }
     } else if (this.cliente.configurado) {
-      advertencias.push('El servicio de predicciones en vivo está fuera de línea: se muestran las predicciones del último lote.');
+      advertencias.push('The live prediction service is offline: the predictions of the last batch are shown.');
     } else {
-      advertencias.push('El servicio de predicciones en vivo no está configurado: se muestran las predicciones del último lote.');
+      advertencias.push('The live prediction service is not configured: the predictions of the last batch are shown.');
     }
     return this.desdeLote(parcela.centroideLat, parcela.centroideLon, advertencias);
   }
@@ -109,15 +109,15 @@ export class MlVivoService {
   private async desdeLote(lat: number, lon: number, advertencias: string[]): Promise<PrediccionesVivas> {
     const version = await this.predicciones.versionActiva();
     if (!version) {
-      throw new AppError(CodigoError.FUENTE_NO_DISPONIBLE, 'No hay predicciones en vivo ni de lote: el servicio de ML no responde y todavía no se importó ninguna versión.');
+      throw new AppError(CodigoError.FUENTE_NO_DISPONIBLE, 'There are no live or batch predictions: the ML service does not respond and no version has been imported yet.');
     }
     const defs: { concepto: string; tipo: TipoCapa; titulo: string; horizonte: string; nota: string }[] = [
-      { concepto: 'c05b', tipo: TipoCapa.TEMPERATURA, titulo: 'Riesgo de ola de calor', horizonte: 'temporada de calor (promedio)',
-        nota: 'Del lote: promedio de la temporada de calor más reciente, no el pronóstico de los próximos 7 días.' },
-      { concepto: 'c08a', tipo: TipoCapa.LLUVIA, titulo: 'Probabilidad de lluvia mañana', horizonte: 'mañana',
-        nota: 'Del lote: valor de la fecha del último export.' },
-      { concepto: 'c04', tipo: TipoCapa.HUMEDAD, titulo: 'Humedad de la zona de raíces', horizonte: 'próximas 4 semanas',
-        nota: 'Del lote: valor de la fecha del último export.' },
+      { concepto: 'c05b', tipo: TipoCapa.TEMPERATURA, titulo: 'Heat-wave risk', horizonte: 'heat season (average)',
+        nota: 'From the batch: average of the most recent heat season, not the forecast for the next 7 days.' },
+      { concepto: 'c08a', tipo: TipoCapa.LLUVIA, titulo: 'Chance of rain tomorrow', horizonte: 'tomorrow',
+        nota: 'From the batch: value of the date of the last export.' },
+      { concepto: 'c04', tipo: TipoCapa.HUMEDAD, titulo: 'Root-zone soil moisture', horizonte: 'next 4 weeks',
+        nota: 'From the batch: value of the date of the last export.' },
     ];
     const resultados: ResultadoVivo[] = [];
     for (const d of defs) {
@@ -126,15 +126,15 @@ export class MlVivoService {
       resultados.push({
         concepto: d.concepto, titulo: d.titulo, unidad: capa?.unidad ?? '%', horizonte: d.horizonte, disponible: valor != null, valor,
         serie: null, datosAl: capa?.datosAl ?? null, rol: 'modelo', algoritmo: capa?.concepto ?? d.concepto, escenarioAplicado: false,
-        notas: [d.nota], motivo: valor == null ? 'La capa del lote no tiene valor en este punto.' : null, fuente: FuenteDato.LOTE,
+        notas: [d.nota], motivo: valor == null ? 'The batch layer has no value at this point.' : null, fuente: FuenteDato.LOTE,
       });
     }
     const clima = await this.predicciones.resumenClima();
     if (clima?.lluviaMensualMm?.length) {
       resultados.push({
-        concepto: 'c08b', titulo: 'Lluvia mensual esperada', unidad: 'mm', horizonte: 'próximos 6 meses', disponible: true,
-        valor: clima.lluviaMensualMm[0], serie: clima.lluviaMensualMm, datosAl: clima.datosAl, rol: 'regla-base', algoritmo: 'Climatología mensual',
-        escenarioAplicado: false, notas: ['Del lote: climatología mensual.'], motivo: null, fuente: FuenteDato.LOTE,
+        concepto: 'c08b', titulo: 'Expected monthly rain', unidad: 'mm', horizonte: 'next 6 months', disponible: true,
+        valor: clima.lluviaMensualMm[0], serie: clima.lluviaMensualMm, datosAl: clima.datosAl, rol: 'regla-base', algoritmo: 'Monthly climatology',
+        escenarioAplicado: false, notas: ['From the batch: monthly climatology.'], motivo: null, fuente: FuenteDato.LOTE,
       });
     }
     const fechas = resultados.map((r) => r.datosAl).filter((x): x is string => !!x).sort();

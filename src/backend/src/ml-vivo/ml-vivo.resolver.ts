@@ -20,8 +20,8 @@ export class MlVivoResolver {
   @Query(() => PrediccionesVivas, {
     name: 'prediccionesEnVivo',
     description:
-      'Predicciones de los modelos de ml/ con datos recién consultados a NASA POWER para el punto de la parcela (olas de calor, lluvia, ' +
-      'humedad del suelo). Si el servicio no responde devuelve el último lote marcado como LOTE y obsoleto. Con `escenario` aplica los sliders.',
+      'Predictions of the ml/ models with data freshly queried from NASA POWER for the field point (heat waves, rain, ' +
+      'soil moisture). If the service does not respond it returns the last batch marked as LOTE and stale. With `escenario` it applies the sliders.',
   })
   prediccionesEnVivo(
     @Args('parcelaId', { type: () => ID }, uuidPipe()) parcelaId: string,
@@ -31,10 +31,10 @@ export class MlVivoResolver {
   }
 
   @Costoso()
-  @Query(() => ClimaGlobal, { name: 'climaGlobal', description: 'Modo global: clima observado de la última semana en las celdas del mapa visibles, en cualquier parte del mundo.' })
+  @Query(() => ClimaGlobal, { name: 'climaGlobal', description: 'Global mode: observed weather of the last week in the visible map cells, anywhere in the world.' })
   async climaGlobal(@Args('caja', { type: () => CajaMundoInput }) caja: CajaMundoInput): Promise<ClimaGlobal> {
-    if (!(caja.oeste < caja.este && caja.sur < caja.norte)) throw new AppError(CodigoError.VALIDACION_FALLIDA, 'La caja del mapa no es válida.');
-    if (!this.cliente.configurado) throw new AppError(CodigoError.FUENTE_NO_DISPONIBLE, 'El modo global necesita el servicio de ml/ (ML_SERVICE_URL).');
+    if (!(caja.oeste < caja.este && caja.sur < caja.norte)) throw new AppError(CodigoError.VALIDACION_FALLIDA, 'The map box is not valid.');
+    if (!this.cliente.configurado) throw new AppError(CodigoError.FUENTE_NO_DISPONIBLE, 'Global mode needs the ml/ service (ML_SERVICE_URL).');
     try {
       const r = await this.cliente.mundo(caja);
       return {
@@ -42,7 +42,7 @@ export class MlVivoResolver {
         solicitadas: r.requested, faltantes: r.missing, muestreado: r.subsampled, pasoLatitud: r.lat_step, pasoLongitud: r.lon_step, datosAl: r.as_of,
       };
     } catch (e) {
-      throw new AppError(CodigoError.FUENTE_NO_DISPONIBLE, `No se pudo consultar el clima global: ${e instanceof Error ? e.message : 'error'}`);
+      throw new AppError(CodigoError.FUENTE_NO_DISPONIBLE, `Could not query the global weather: ${e instanceof Error ? e.message : 'error'}`);
     }
   }
 }

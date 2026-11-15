@@ -1,5 +1,5 @@
 {
-  "fuente": "Clasificación agronómica general (FAO, extensión universitaria): categorías gruesas, no valores medidos. [POR VERIFICAR] contra INIFAP / extensión local por el agrónomo antes de presentarla como definitiva.",
+  "fuente": "General agronomic classification (FAO, university extension): coarse categories, not measured values. [TO VERIFY] against INIFAP / local extension by the agronomist before presenting it as definitive.",
   "verificado": false,
   "escalas": {
     "demandaAgua": { "baja": 1, "media": 0.6, "alta": 0.2 },

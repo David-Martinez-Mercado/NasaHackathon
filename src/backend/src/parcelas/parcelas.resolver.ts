@@ -15,12 +15,12 @@ export class ParcelasResolver {
     private readonly historialService: HistorialService,
   ) {}
 
-  @Query(() => Parcela, { nullable: true, description: 'Una parcela por su id (null si no existe).' })
+  @Query(() => Parcela, { nullable: true, description: 'A field by its id (null if it does not exist).' })
   parcela(@Args('id', { type: () => ID }, uuidPipe()) id: string) {
     return this.parcelas.buscar(id);
   }
 
-  @Query(() => [Parcela], { name: 'parcelas', description: 'Las parcelas más recientes primero (máximo 100 por página).' })
+  @Query(() => [Parcela], { name: 'parcelas', description: 'The most recent fields first (maximum 100 per page).' })
   listar(
     @Args('limite', { type: () => Int, defaultValue: 50 }) limite: number,
     @Args('desplazamiento', { type: () => Int, defaultValue: 0 }) desplazamiento: number,
@@ -30,14 +30,14 @@ export class ParcelasResolver {
 
   @Mutation(() => Parcela, {
     description:
-      'Crea una parcela con sus preferencias e historial en una sola transacción (todo o nada). ' +
-      'Con claveIdempotencia se puede reintentar sin duplicar.',
+      'Creates a field with its preferences and history in a single transaction (all or nothing). ' +
+      'With claveIdempotencia it can be retried without duplicating.',
   })
   crearParcela(@Args('input') input: CrearParcelaInput) {
     return this.parcelas.crear(input);
   }
 
-  @Mutation(() => Parcela, { description: 'Cambia datos de la parcela. Rechaza el cambio si la versión ya no es la actual.' })
+  @Mutation(() => Parcela, { description: 'Changes field data. Rejects the change if the version is no longer the current one.' })
   actualizarParcela(
     @Args('id', { type: () => ID }, uuidPipe()) id: string,
     @Args('input') input: ActualizarParcelaInput,
@@ -45,7 +45,7 @@ export class ParcelasResolver {
     return this.parcelas.actualizar(id, input);
   }
 
-  @Mutation(() => Boolean, { description: 'Elimina la parcela y todo lo suyo. Exige la versión que el cliente vio.' })
+  @Mutation(() => Boolean, { description: 'Deletes the field and everything in it. Requires the version the client saw.' })
   eliminarParcela(
     @Args('id', { type: () => ID }, uuidPipe()) id: string,
     @Args('version', { type: () => Int }) version: number,

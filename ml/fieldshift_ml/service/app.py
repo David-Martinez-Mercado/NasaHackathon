@@ -36,7 +36,7 @@ log = logging.getLogger("fieldshift_ml")
 class ScenarioIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     rain_pct: float = Field(0, ge=-50, le=50, description="Cambio de lluvia en % (los sliders de la app)")
-    temp_delta: float = Field(0, ge=-2, le=4, description="Cambio de temperatura en °C")
+    temp_delta: float = Field(0, ge=-2, le=4, description="Temperature change in °C")
 
 
 class ViewIn(BaseModel):
@@ -104,7 +104,7 @@ class State:
         self.env = (env or os.environ.get("ML_SERVICE_ENV", "development")).lower()
         self.token = token if token is not None else os.environ.get("ML_SERVICE_TOKEN", "")
         if self.env == "production" and not self.token:
-            raise RuntimeError("En producción ML_SERVICE_TOKEN es obligatorio: el servicio no arranca sin él.")
+            raise RuntimeError("In production ML_SERVICE_TOKEN is required: the service does not start without it.")
         ttl = ttl_hours if ttl_hours is not None else float(os.environ.get("ML_SERVICE_CACHE_TTL_HOURS", "6"))
         injected = source is not None
         source = source or PowerClient(os.environ.get("ML_SERVICE_POWER_URL", POWER_URL))
@@ -129,7 +129,7 @@ class State:
                 self.info[concept] = {"role": manifest.role, "algorithm": manifest.algorithm, "version": manifest.version}
             except Exception as exc:  # noqa: BLE001 - a missing model must not stop the others
                 self.load_errors[concept] = f"{type(exc).__name__}: {exc}"[:200]
-                log.warning("No se cargó el modelo %s: %s", concept, self.load_errors[concept])
+                log.warning("Model %s was not loaded: %s", concept, self.load_errors[concept])
 
 
 def create_app(state: State | None = None) -> FastAPI:
@@ -139,7 +139,7 @@ def create_app(state: State | None = None) -> FastAPI:
         log.info("Servicio listo: modelos %s, entorno %s", sorted(app.state.ml.bundles), app.state.ml.env)
         yield
 
-    app = FastAPI(title="Field Shift · predicciones en vivo", version="0.1.0", lifespan=lifespan,
+    app = FastAPI(title="Field Shift · live predictions", version="0.1.0", lifespan=lifespan,
                   docs_url=None if os.environ.get("ML_SERVICE_ENV", "development") == "production" else "/docs", redoc_url=None)
 
     def ml(request: Request) -> State:
@@ -148,7 +148,7 @@ def create_app(state: State | None = None) -> FastAPI:
     def auth(request: Request, x_ml_token: str | None = Header(default=None)) -> None:
         expected = ml(request).token
         if expected and not hmac.compare_digest(x_ml_token or "", expected):
-            raise HTTPException(status_code=401, detail="Token inválido")
+            raise HTTPException(status_code=401, detail="Invalid token")
 
     @app.get("/health")
     def health(request: Request) -> dict:
@@ -165,13 +165,13 @@ def create_app(state: State | None = None) -> FastAPI:
                            "retraso_tipico_dias": 2, "ttl_cache_horas": s.cache.ttl / 3600},
             "en_vivo": list(predictors.LIVE_CONCEPTS),
             "por_lotes": {"c05a": "ERA5 (cola de minutos a horas)", "c03": "ECOSTRESS (escenas)", "c01": "NASS + PRISM (anual)",
-                          "c07": "NASS (anual)", "c10": "NASS precios (necesita llave)", "c02": "CDL (anual)", "c06": "estático"},
+                          "c07": "NASS (annual)", "c10": "NASS prices (needs a key)", "c02": "CDL (annual)", "c06": "static"},
         }
 
     @app.post("/global", dependencies=[Depends(auth)])
     async def global_view(body: ViewIn, request: Request) -> dict:
         if not (body.west < body.east and body.south < body.north):
-            raise HTTPException(status_code=422, detail="Caja del mapa no válida")
+            raise HTTPException(status_code=422, detail="Invalid map box")
         async with ml(request).limit:
             return await asyncio.to_thread(ml(request).grid.view, body.west, body.south, body.east, body.north)
 
@@ -180,7 +180,7 @@ def create_app(state: State | None = None) -> FastAPI:
         s = ml(request)
         started = time.perf_counter()
         if not predictors.in_zone(body.lat, body.lon):
-            raise HTTPException(status_code=422, detail="Fuera de la zona de entrenamiento (condado de Weld, Colorado y sus alrededores): no se predice.")
+            raise HTTPException(status_code=422, detail="Outside the training area (Weld County, Colorado and its surroundings): no prediction.")
         scenario = body.scenario or ScenarioIn()
         async with s.limit:
             try:
@@ -190,12 +190,12 @@ def create_app(state: State | None = None) -> FastAPI:
             results = await asyncio.to_thread(predictors.predict_point, history, body.lat, body.lon, s.bundles, s.info,
                                               scenario.rain_pct, scenario.temp_delta)
         site, distance = predictors.nearest_site(body.lat, body.lon)
-        warnings = [f"Los modelos se entrenaron con 2 puntos de Weld; se usa «{site}» como referencia ({distance:.0f} km). "
-                    "Para otras coordenadas es una extrapolación suave."]
+        warnings = [f"The models were trained on 2 points in Weld; “{site}” is used as the reference ({distance:.0f} km). "
+                    "For other coordinates this is a soft extrapolation."]
         if meta.stale:
-            warnings.append(f"NASA POWER no respondió: se usan datos guardados al {meta.last_date}. {meta.error or ''}".strip())
+            warnings.append(f"NASA POWER did not respond: saved data up to {meta.last_date} is used. {meta.error or ''}".strip())
         if days_since(meta.last_date) > 7:
-            warnings.append(f"El dato más reciente tiene {days_since(meta.last_date)} días: la fuente está atrasada.")
+            warnings.append(f"The most recent data is {days_since(meta.last_date)} days old: the source is behind.")
         for concept, error in s.load_errors.items():
             warnings.append(f"Modelo {concept} no disponible: {error}")
         return PredictOut(

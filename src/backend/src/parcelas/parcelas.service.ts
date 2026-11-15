@@ -69,10 +69,10 @@ function geometriaDe(
   const hayPunto = entrada.punto != null;
   const hayPoligono = entrada.poligono != null;
   if (hayPunto && hayPoligono) {
-    throw new AppError(CodigoError.VALIDACION_FALLIDA, 'Indica el punto o el polígono de la parcela (solo uno de los dos).');
+    throw new AppError(CodigoError.VALIDACION_FALLIDA, 'Provide the point or the polygon of the field (only one of the two).');
   }
   if (!hayPunto && !hayPoligono) {
-    if (requerida) throw new AppError(CodigoError.VALIDACION_FALLIDA, 'Indica el punto o el polígono de la parcela (solo uno de los dos).');
+    if (requerida) throw new AppError(CodigoError.VALIDACION_FALLIDA, 'Provide the point or the polygon of the field (only one of the two).');
     return undefined;
   }
   return hayPunto ? punto(entrada.punto!.latitud, entrada.punto!.longitud) : validarGeometria(entrada.poligono);
@@ -98,7 +98,7 @@ export class ParcelasService {
 
   async obtener(id: string, tx?: Tx): Promise<ParcelaFila> {
     const parcela = await this.buscar(id, tx);
-    if (!parcela) throw noEncontrado('esa parcela');
+    if (!parcela) throw noEncontrado('That field');
     return parcela;
   }
 
@@ -176,7 +176,7 @@ export class ParcelasService {
       RETURNING ${COLUMNAS}
     `);
     if (filas.length === 0) {
-      throw new AppError(CodigoError.GEOMETRIA_INVALIDA, 'La forma de la parcela no es válida: el polígono se cruza consigo mismo.');
+      throw new AppError(CodigoError.GEOMETRIA_INVALIDA, 'The field shape is not valid: the polygon crosses itself.');
     }
     return aFila(filas[0]);
   }
@@ -202,7 +202,7 @@ export class ParcelasService {
       );
     }
     if (!cambios.length && !input.preferencias) {
-      throw new AppError(CodigoError.VALIDACION_FALLIDA, 'No indicaste ningún cambio para la parcela.');
+      throw new AppError(CodigoError.VALIDACION_FALLIDA, 'You did not indicate any change for the field.');
     }
     if (input.preferencias) this.preferencias.validar(input.preferencias); // falla rápido, antes de abrir la transacción
 
@@ -221,14 +221,14 @@ export class ParcelasService {
       }
       // No se actualizó nada: ¿no existe, la versión cambió o la forma era inválida?
       const actual = await this.buscar(id, tx);
-      if (!actual) throw noEncontrado('esa parcela');
+      if (!actual) throw noEncontrado('That field');
       if (actual.version !== input.version) {
         throw new AppError(
           CodigoError.CONFLICTO_VERSION,
-          'La parcela cambió mientras la editabas. Vuelve a cargarla y repite tu cambio.',
+          'The field changed while you were editing it. Reload it and repeat your change.',
         );
       }
-      throw new AppError(CodigoError.GEOMETRIA_INVALIDA, 'La forma de la parcela no es válida: el polígono se cruza consigo mismo.');
+      throw new AppError(CodigoError.GEOMETRIA_INVALIDA, 'The field shape is not valid: the polygon crosses itself.');
     });
   }
 
@@ -238,8 +238,8 @@ export class ParcelasService {
       const borradas = await tx.$executeRaw`DELETE FROM "Parcela" WHERE "id" = ${id}::uuid AND "version" = ${version}`;
       if (borradas > 0) return true;
       const actual = await this.buscar(id, tx);
-      if (!actual) throw noEncontrado('esa parcela');
-      throw new AppError(CodigoError.CONFLICTO_VERSION, 'La parcela cambió mientras la editabas. Vuelve a cargarla antes de eliminarla.');
+      if (!actual) throw noEncontrado('That field');
+      throw new AppError(CodigoError.CONFLICTO_VERSION, 'The field changed while you were editing it. Reload it before deleting it.');
     });
   }
 }

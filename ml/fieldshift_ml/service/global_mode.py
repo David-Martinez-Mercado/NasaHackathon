@@ -21,7 +21,7 @@ TTL_SECONDS = 3 * 3600
 def cells_in_view(west: float, south: float, east: float, north: float, limit: int = MAX_CELLS) -> tuple[list[tuple[float, float]], bool]:
     """MERRA-2 cell centres inside the view; if there are more than `limit`, a regular subsample (second value True)."""
     if not (-90 <= south < north <= 90 and -180 <= west < east <= 180):
-        raise ValueError("Caja del mapa no válida")
+        raise ValueError("Invalid map box")
     lats = [round(south / LAT_STEP) * LAT_STEP + i * LAT_STEP for i in range(int((north - south) / LAT_STEP) + 2)]
     lons = [round((west + 180) / LON_STEP) * LON_STEP - 180 + i * LON_STEP for i in range(int((east - west) / LON_STEP) + 2)]
     lats = [v for v in lats if south - LAT_STEP / 2 <= v <= north + LAT_STEP / 2 and -90 <= v <= 90]

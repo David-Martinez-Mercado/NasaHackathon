@@ -7,7 +7,7 @@ import { PreferenciasService } from './preferencias.service';
 export class PreferenciasResolver {
   constructor(private readonly preferencias: PreferenciasService) {}
 
-  @Mutation(() => Preferencias, { description: 'Guarda (o reemplaza) las prioridades y restricciones de una parcela.' })
+  @Mutation(() => Preferencias, { description: 'Saves (or replaces) the priorities and constraints of a field.' })
   guardarPreferencias(
     @Args('parcelaId', { type: () => ID }, uuidPipe()) parcelaId: string,
     @Args('input') input: PreferenciasInput,

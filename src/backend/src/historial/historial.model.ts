@@ -12,10 +12,10 @@ export class RegistroHistorial {
   @Field(() => Int)
   anio: number;
 
-  @Field(() => String, { description: 'Código de cultivo (ver query cultivos)' })
+  @Field(() => String, { description: 'Crop code (see the cultivos query)' })
   cultivo: string;
 
-  @Field(() => String, { nullable: true, description: 'Fecha de siembra, AAAA-MM-DD' })
+  @Field(() => String, { nullable: true, description: 'Planting date, YYYY-MM-DD' })
   fechaSiembra?: string | null;
 
   @Field(() => String, { nullable: true })
@@ -25,24 +25,24 @@ export class RegistroHistorial {
 @InputType()
 export class HistorialInput {
   @Field(() => Int)
-  @IsInt({ message: 'El año debe ser un número entero.' })
-  @Min(1950, { message: 'El año no puede ser anterior a 1950.' })
-  @Max(2100, { message: 'El año no puede pasar de 2100.' })
+  @IsInt({ message: 'The year must be a whole number.' })
+  @Min(1950, { message: 'The year cannot be earlier than 1950.' })
+  @Max(2100, { message: 'The year cannot be later than 2100.' })
   anio: number;
 
   @Field(() => String)
   @IsString()
-  @Matches(/^[a-z0-9_-]{1,40}$/, { message: 'Código de cultivo no válido.' })
+  @Matches(/^[a-z0-9_-]{1,40}$/, { message: 'Invalid crop code.' })
   cultivo: string;
 
   @Field(() => String, { nullable: true, description: 'AAAA-MM-DD' })
   @IsOptional()
-  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'La fecha de siembra debe tener el formato AAAA-MM-DD.' })
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'The planting date must have the format YYYY-MM-DD.' })
   fechaSiembra?: string;
 
   @Field(() => String, { nullable: true })
   @IsOptional()
   @IsString()
-  @MaxLength(1000, { message: 'La descripción puede tener hasta 1000 caracteres.' })
+  @MaxLength(1000, { message: 'The description can have up to 1000 characters.' })
   descripcion?: string;
 }

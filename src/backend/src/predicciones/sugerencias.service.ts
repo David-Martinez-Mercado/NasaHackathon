@@ -39,7 +39,7 @@ export class SugerenciasService {
         historial: { orderBy: { anio: 'desc' }, take: 1, select: { cultivo: true } },
       },
     });
-    if (!parcela) throw noEncontrado('esa parcela');
+    if (!parcela) throw noEncontrado('That field');
     const prefs = parcela.preferencias;
     const prioridades = probar ?? {
       agua: prefs?.prioridadAgua ?? 50, suelo: prefs?.prioridadSuelo ?? 50, erosion: prefs?.prioridadErosion ?? 50, ingreso: prefs?.prioridadIngreso ?? 50,
@@ -147,17 +147,17 @@ export class SugerenciasService {
       .slice(0, MAX_SUGERENCIAS);
 
     const advertencias = [
-      'Es un orden de opciones calculado con datos de Weld, CO; no sustituye la opinión de tu técnico ni de productores de tu zona.',
-      'La clasificación de cada cultivo (agua, nitrógeno, cobertura del suelo) es general y no está verificada con una fuente local.',
-      'La probabilidad de siembra describe lo que otros productores hicieron (clasificación satelital CDL), no lo que mejora tu suelo.',
-      'El precio es nacional y su pronóstico es solo exploratorio. El rendimiento (c01) existe solo para maíz y trigo de invierno.',
+      'This is a ranking of options calculated with data from Weld, CO; it does not replace the opinion of your technician or of producers in your area.',
+      'The classification of each crop (water, nitrogen, soil cover) is general and not verified with a local source.',
+      'The planting probability describes what other producers did (CDL satellite classification), not what improves your soil.',
+      'The price is national and its forecast is only exploratory. Yield (c01) exists only for maize and winter wheat.',
     ];
-    if (!base) advertencias.unshift('Indica el cultivo actual o su historial para usar la rotación y el cambio de familia.');
+    if (!base) advertencias.unshift('Provide the current crop or its history to use the rotation and the family change.');
     return {
       cultivoBase: base, origenBase, actual: base ? evaluar(base) : null, sugerencias, prioridades, pesos, ajustes, riesgos: zona.riesgos,
       metodo:
-        'Puntaje 0–100 = promedio ponderado de ingreso (precio c10 y rendimiento c01), suelo (nitrógeno y cambio de familia), agua, erosión ' +
-        'y práctica local (c02). Los pesos son tus prioridades, ajustadas por los riesgos de la zona (sequía, humedad, vulnerabilidad) y el riego.',
+        'Score 0–100 = weighted average of income (price c10 and yield c01), soil (nitrogen and family change), water, erosion ' +
+        'and local practice (c02). The weights are your priorities, adjusted by the area risks (drought, moisture, vulnerability) and irrigation.',
       rasgosVerificados: rasgosJson.verificado,
       advertencias,
     };

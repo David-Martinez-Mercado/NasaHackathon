@@ -19,7 +19,7 @@ export class EscenarioGuardado {
   @Field(() => Float)
   tempDeltaC: number;
 
-  @Field(() => [RotacionEvaluada], { description: 'Resultado calculado al guardar el escenario' })
+  @Field(() => [RotacionEvaluada], { description: 'Result calculated when the scenario was saved' })
   resultado: RotacionEvaluada[];
 
   @Field(() => Date)
@@ -29,17 +29,17 @@ export class EscenarioGuardado {
 @InputType()
 export class GuardarEscenarioInput {
   @Field(() => ID)
-  @IsUUID('all', { message: 'El identificador de la parcela no es válido.' })
+  @IsUUID('all', { message: 'The field identifier is not valid.' })
   parcelaId: string;
 
   @Field(() => String, { nullable: true })
   @IsOptional()
   @IsString()
-  @MaxLength(120, { message: 'El nombre puede tener hasta 120 caracteres.' })
+  @MaxLength(120, { message: 'The name can have up to 120 characters.' })
   nombre?: string;
 
   @Field(() => Int)
-  @IsInt({ message: 'El cambio de lluvia debe ser un número entero.' })
+  @IsInt({ message: 'The rain change must be a whole number.' })
   @Min(LLUVIA_PCT.min)
   @Max(LLUVIA_PCT.max)
   lluviaPct: number;

@@ -50,14 +50,14 @@ export class PreferenciasService {
     if (repetidos.length) {
       throw new AppError(
         CodigoError.VALIDACION_FALLIDA,
-        `Un cultivo no puede estar a la vez entre los preferidos y los excluidos (${repetidos.join(', ')}).`,
+        `A crop cannot be both preferred and excluded (${repetidos.join(', ')}).`,
       );
     }
     if ((input.mesesVaciosDesde == null) !== (input.mesesVaciosHasta == null)) {
-      throw new AppError(CodigoError.VALIDACION_FALLIDA, 'Indica los dos meses en que la parcela queda vacía (desde y hasta), o ninguno.');
+      throw new AppError(CodigoError.VALIDACION_FALLIDA, 'Provide both months in which the field is left empty (from and to), or neither.');
     }
     if (input.sistemaRiego === SistemaRiego.TEMPORAL && input.aguaRiegoMm != null && input.aguaRiegoMm > 0) {
-      throw new AppError(CodigoError.VALIDACION_FALLIDA, 'Una parcela de temporal no tiene agua de riego: quita el agua o elige un sistema de riego.');
+      throw new AppError(CodigoError.VALIDACION_FALLIDA, 'A rainfed field has no irrigation water: remove the water or choose an irrigation system.');
     }
   }
 
@@ -68,7 +68,7 @@ export class PreferenciasService {
     const existe = await tx.$queryRaw<{ existe: boolean }[]>`
       SELECT EXISTS (SELECT 1 FROM "Parcela" WHERE "id" = ${parcelaId}::uuid) AS existe
     `;
-    if (!existe[0]?.existe) throw new AppError(CodigoError.NO_ENCONTRADO, 'No encontramos esa parcela.');
+    if (!existe[0]?.existe) throw new AppError(CodigoError.NO_ENCONTRADO, 'That field was not found.');
     const prioridades = input.prioridades ?? { agua: 50, suelo: 50, erosion: 50, ingreso: 50 };
     const datos = {
       sistemaRiego: input.sistemaRiego ?? SistemaRiego.TEMPORAL,

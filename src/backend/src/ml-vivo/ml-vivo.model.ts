@@ -7,12 +7,12 @@ export enum FuenteDato {
 }
 registerEnumType(FuenteDato, {
   name: 'FuenteDato',
-  description: 'VIVO = consultado a las API hace un momento; LOTE = del último export de ml/; NO_DISPONIBLE = no se pudo calcular.',
+  description: 'VIVO = queried from the APIs a moment ago; LOTE = from the last ml/ export; NO_DISPONIBLE = could not be calculated.',
 });
 
 @ObjectType('ResultadoVivo')
 export class ResultadoVivo {
-  @Field(() => String, { description: 'Modelo de ml/: c05b (olas de calor), c08a (lluvia mañana), c08b (lluvia mensual), c04 (humedad)' })
+  @Field(() => String, { description: 'Model from ml/: c05b (heat waves), c08a (rain tomorrow), c08b (monthly rain), c04 (moisture)' })
   concepto: string;
 
   @Field(() => String) titulo: string;
@@ -20,23 +20,23 @@ export class ResultadoVivo {
   @Field(() => String) horizonte: string;
   @Field(() => Boolean) disponible: boolean;
   @Field(() => Float, { nullable: true }) valor?: number | null;
-  @Field(() => [Float], { nullable: true, description: 'Un valor por periodo (meses o semanas) cuando aplica.' }) serie?: number[] | null;
-  @Field(() => String, { nullable: true, description: 'Fecha del dato más reciente con el que se calculó.' }) datosAl?: string | null;
+  @Field(() => [Float], { nullable: true, description: 'One value per period (months or weeks) when it applies.' }) serie?: number[] | null;
+  @Field(() => String, { nullable: true, description: 'Date of the most recent data it was calculated with.' }) datosAl?: string | null;
   @Field(() => String) rol: string;
   @Field(() => String) algoritmo: string;
   @Field(() => Boolean) escenarioAplicado: boolean;
   @Field(() => [String]) notas: string[];
-  @Field(() => String, { nullable: true, description: 'Por qué no hay valor (fuera de temporada, modelo no cargado...). Nunca se inventa.' }) motivo?: string | null;
+  @Field(() => String, { nullable: true, description: 'Why there is no value (out of season, model not loaded...). It is never made up.' }) motivo?: string | null;
   @Field(() => FuenteDato) fuente: FuenteDato;
 }
 
 @ObjectType('PrediccionesVivas')
 export class PrediccionesVivas {
-  @Field(() => FuenteDato, { description: 'De dónde salen los resultados de esta respuesta.' }) fuente: FuenteDato;
+  @Field(() => FuenteDato, { description: 'Where the results of this response come from.' }) fuente: FuenteDato;
   @Field(() => String, { nullable: true }) datosAl?: string | null;
-  @Field(() => Int, { nullable: true, description: 'Antigüedad del dato más reciente, en días.' }) antiguedadDias?: number | null;
-  @Field(() => Boolean, { description: 'true = el servicio no pudo refrescar: son datos guardados o del último lote.' }) obsoleto: boolean;
-  @Field(() => String, { nullable: true, description: 'Punto de entrenamiento de referencia.' }) sitio?: string | null;
+  @Field(() => Int, { nullable: true, description: 'Age of the most recent data, in days.' }) antiguedadDias?: number | null;
+  @Field(() => Boolean, { description: 'true = the service could not refresh: this is saved data or from the last batch.' }) obsoleto: boolean;
+  @Field(() => String, { nullable: true, description: 'Reference training point.' }) sitio?: string | null;
   @Field(() => Float, { nullable: true }) distanciaKm?: number | null;
   @Field(() => Float, { nullable: true }) latenciaMs?: number | null;
   @Field(() => String) generadoEn: string;

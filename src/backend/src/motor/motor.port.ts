@@ -59,7 +59,7 @@ export class MotorNoDisponible implements MotorPort {
   readonly disponible = false;
 
   async recomendar(): Promise<RotacionEvaluada[]> {
-    throw new AppError(CodigoError.NO_IMPLEMENTADO, 'El motor de recomendación todavía no está disponible.');
+    throw new AppError(CodigoError.NO_IMPLEMENTADO, 'The recommendation engine is not available yet.');
   }
 }
 

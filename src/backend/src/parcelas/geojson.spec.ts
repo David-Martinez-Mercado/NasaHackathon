@@ -38,6 +38,6 @@ describe('validarGeometria', () => {
     const anillo: number[][] = [];
     for (let i = 0; i < MAX_VERTICES; i++) anillo.push([i / 100000, (i % 7) / 100000]);
     anillo.push(anillo[0]);
-    expect(() => validarGeometria({ type: 'Polygon', coordinates: [anillo] })).toThrow(/demasiados puntos/);
+    expect(() => validarGeometria({ type: 'Polygon', coordinates: [anillo] })).toThrow(/too many points/);
   });
 });

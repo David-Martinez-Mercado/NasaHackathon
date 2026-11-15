@@ -27,7 +27,7 @@ describe('Producción: sin introspección, sin Sandbox y sin detalles internos',
     expect(codigo(res)).toBe('ERROR_INTERNO');
     const texto = JSON.stringify(res.body);
     expect(texto).not.toMatch(/secreto|password|stacktrace|node_modules/i);
-    expect(res.body.errors[0].message).toMatch(/inesperado/i);
+    expect(res.body.errors[0].message).toMatch(/unexpected/i);
   });
 
   it('los errores de validación siguen siendo claros para el usuario', async () => {

@@ -21,12 +21,12 @@ export class CeldaClima {
   @Field(() => String) datosAl: string;
 }
 
-@ObjectType('ClimaGlobal', { description: 'Clima OBSERVADO de la última semana en las celdas visibles (NASA POWER). No son predicciones: los modelos solo valen en Weld.' })
+@ObjectType('ClimaGlobal', { description: 'OBSERVED weather of the last week in the visible cells (NASA POWER). These are not predictions: the models only apply in Weld.' })
 export class ClimaGlobal {
   @Field(() => [CeldaClima]) celdas: CeldaClima[];
   @Field(() => Int) solicitadas: number;
   @Field(() => Int) faltantes: number;
-  @Field(() => Boolean, { description: 'true = la vista era muy grande y se muestrea una de cada varias celdas.' }) muestreado: boolean;
+  @Field(() => Boolean, { description: 'true = the view was very large and only one in several cells is sampled.' }) muestreado: boolean;
   @Field(() => Float) pasoLatitud: number;
   @Field(() => Float) pasoLongitud: number;
   @Field(() => String, { nullable: true }) datosAl?: string | null;

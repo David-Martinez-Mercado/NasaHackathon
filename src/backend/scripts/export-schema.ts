@@ -36,7 +36,7 @@ async function main() {
   ]);
   const destino = resolve(process.argv[2] ?? resolve(__dirname, '../../../docs/schema.graphql'));
   mkdirSync(dirname(destino), { recursive: true });
-  const encabezado = '# Generado con `npm run schema` en src/backend/. No editar a mano.\n\n';
+  const encabezado = '# Generated with `npm run schema` in src/backend/. Do not edit by hand.\n\n';
   writeFileSync(destino, encabezado + printSchema(lexicographicSortSchema(schema)) + '\n', 'utf8');
   console.log(`Esquema escrito en ${destino}`);
   await app.close();

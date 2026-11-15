@@ -99,7 +99,7 @@ describe('Predicciones en vivo (servicio de ml/ simulado)', () => {
     const res = await pedir({ lluviaPct: 80, tempDeltaC: 9 });
     const p = res.body.data.prediccionesEnVivo;
     expect(visto.find((v) => v.ruta === 'POST /predict')?.cuerpo.scenario).toEqual({ rain_pct: 50, temp_delta: 4 });
-    expect(p.advertencias.join(' ')).toMatch(/se ajustó/);
+    expect(p.advertencias.join(' ')).toMatch(/was adjusted/);
     const lluvia = p.resultados.find((r: any) => r.concepto === 'c08a');
     expect(lluvia).toMatchObject({ valor: 9.4, escenarioAplicado: true });
   });
@@ -111,7 +111,7 @@ describe('Predicciones en vivo (servicio de ml/ simulado)', () => {
     expect(p.resultados.map((r: any) => r.concepto).sort()).toEqual(['c04', 'c05b', 'c08a', 'c08b']);
     expect(p.resultados.every((r: any) => r.fuente === 'LOTE')).toBe(true);
     expect(p.resultados.find((r: any) => r.concepto === 'c08a').valor).toBeGreaterThanOrEqual(0);
-    expect(p.advertencias.join(' ')).toMatch(/último lote/);
+    expect(p.advertencias.join(' ')).toMatch(/last batch/);
     expect(p.resultados.find((r: any) => r.concepto === 'c05b').notas.join(' ')).toMatch(/promedio de la temporada/);
   });
 
@@ -121,7 +121,7 @@ describe('Predicciones en vivo (servicio de ml/ simulado)', () => {
     const p = (await pedir()).body.data.prediccionesEnVivo;
     expect(Date.now() - inicio).toBeLessThan(1400);
     expect(p.fuente).toBe('LOTE');
-    expect(p.advertencias.join(' ')).toMatch(/no respondió en 600 ms/);
+    expect(p.advertencias.join(' ')).toMatch(/did not respond within 600 ms/);
   });
 
   it('con un token rechazado lo dice sin exponer el token', async () => {
@@ -129,7 +129,7 @@ describe('Predicciones en vivo (servicio de ml/ simulado)', () => {
     const res = await pedir();
     const p = res.body.data.prediccionesEnVivo;
     expect(p.fuente).toBe('LOTE');
-    expect(p.advertencias.join(' ')).toMatch(/token válido/);
+    expect(p.advertencias.join(' ')).toMatch(/valid token/);
     expect(JSON.stringify(res.body)).not.toContain('secreto-de-prueba');
   });
 
@@ -154,7 +154,7 @@ describe('Predicciones en vivo (servicio de ml/ simulado)', () => {
     const p = (await pedir()).body.data.prediccionesEnVivo;
     expect(llamadas()).toBe(2); // el breaker está abierto: no se llamó
     expect(p.fuente).toBe('LOTE');
-    expect(p.advertencias.join(' ')).toMatch(/fuera de línea/);
+    expect(p.advertencias.join(' ')).toMatch(/is offline/);
     modo = 'ok';
     await new Promise((r) => setTimeout(r, 550));
     expect((await pedir()).body.data.prediccionesEnVivo.fuente).toBe('VIVO');
@@ -165,7 +165,7 @@ describe('Predicciones en vivo (servicio de ml/ simulado)', () => {
     try {
       const p = (await pedir()).body.data.prediccionesEnVivo;
       expect(p.fuente).toBe('LOTE');
-      expect(p.advertencias.join(' ')).toMatch(/no está configurado/);
+      expect(p.advertencias.join(' ')).toMatch(/is not configured/);
       expect(visto.filter((v) => v.ruta === 'POST /predict')).toHaveLength(0);
     } finally {
       espiar.mockRestore();
@@ -201,7 +201,7 @@ describe('validarRespuesta (no se confía en lo que llega por la red)', () => {
   it('rechaza formas inesperadas', () => {
     for (const malo of [null, 'x', {}, { results: [], data: null }, { results: [{ concept: 1 }], data: { last_date: 'a', age_days: 1 } },
       { results: [{ concept: 'c', title: 't', available: true, value: 'NaN' }], data: { last_date: '2026-01-01', age_days: 1 } }]) {
-      expect(() => validarRespuesta(malo)).toThrow(/no válida/);
+      expect(() => validarRespuesta(malo)).toThrow(/Invalid response/);
     }
   });
   it('acepta una respuesta completa y rellena lo opcional', () => {

@@ -49,7 +49,7 @@ describe('Predicciones de ml/ (export real, PostgreSQL/PostGIS real)', () => {
         resumen.unavailable.push('algo nuevo');
         writeFileSync(ruta, JSON.stringify(resumen));
       });
-      await expect(importar(cambiado)).rejects.toThrow(/ya está importada con otro contenido/);
+      await expect(importar(cambiado)).rejects.toThrow(/already imported with different content/);
       expect(await prisma.versionPrediccion.count()).toBe(1);
     });
 
@@ -75,7 +75,7 @@ describe('Predicciones de ml/ (export real, PostgreSQL/PostGIS real)', () => {
     it('un archivo modificado se detecta por su hash ANTES de tocar la base', async () => {
       const dañado = copiarExport('v-dañado');
       writeFileSync(join(dañado, 'layers', 'rain.json'), readFileSync(join(dañado, 'layers', 'rain.json'), 'utf8').replace('"c08a"', '"c99x"'));
-      await expect(importar(dañado)).rejects.toThrow(/hash no coincide/);
+      await expect(importar(dañado)).rejects.toThrow(/hash does not match/);
       expect(await prisma.versionPrediccion.count()).toBe(0);
     });
 

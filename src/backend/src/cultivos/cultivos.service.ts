@@ -18,7 +18,7 @@ export class CultivosService {
     const existentes = await tx.cultivo.findMany({ where: { codigo: { in: pedidos } }, select: { codigo: true } });
     const desconocidos = pedidos.filter((codigo) => !existentes.some((c) => c.codigo === codigo));
     if (desconocidos.length) {
-      throw new AppError(CodigoError.VALIDACION_FALLIDA, `No conocemos estos cultivos: ${desconocidos.join(', ')}.`);
+      throw new AppError(CodigoError.VALIDACION_FALLIDA, `Unknown crops: ${desconocidos.join(', ')}.`);
     }
   }
 }

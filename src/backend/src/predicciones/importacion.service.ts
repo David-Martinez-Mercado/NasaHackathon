@@ -75,7 +75,7 @@ export class ImportacionService {
     const manifest = JSON.parse(bytesManifest.toString('utf8')) as ExportManifest;
     problemas.push(...validador.validar('manifest', manifest).map((p) => `manifest.json: ${p}`));
     if (manifest.schema_version !== VERSION_ESQUEMA_SOPORTADA) {
-      problemas.push(`schema_version ${manifest.schema_version}: este backend lee la ${VERSION_ESQUEMA_SOPORTADA}`);
+      problemas.push(`schema_version ${manifest.schema_version}: this backend reads ${VERSION_ESQUEMA_SOPORTADA}`);
     }
     const leido: ExportLeido = {
       manifest, huella: sha256(bytesManifest), capas: [], conjuntos: [], series: [], summaries: null, tablas: [],
@@ -86,11 +86,11 @@ export class ImportacionService {
     for (const entrada of manifest.files) {
       const ruta = resolve(directorio, entrada.path);
       if (!ruta.startsWith(directorio + sep)) {
-        problemas.push(`${entrada.path}: la ruta sale de la carpeta del export`);
+        problemas.push(`${entrada.path}: the path leaves the export folder`);
         continue;
       }
       if (vistos.has(entrada.path)) {
-        problemas.push(`${entrada.path}: aparece dos veces en el manifiesto`);
+        problemas.push(`${entrada.path}: appears twice in the manifest`);
         continue;
       }
       vistos.add(entrada.path);
@@ -98,11 +98,11 @@ export class ImportacionService {
       try {
         bytes = readFileSync(ruta);
       } catch {
-        problemas.push(`${entrada.path}: no existe`);
+        problemas.push(`${entrada.path}: does not exist`);
         continue;
       }
       if (sha256(bytes) !== entrada.sha256) {
-        problemas.push(`${entrada.path}: el hash no coincide (archivo modificado o dañado)`);
+        problemas.push(`${entrada.path}: the hash does not match (file modified or damaged)`);
         continue;
       }
       const dato: unknown = JSON.parse(bytes.toString('utf8'));
@@ -131,8 +131,8 @@ export class ImportacionService {
       }
     }
     const tipos = leido.capas.map((c) => c.kind);
-    if (new Set(tipos).size !== tipos.length) problemas.push('hay dos capas del mismo tipo');
-    if (!manifest.files.length) problemas.push('el manifiesto no lista archivos');
+    if (new Set(tipos).size !== tipos.length) problemas.push('there are two layers of the same type');
+    if (!manifest.files.length) problemas.push('the manifest lists no files');
     if (problemas.length) throw this.invalido(problemas);
     return leido;
   }
@@ -142,19 +142,19 @@ export class ImportacionService {
     const tamano = capa.cols * capa.rows;
     for (const escenario of capa.scenarios) {
       if (escenario.values.length !== tamano) {
-        fallos.push(`${ruta}: un escenario trae ${escenario.values.length} valores y la rejilla es ${capa.cols}x${capa.rows}`);
+        fallos.push(`${ruta}: a scenario has ${escenario.values.length} values and the grid is ${capa.cols}x${capa.rows}`);
         break;
       }
     }
     if (capa.min >= capa.max) fallos.push(`${ruta}: min >= max`);
-    if (!capa.scenarios.some((s) => s.rain_pct === 0 && s.temp_delta === 0)) fallos.push(`${ruta}: falta el escenario base`);
+    if (!capa.scenarios.some((s) => s.rain_pct === 0 && s.temp_delta === 0)) fallos.push(`${ruta}: the base scenario is missing`);
     const claves = capa.scenarios.map((s) => `${s.rain_pct}|${s.temp_delta}`);
     if (new Set(claves).size !== claves.length) fallos.push(`${ruta}: escenarios repetidos`);
     return fallos;
   }
 
   private invalido(problemas: string[]): AppError {
-    return new AppError(CodigoError.VALIDACION_FALLIDA, `El export no se puede importar: ${problemas.join('; ')}`);
+    return new AppError(CodigoError.VALIDACION_FALLIDA, `The export cannot be imported: ${problemas.join('; ')}`);
   }
 
   // ------------------------------------------------------------------------------------- escritura (una transacción)
@@ -165,7 +165,7 @@ export class ImportacionService {
       if (existente.huella !== leido.huella) {
         throw new AppError(
           CodigoError.VALIDACION_FALLIDA,
-          `La versión ${manifest.version} ya está importada con otro contenido: genera el export con otra versión.`,
+          `Version ${manifest.version} is already imported with different content: generate the export with another version.`,
         );
       }
       if (activar && !existente.activa) await this.activar(tx, existente.id);

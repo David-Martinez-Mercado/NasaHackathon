@@ -23,29 +23,29 @@ export class PrediccionesResolver {
     name: 'capa',
     nullable: true,
     description:
-      'Una capa del mapa para un escenario de lluvia y temperatura (los sliders). Entre los escenarios precalculados se ' +
-      'interpola; sin escenario, condiciones normales. null si esa capa no se cargó.',
+      'A map layer for a rain and temperature scenario (the sliders). Between the precomputed scenarios it ' +
+      'interpolates; without a scenario, normal conditions. null if that layer was not loaded.',
   })
   capa(@Args('tipo', { type: () => TipoCapa }) tipo: TipoCapa, @Args('escenario', { type: () => EscenarioInput, nullable: true }) escenario?: EscenarioInput) {
     return this.predicciones.capa(tipo, escenario ?? undefined);
   }
 
-  @Query(() => ConjuntoPuntosTipo, { name: 'puntos', nullable: true, description: 'Puntos de alerta (p. ej. estrés), opcionalmente dentro de una caja del mapa.' })
+  @Query(() => ConjuntoPuntosTipo, { name: 'puntos', nullable: true, description: 'Alert points (e.g. stress), optionally inside a map box.' })
   puntos(@Args('tipo', { type: () => TipoPunto }) tipo: TipoPunto, @Args('caja', { type: () => CajaInput, nullable: true }) caja?: CajaInput) {
     return this.predicciones.puntos(tipo, caja?.bbox);
   }
 
-  @Query(() => [SerieDatosTipo], { name: 'series', description: 'Series para las gráficas: precios por cultivo ("market:") y estadísticas ("statistics:").' })
+  @Query(() => [SerieDatosTipo], { name: 'series', description: 'Series for the charts: prices per crop ("market:") and statistics ("statistics:").' })
   series(@Args('prefijo', { type: () => String, nullable: true }) prefijo?: string) {
     return this.predicciones.series(prefijo ?? undefined);
   }
 
-  @Query(() => TablaModeloTipo, { name: 'tablaModelo', nullable: true, description: 'Salidas de modelos sin capa: "rendimiento", "rotacion", "ciclo".' })
+  @Query(() => TablaModeloTipo, { name: 'tablaModelo', nullable: true, description: 'Model outputs without a layer: "rendimiento", "rotacion", "ciclo".' })
   tablaModelo(@Args('clave', { type: () => String }) clave: string) {
     return this.predicciones.tabla(clave);
   }
 
-  @Query(() => [AlertaResumenTipo], { name: 'alertas', description: 'Alertas resumen (sequía y estrés).' })
+  @Query(() => [AlertaResumenTipo], { name: 'alertas', description: 'Summary alerts (drought and stress).' })
   alertas() {
     return this.predicciones.alertas();
   }
@@ -60,12 +60,12 @@ export class PrediccionesResolver {
     return this.predicciones.resumenClima();
   }
 
-  @Query(() => [String], { name: 'datosNoDisponibles', description: 'Lo que la app pide pero no tiene modelo ni dato (erosión, reservas de agua...): nunca se inventa.' })
+  @Query(() => [String], { name: 'datosNoDisponibles', description: 'What the app asks for but has no model or data for (erosion, water reserves...): it is never made up.' })
   datosNoDisponibles() {
     return this.predicciones.noDisponible();
   }
 
-  @Query(() => EstadoPrediccionesTipo, { name: 'estadoPredicciones', nullable: true, description: 'Versión de predicciones activa, sus modelos y sus límites. null si no hay ninguna.' })
+  @Query(() => EstadoPrediccionesTipo, { name: 'estadoPredicciones', nullable: true, description: 'Active predictions version, its models and its limits. null if there is none.' })
   estadoPredicciones() {
     return this.predicciones.estado();
   }

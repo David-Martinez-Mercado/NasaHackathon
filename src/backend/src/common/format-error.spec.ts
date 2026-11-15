@@ -33,7 +33,7 @@ describe('formatError', () => {
   it('traduce el límite de consultas', () => {
     const f = formatear(new ThrottlerException(), true);
     expect(f.extensions?.codigo).toBe('LIMITE_EXCEDIDO');
-    expect(f.message).toMatch(/espera/i);
+    expect(f.message).toMatch(/wait a moment/i);
   });
 
   it('oculta el detalle de errores internos en producción pero no en desarrollo', () => {

@@ -2,6 +2,6 @@
 import './env-test';
 
 if (!process.env.TEST_DATABASE_URL) {
-  throw new Error('Falta TEST_DATABASE_URL: las pruebas de integración se corren con `npm run test:int` (jest-int.json).');
+  throw new Error('TEST_DATABASE_URL is missing: integration tests are run with `npm run test:int` (jest-int.json).');
 }
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;

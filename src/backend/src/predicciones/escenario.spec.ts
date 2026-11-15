@@ -42,8 +42,8 @@ describe('elegirEscenario', () => {
   });
 
   it('falla claro si la tabla de escenarios está incompleta o vacía', () => {
-    expect(() => elegirEscenario([], 0, 0)).toThrow(/no tiene escenarios/);
-    expect(() => elegirEscenario(rejillas.filter((r) => !(r.lluviaPct === 0 && r.tempDeltaC === 0)), 0, 0)).toThrow(/Falta el escenario/);
+    expect(() => elegirEscenario([], 0, 0)).toThrow(/has no scenarios/);
+    expect(() => elegirEscenario(rejillas.filter((r) => !(r.lluviaPct === 0 && r.tempDeltaC === 0)), 0, 0)).toThrow(/is missing in the layer/);
   });
 
   it('los resultados no cambian el arreglo de entrada', () => {

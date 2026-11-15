@@ -24,10 +24,10 @@ ZONE_MARGIN_DEG = 0.25  # how far outside Weld a point may be and still count as
 HEAT_SEASON = range(5, 10)  # the heat-wave model is only used from May to September (as in the export)
 LIVE_CONCEPTS = ("c05b", "c08a", "c08b", "c04")
 TITLES = {
-    "c05b": ("Riesgo de ola de calor", "%", "próximos 7 días"),
-    "c08a": ("Probabilidad de lluvia mañana", "%", "mañana"),
-    "c08b": ("Lluvia mensual esperada", "mm", "próximos 6 meses"),
-    "c04": ("Humedad de la zona de raíces", "%", "próximas 4 semanas"),
+    "c05b": ("Heat-wave risk", "%", "next 7 days"),
+    "c08a": ("Chance of rain tomorrow", "%", "tomorrow"),
+    "c08b": ("Expected monthly rain", "mm", "next 6 months"),
+    "c04": ("Root-zone soil moisture", "%", "next 4 weeks"),
 }
 SCENARIO_CONCEPTS = ("c05b", "c08a")
 
@@ -87,14 +87,14 @@ def _heat(bundles: dict, info: dict, rain_pct: float, temp_delta: float) -> Conc
     latest = _last_rows(frame)
     day = latest["date"].min()
     if day.month not in HEAT_SEASON:
-        return _unavailable("c05b", f"El modelo de olas de calor solo se usa de mayo a septiembre (último dato: {day}).", info)
+        return _unavailable("c05b", f"The heat-wave model only runs from May to September (latest data: {day}).", info)
     scenario = bool(rain_pct or temp_delta)
     rows = apply_scenario("c05b", latest, rain_pct, temp_delta) if scenario else latest
     title, unit, horizon = TITLES["c05b"]
     role, algorithm = _meta(info, "c05b")
     return ConceptResult("c05b", title, unit, horizon, True, float(np.mean(predict_tabular(bundles["c05b"], rows) * 100)), as_of=day,
                          role=role, algorithm=algorithm, scenario_applied=scenario,
-                         notes=["Probabilidad de que empiece una ola de calor (3 o más días sobre el percentil 90 de esta celda) en los 7 días siguientes."])
+                         notes=["Chance that a heat wave (3 or more days above this cell’s 90th percentile) starts within 7 days."])
 
 
 def _rain_day(bundles: dict, info: dict, rain_pct: float, temp_delta: float) -> ConceptResult:
@@ -107,7 +107,7 @@ def _rain_day(bundles: dict, info: dict, rain_pct: float, temp_delta: float) -> 
     role, algorithm = _meta(info, "c08a")
     return ConceptResult("c08a", title, unit, horizon, True, float(np.mean(predict_tabular(bundles["c08a"], rows) * 100)),
                          as_of=latest["date"].min(), role=role, algorithm=algorithm, scenario_applied=scenario,
-                         notes=["Probabilidad de lluvia de 1 mm o más mañana."])
+                         notes=["Chance of 1 mm of rain or more tomorrow."])
 
 
 def _rain_month(bundles: dict, info: dict) -> ConceptResult:
@@ -122,7 +122,7 @@ def _rain_month(bundles: dict, info: dict) -> ConceptResult:
     role, algorithm = _meta(info, "c08b")
     return ConceptResult("c08b", title, unit, horizon, True, values[0] if values else None, series=values,
                          as_of=history["ds"].max().date(), role=role, algorithm=algorithm,
-                         notes=["Lámina de lluvia de cada uno de los próximos 6 meses (mm). Es la climatología de la celda, no un pronóstico meteorológico."])
+                         notes=["Rain for each of the next 6 months (mm). It is the cell’s climatology, not a weather forecast."])
 
 
 def _soil(bundles: dict, info: dict) -> ConceptResult:
@@ -137,7 +137,7 @@ def _soil(bundles: dict, info: dict) -> ConceptResult:
     role, algorithm = _meta(info, "c04")
     return ConceptResult("c04", title, unit, horizon, True, round(float(np.mean(weekly)), 1), series=weekly,
                          as_of=history["ds"].max().date(), role=role, algorithm=algorithm,
-                         notes=["Humedad de raíz (GWETROOT de MERRA-2) esperada: promedio de las próximas 4 semanas; la serie trae cada semana."])
+                         notes=["Expected root moisture (GWETROOT from MERRA-2): average of the next 4 weeks; the series has each week."])
 
 
 def observations(frame: pl.DataFrame) -> dict:
@@ -158,7 +158,7 @@ def predict_point(history: pl.DataFrame, lat: float, lon: float, bundles: dict, 
     with power.use_daily_frame(frame):
         for concept in concepts:
             if concept not in bundles:
-                out.append(_unavailable(concept, "El modelo no está cargado en el servicio.", info))
+                out.append(_unavailable(concept, "The model is not loaded in the service.", info))
                 continue
             try:
                 out.append(steps[concept]())

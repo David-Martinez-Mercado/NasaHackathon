@@ -3,16 +3,14 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 import { useMapConfig } from '../AppContext';
 import { Card, Chips, Notice, Panel, ReadField } from '../components/ui';
 import { fetchClimate, fetchPredictionStatus, fetchSeries, fetchTable, type ModelInfo, type Series } from '../data';
+import { cropLabel } from '../data/i18n';
 import { useLayer, useRemote } from '../hooks';
 
 const TABS = ['Economy', 'Climate', 'Models', 'Local practice'] as const;
 type Tab = (typeof TABS)[number];
 const num = (v: number | null, unit: string, digits = 1) => (v == null ? 'No data' : `${Number(v.toFixed(digits))}${unit}`);
-const cropLabel = (s: Series) => {
-  const name = s.id.replace('market:', '');
-  return name.charAt(0).toUpperCase() + name.slice(1);
-};
-const pretty = (code: string) => code.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+const seriesLabel = (s: Series) => cropLabel(s.id.replace('market:', ''));
+const pretty = (code: string) => cropLabel(code);
 
 /** Everything the models know, grouped: money (prices, yield), climate, the models themselves, and what farmers do locally. */
 export function Data() {
@@ -57,7 +55,7 @@ function Economy() {
           <>
             <div className="chips">
               {(market.data ?? []).map((s) => (
-                <button key={s.id} type="button" className="chip" aria-pressed={s.id === series.id} onClick={() => setPicked(s.id)}>{cropLabel(s)}</button>
+                <button key={s.id} type="button" className="chip" aria-pressed={s.id === series.id} onClick={() => setPicked(s.id)}>{seriesLabel(s)}</button>
               ))}
             </div>
             <small>{series.unit} · dashed = forecast, exploratory only · {series.source}</small>

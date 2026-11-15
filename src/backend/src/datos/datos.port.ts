@@ -16,7 +16,7 @@ export class DatosNoDisponibles implements DatosPort {
   readonly disponible = false;
 
   async contexto(): Promise<ParcelaContexto> {
-    throw new AppError(CodigoError.FUENTE_NO_DISPONIBLE, 'Todavía no hay conexión con los datos de clima y suelo.');
+    throw new AppError(CodigoError.FUENTE_NO_DISPONIBLE, 'There is no connection to the climate and soil data yet.');
   }
 }
 

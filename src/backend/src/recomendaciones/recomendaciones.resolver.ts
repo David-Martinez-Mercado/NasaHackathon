@@ -10,7 +10,7 @@ export class RecomendacionesResolver {
   @Costoso()
   @Query(() => [RotacionEvaluada], {
     name: 'recomendaciones',
-    description: 'Las 3 mejores rotaciones a 3 años para una parcela.',
+    description: 'The 3 best 3-year rotations for a field.',
   })
   recomendar(@Args('input') input: RecomendacionInput) {
     return this.recomendaciones.evaluar(input.parcelaId, input.escenario);
@@ -18,7 +18,7 @@ export class RecomendacionesResolver {
 
   /** Para los sliders: recalcula en vivo sin guardar nada. Objetivo: responder en menos de 300 ms. */
   @Costoso()
-  @Query(() => [RotacionEvaluada], { description: 'Recalcula con otro escenario de lluvia y temperatura sin guardar.' })
+  @Query(() => [RotacionEvaluada], { description: 'Recalculates with another rain and temperature scenario without saving.' })
   simularEscenario(@Args('input') input: SimulacionInput) {
     return this.recomendaciones.evaluar(input.parcelaId, input.escenario);
   }

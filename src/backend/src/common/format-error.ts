@@ -5,10 +5,10 @@ import { AppError, CodigoError } from './errors';
 
 const logger = new Logger('GraphQL');
 
-const MENSAJE_INTERNO = 'Ocurrió un error inesperado. Intenta de nuevo en un momento.';
+const MENSAJE_INTERNO = 'An unexpected error occurred. Please try again in a moment.';
 
 /**
- * Convierte cualquier error en una respuesta con `extensions.codigo` y un mensaje en español.
+ * Convierte cualquier error en una respuesta con `extensions.codigo` y a message in English.
  * En producción nunca se devuelven trazas ni mensajes internos.
  */
 export function formatError(formatted: GraphQLFormattedError, error: unknown, production: boolean): GraphQLFormattedError {
@@ -28,7 +28,7 @@ export function formatError(formatted: GraphQLFormattedError, error: unknown, pr
   if (original instanceof AppError) return con(original.codigo, original.message);
 
   if (original instanceof ThrottlerException) {
-    return con(CodigoError.LIMITE_EXCEDIDO, 'Hiciste muchas consultas seguidas. Espera un momento e intenta de nuevo.');
+    return con(CodigoError.LIMITE_EXCEDIDO, 'You made too many requests in a row. Wait a moment and try again.');
   }
 
   if (original instanceof HttpException && original.getStatus() === 400) {
@@ -42,7 +42,7 @@ export function formatError(formatted: GraphQLFormattedError, error: unknown, pr
     // Errores de la consulta en sí (campo que no existe, variable con tipo incorrecto, profundidad excedida...)
     return con(
       /profundidad|depth/i.test(formatted.message) ? CodigoError.CONSULTA_DEMASIADO_COMPLEJA : CodigoError.VALIDACION_FALLIDA,
-      production ? 'La consulta no es válida.' : formatted.message,
+      production ? 'The query is not valid.' : formatted.message,
     );
   }
 

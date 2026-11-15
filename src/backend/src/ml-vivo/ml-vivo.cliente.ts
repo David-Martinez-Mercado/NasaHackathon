@@ -44,12 +44,12 @@ const esNumeroONulo = (v: unknown) => v === null || (typeof v === 'number' && Nu
 /** No se confía en lo que llega por la red: la forma se comprueba antes de usarla. */
 export function validarRespuesta(json: unknown): RespuestaServicio {
   const r = json as Record<string, any>;
-  const malo = (donde: string) => new ErrorServicioMl('respuesta', `Respuesta del servicio de ML no válida (${donde})`);
+  const malo = (donde: string) => new ErrorServicioMl('respuesta', `Invalid response from the ML service (${donde})`);
   if (!r || typeof r !== 'object' || !Array.isArray(r.results) || !r.data || typeof r.data !== 'object') throw malo('estructura');
   if (!esTexto(r.data.last_date) || !Number.isFinite(r.data.age_days)) throw malo('data');
   for (const c of r.results) {
     if (!c || !esTexto(c.concept) || !esTexto(c.title) || typeof c.available !== 'boolean') throw malo('resultado');
-    if (!esNumeroONulo(c.value ?? null) || (c.series != null && !Array.isArray(c.series))) throw malo(`valor de ${c.concept}`);
+    if (!esNumeroONulo(c.value ?? null) || (c.series != null && !Array.isArray(c.series))) throw malo(`value of ${c.concept}`);
   }
   return {
     site_used: String(r.site_used ?? ''),
@@ -88,7 +88,7 @@ export class MlVivoCliente {
     } catch {
       // fetch envuelve el motivo de la cancelación: se decide por el estado de la señal, no por el nombre del error
       const tiempo = limite.aborted;
-      throw new ErrorServicioMl(tiempo ? 'tiempo' : 'red', tiempo ? `El servicio de ML no respondió en ${tiempoMs} ms` : 'No se pudo conectar con el servicio de ML');
+      throw new ErrorServicioMl(tiempo ? 'tiempo' : 'red', tiempo ? `The ML service did not respond within ${tiempoMs} ms` : 'Could not connect to the ML service');
     }
     if (!respuesta.ok) {
       let detalle = '';
@@ -97,12 +97,12 @@ export class MlVivoCliente {
       } catch {
         /* el cuerpo no era JSON */
       }
-      throw new ErrorServicioMl('http', detalle || `El servicio de ML respondió ${respuesta.status}`, respuesta.status);
+      throw new ErrorServicioMl('http', detalle || `The ML service responded ${respuesta.status}`, respuesta.status);
     }
     try {
       return await respuesta.json();
     } catch {
-      throw new ErrorServicioMl('respuesta', 'El servicio de ML no devolvió JSON');
+      throw new ErrorServicioMl('respuesta', 'The ML service did not return JSON');
     }
   }
 
@@ -118,12 +118,12 @@ export class MlVivoCliente {
 
   /** Para /health: una consulta barata con tiempo límite corto. */
   async salud(): Promise<{ ok: boolean; detalle?: string }> {
-    if (!this.configurado) return { ok: false, detalle: 'ML_SERVICE_URL no está definida: se usan las predicciones del último lote' };
+    if (!this.configurado) return { ok: false, detalle: 'ML_SERVICE_URL is not defined: the predictions of the last batch are used' };
     try {
       const r = (await this.pedir('/health', { method: 'GET' }, 1500)) as { estado?: string; modelos?: string[] };
-      return r.estado === 'ok' ? { ok: true, detalle: `modelos: ${(r.modelos ?? []).join(', ')}` } : { ok: false, detalle: 'el servicio está degradado' };
+      return r.estado === 'ok' ? { ok: true, detalle: `models: ${(r.modelos ?? []).join(', ')}` } : { ok: false, detalle: 'the service is degraded' };
     } catch (error) {
-      return { ok: false, detalle: error instanceof Error ? error.message : 'no responde' };
+      return { ok: false, detalle: error instanceof Error ? error.message : 'no response' };
     }
   }
 }

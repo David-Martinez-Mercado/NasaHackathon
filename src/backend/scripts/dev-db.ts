@@ -36,12 +36,12 @@ async function main() {
   for (const nombre of todas.filter((n) => !hechas.has(n))) {
     await db.exec(readFileSync(join(migraciones, nombre, 'migration.sql'), 'utf8'));
     await db.query('INSERT INTO "_dev_migraciones" VALUES ($1)', [nombre]);
-    console.log(`migración aplicada: ${nombre}`);
+    console.log(`migration applied: ${nombre}`);
   }
   // maxConnections > 1: Prisma recicla su única conexión y la nueva llega antes de que se libere la vieja; Prisma sigue usando solo una a la vez.
   const servidor = new PGLiteSocketServer({ db, port: puerto, host: '127.0.0.1', maxConnections: 4 });
   await servidor.start();
-  console.log(`PostgreSQL + PostGIS de desarrollo en 127.0.0.1:${puerto} (datos en ${carpeta})`);
+  console.log(`Development PostgreSQL + PostGIS at 127.0.0.1:${puerto} (data in ${carpeta})`);
   console.log(`DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:${puerto}/postgres?connection_limit=1&pgbouncer=true&sslmode=disable&connect_timeout=20"`);
   const cerrar = async () => { await servidor.stop(); await db.close(); process.exit(0); };
   process.on('SIGINT', cerrar);

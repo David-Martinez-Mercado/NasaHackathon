@@ -40,34 +40,34 @@ export class SaludService {
       return [
         { nombre: 'base de datos', estado: NivelEstado.OK },
         postgis
-          ? { nombre: 'PostGIS', estado: NivelEstado.OK, detalle: `versión ${postgis}` }
-          : { nombre: 'PostGIS', estado: NivelEstado.NO_DISPONIBLE, detalle: 'la extensión no está instalada' },
+          ? { nombre: 'PostGIS', estado: NivelEstado.OK, detalle: `version ${postgis}` }
+          : { nombre: 'PostGIS', estado: NivelEstado.NO_DISPONIBLE, detalle: 'the extension is not installed' },
       ];
     } catch {
-      return [{ nombre: 'base de datos', estado: NivelEstado.NO_DISPONIBLE, detalle: 'no responde' }];
+      return [{ nombre: 'base de datos', estado: NivelEstado.NO_DISPONIBLE, detalle: 'no response' }];
     }
   }
 
   /** El servicio de predicciones en vivo es opcional: si no responde, la API sigue con el último lote. */
   private async estadoMlVivo(): Promise<EstadoFuente> {
-    const nombre = 'predicciones en vivo (servicio de ml/)';
+    const nombre = 'live predictions (ml/ service)';
     const s = await this.mlVivo.salud();
     return { nombre, estado: s.ok ? NivelEstado.OK : NivelEstado.NO_DISPONIBLE, detalle: s.detalle };
   }
 
   /** ¿Hay una versión de predicciones de ml/ cargada? Sin base de datos no se puede saber: se omite la consulta. */
   private async estadoPredicciones(base: EstadoFuente[]): Promise<EstadoFuente> {
-    const nombre = 'predicciones de los modelos (ml/)';
+    const nombre = 'model predictions (ml/)';
     if (base.some((f) => f.estado === NivelEstado.NO_DISPONIBLE)) {
-      return { nombre, estado: NivelEstado.NO_DISPONIBLE, detalle: 'sin base de datos' };
+      return { nombre, estado: NivelEstado.NO_DISPONIBLE, detalle: 'no database' };
     }
     try {
       const version = await this.predicciones.versionActiva();
       return version
-        ? { nombre, estado: NivelEstado.OK, detalle: `versión ${version.version}, datos al ${version.datosAl.toISOString().slice(0, 10)}` }
-        : { nombre, estado: NivelEstado.NO_DISPONIBLE, detalle: 'aún no se importa ninguna versión (npm run import:predicciones)' };
+        ? { nombre, estado: NivelEstado.OK, detalle: `version ${version.version}, data up to ${version.datosAl.toISOString().slice(0, 10)}` }
+        : { nombre, estado: NivelEstado.NO_DISPONIBLE, detalle: 'no version has been imported yet (npm run import:predicciones)' };
     } catch {
-      return { nombre, estado: NivelEstado.NO_DISPONIBLE, detalle: 'no se pudo consultar' };
+      return { nombre, estado: NivelEstado.NO_DISPONIBLE, detalle: 'could not be queried' };
     }
   }
 
@@ -80,12 +80,12 @@ export class SaludService {
       {
         nombre: 'motor de reglas',
         estado: this.motor.disponible ? NivelEstado.OK : NivelEstado.NO_DISPONIBLE,
-        detalle: this.motor.disponible ? undefined : 'aún no conectado',
+        detalle: this.motor.disponible ? undefined : 'not connected yet',
       },
       {
         nombre: 'datos de clima y suelo',
         estado: this.datos.disponible ? NivelEstado.OK : NivelEstado.NO_DISPONIBLE,
-        detalle: !this.datos.disponible ? 'aún no conectado' : this.config.env.DEMO_OFFLINE ? 'modo demo (fixtures)' : undefined,
+        detalle: !this.datos.disponible ? 'not connected yet' : this.config.env.DEMO_OFFLINE ? 'demo mode (fixtures)' : undefined,
       },
     ];
     const baseCaida = base.some((f) => f.estado === NivelEstado.NO_DISPONIBLE);

@@ -15,9 +15,9 @@ export class SugerenciasResolver {
   @Query(() => SugerenciasCultivoTipo, {
     name: 'sugerenciasCultivo',
     description:
-      'Otros cultivos que se podrían sembrar en la parcela, evaluados con los modelos de ml/ (rotación, precio, rendimiento, ciclo), ' +
-      'los riesgos de la zona y las prioridades del agricultor (las guardadas, o las que se pasen en `prioridades` para probar sin guardar). ' +
-      'No es el motor de reglas agronómicas: las clasificaciones de agua, nitrógeno y cobertura son generales.',
+      'Other crops that could be planted in the field, evaluated with the ml/ models (rotation, price, yield, cycle), ' +
+      'the area risks and the farmer priorities (the saved ones, or the ones passed in `prioridades` to try without saving). ' +
+      'It is not the agronomic rules engine: the water, nitrogen and cover classifications are general.',
   })
   sugerenciasCultivo(
     @Args('parcelaId', { type: () => ID }, uuidPipe()) parcelaId: string,
@@ -31,7 +31,7 @@ export class SugerenciasResolver {
 
   @Query(() => RiesgosParcelaTipo, {
     name: 'riesgosParcela',
-    description: 'Riesgos de la zona de la parcela (calor, sequía, humedad del suelo, estrés, vulnerabilidad) con los modelos de ml/.',
+    description: 'Risks of the area around the field (heat, drought, soil moisture, stress, vulnerability) with the ml/ models.',
   })
   riesgosParcela(@Args('parcelaId', { type: () => ID }, uuidPipe()) parcelaId: string) {
     return this.riesgos.paraParcela(parcelaId);

@@ -4,7 +4,7 @@
  * Nothing is invented on the client: what the server does not have is reported as unavailable.
  */
 import { ApiError, gql } from './api';
-import { translateNote, translateSource } from './i18n';
+import { cropLabel, translateModelName, translateNote, translateSource, translateText } from './i18n';
 import type {
   AlertSummary, ClimateSummary, ColorStop, Crop, Field, GridLayer, HumiditySummary, LayerKind, LngLat, MapPoint,
   CropSuggestion, CropSuggestions, FactorKey, FieldValues, Irrigation, ModelTable, NewField, PlotRecord, PredictionStatus, Priorities, Ring,
@@ -68,7 +68,7 @@ const toField = (f: RawField): Field => {
   return {
     id: f.id,
     version: f.version,
-    name: f.nombre ?? 'Unnamed field',
+    name: translateText(f.nombre ?? 'Unnamed field'),
     description: f.descripcion ?? '',
     crop: f.cultivoActual ?? '',
     areaHa: f.areaHa,
@@ -105,7 +105,7 @@ export async function fetchFields(): Promise<Field[]> {
 
 export async function fetchCrops(): Promise<Crop[]> {
   const data = await gql<{ cultivos: { codigo: string; nombre: string }[] }>('query { cultivos { codigo nombre } }');
-  return data.cultivos.map((c) => ({ code: c.codigo, name: c.nombre }));
+  return data.cultivos.map((c) => ({ code: c.codigo, name: cropLabel(c.codigo, c.nombre) }));
 }
 
 function preferencesInput(v: FieldValues, extras: Field['extras']) {
@@ -203,7 +203,7 @@ interface RawSuggestion {
 const SUGGESTION_FIELDS = `cultivo nombre puntaje aportes { factor puntaje peso sinDato } probabilidadSiguientePct cambioPrecioPct unidadPrecio
   rendimientoTHa rendimientoHistoricoTHa cicloDias otraFamilia fijaNitrogeno demandaAgua coberturaSuelo preferido`;
 const toSuggestion = (x: RawSuggestion): CropSuggestion => ({
-  code: x.cultivo, name: x.nombre, score: x.puntaje,
+  code: x.cultivo, name: cropLabel(x.cultivo, x.nombre), score: x.puntaje,
   factors: x.aportes.map((a) => ({ key: FACTOR[a.factor], score: a.puntaje, weight: a.peso, noData: a.sinDato })).filter((f) => f.key),
   rotationPct: x.probabilidadSiguientePct, priceChangePct: x.cambioPrecioPct, priceUnit: x.unidadPrecio, otherFamily: x.otraFamilia,
   yieldTHa: x.rendimientoTHa, historicalYieldTHa: x.rendimientoHistoricoTHa, cycleDays: x.cicloDias, fixesNitrogen: x.fijaNitrogeno,
@@ -258,10 +258,10 @@ export async function fetchPredictionStatus(): Promise<PredictionStatus | null> 
   const e = data.estadoPredicciones;
   if (!e) return null;
   return {
-    version: e.version, asOf: e.datosAl, limitations: e.limitaciones,
+    version: e.version, asOf: e.datosAl, limitations: e.limitaciones.map(translateText),
     models: e.modelos.map((m) => ({
-      concept: m.concepto, name: m.nombre, role: m.rol, algorithm: m.algoritmo, metric: m.metrica, value: m.valor, ciLow: m.intervaloInf,
-      ciHigh: m.intervaloSup, baseline: m.base, baselineValue: m.valorBase, skill: m.skill, trainedRows: m.filasEntrenamiento, notes: m.notas,
+      concept: m.concepto, name: translateModelName(m.nombre), role: m.rol, algorithm: translateText(m.algoritmo), metric: m.metrica, value: m.valor, ciLow: m.intervaloInf,
+      ciHigh: m.intervaloSup, baseline: m.base, baselineValue: m.valorBase, skill: m.skill, trainedRows: m.filasEntrenamiento, notes: m.notas.map(translateText),
     })),
   };
 }
@@ -270,7 +270,7 @@ export async function fetchTable(key: 'rotacion' | 'rendimiento' | 'ciclo'): Pro
   const data = await gql<{ tablaModelo: { titulo: string; unidad: string | null; datosAl: string | null; notas: string[]; filas: Record<string, string | number | null>[] } | null }>(
     `query($k: String!) { tablaModelo(clave: $k) { titulo unidad datosAl notas filas } }`, { k: key });
   const t = data.tablaModelo;
-  return t ? { title: t.titulo, unit: t.unidad, asOf: t.datosAl, notes: t.notas, rows: t.filas } : null;
+  return t ? { title: translateText(t.titulo), unit: t.unidad ? translateText(t.unidad) : t.unidad, asOf: t.datosAl, notes: t.notas.map(translateText), rows: t.filas } : null;
 }
 
 export async function saveHistory(fieldId: string, record: { year: number; crop: string; plantedOn: string | null; description: string }) {
@@ -400,7 +400,7 @@ export async function fetchAlerts(): Promise<AlertSummary[]> {
   const make = (kind: 'drought' | 'stress' | 'erosion', title: string): AlertSummary => {
     const a = byKind.get(kind);
     return a
-      ? { kind, title, value: `${a.valor}${a.unidad}`, detail: a.detalle, definition: a.definicion, available: true }
+      ? { kind, title, value: `${a.valor}${a.unidad}`, detail: translateText(a.detalle), definition: translateText(a.definicion), available: true }
       : { kind, title, value: 'N/A', detail: 'Not loaded on the server yet', definition: '', available: false };
   };
   return [
@@ -422,7 +422,7 @@ export async function fetchHumidity(): Promise<HumiditySummary | null> {
     evaporation: h.evaporacion,
     percentile: h.percentil,
     status: h.percentil < 25 ? 'Below normal' : h.percentil > 75 ? 'Above normal' : 'Normal',
-    source: h.fuente,
+    source: translateText(h.fuente),
     asOf: h.datosAl,
   };
 }
@@ -459,19 +459,19 @@ export async function fetchSeries(prefix: 'market:' | 'statistics:'): Promise<Se
   );
   return data.series.map((s) => ({
     id: s.clave,
-    title: s.titulo,
-    unit: s.unidad,
-    source: s.fuente,
-    labelA: s.etiquetaA,
-    labelB: s.etiquetaB,
-    notes: s.notas,
+    title: translateText(s.titulo),
+    unit: translateText(s.unidad),
+    source: translateSource(s.fuente),
+    labelA: s.etiquetaA ? translateText(s.etiquetaA) : s.etiquetaA,
+    labelB: s.etiquetaB ? translateText(s.etiquetaB) : s.etiquetaB,
+    notes: s.notas.map(translateText),
     points: s.puntos.map((p) => ({ label: p.etiqueta, a: p.a, b: p.b, forecast: p.pronostico })),
   }));
 }
 
 /** What the app asks for but has no model or data for (erosion, water reserves…). */
 export async function fetchUnavailable(): Promise<string[]> {
-  return (await gql<{ datosNoDisponibles: string[] }>('query { datosNoDisponibles }')).datosNoDisponibles;
+  return (await gql<{ datosNoDisponibles: string[] }>('query { datosNoDisponibles }')).datosNoDisponibles.map(translateText);
 }
 
 export async function fetchStatus(): Promise<ServerStatus> {

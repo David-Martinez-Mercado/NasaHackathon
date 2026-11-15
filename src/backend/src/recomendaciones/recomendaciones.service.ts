@@ -20,7 +20,7 @@ export class RecomendacionesService {
     const parcela = await this.parcelas.obtener(parcelaId);
     const guardadas = await this.preferencias.buscar(parcelaId);
     if (!guardadas) {
-      throw new AppError(CodigoError.VALIDACION_FALLIDA, 'Antes de pedir recomendaciones, guarda las preferencias de la parcela.');
+      throw new AppError(CodigoError.VALIDACION_FALLIDA, 'Before asking for recommendations, save the field preferences.');
     }
     const prefs: PreferenciasAgricultor = {
       riego: guardadas.riego,

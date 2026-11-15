@@ -3,14 +3,14 @@ import { Prioridades } from '../preferencias/preferencias.model';
 
 @ObjectType('RiesgoZona', {
   description:
-    'Un riesgo de la zona de la parcela, calculado con un modelo de ml/ en el punto de la parcela. Los niveles usan umbrales ' +
-    'provisionales ([POR VERIFICAR] con el agrónomo): sirven para comparar, no para decidir.',
+    'A risk of the area around the field, calculated with an ml/ model at the field point. The levels use thresholds ' +
+    'provisional ([TO VERIFY] with the agronomist): they are for comparing, not for deciding.',
 })
 export class RiesgoZonaTipo {
   @Field(() => String, { description: 'calor | sequia | humedad | estres | vulnerabilidad | erosion | pendiente | elevacion | lluvia' })
   clave: string;
 
-  @Field(() => String, { nullable: true, description: 'BAJO | MEDIO | ALTO. null = sin dato o solo informativo (lluvia).' })
+  @Field(() => String, { nullable: true, description: 'BAJO | MEDIO | ALTO (low | medium | high). null = no data or informational only (rain).' })
   nivel?: string | null;
 
   @Field(() => Float, { nullable: true })
@@ -19,25 +19,25 @@ export class RiesgoZonaTipo {
   @Field(() => String)
   unidad: string;
 
-  @Field(() => String, { description: 'Modelo de ml/ del que sale, p. ej. c05b' })
+  @Field(() => String, { description: 'Model from ml/ it comes from, e.g. c05b' })
   modelo: string;
 
   @Field(() => String, { nullable: true })
   datosAl?: string | null;
 
-  @Field(() => Int, { nullable: true, description: 'Tamaño de celda del dato, en metros.' })
+  @Field(() => Int, { nullable: true, description: 'Cell size of the data, in meters.' })
   resolucionM?: number | null;
 
-  @Field(() => Boolean, { nullable: true, description: 'true = el detalle dentro de la parcela es interpolación.' })
+  @Field(() => Boolean, { nullable: true, description: 'true = the detail inside the field is interpolation.' })
   interpolada?: boolean | null;
 
-  @Field(() => Int, { nullable: true, description: 'Solo estres: puntos evaluados dentro del radio.' })
+  @Field(() => Int, { nullable: true, description: 'Only estres: points evaluated inside the radius.' })
   puntosCercanos?: number | null;
 
-  @Field(() => Int, { nullable: true, description: 'Solo estres: cuántos de ellos son críticos.' })
+  @Field(() => Int, { nullable: true, description: 'Only estres: how many of them are critical.' })
   puntosCriticos?: number | null;
 
-  @Field(() => Int, { nullable: true, description: 'Solo estres: radio de búsqueda en km.' })
+  @Field(() => Int, { nullable: true, description: 'Only estres: search radius in km.' })
   radioKm?: number | null;
 }
 
@@ -46,105 +46,105 @@ export class RiesgosParcelaTipo {
   @Field(() => [RiesgoZonaTipo])
   riesgos: RiesgoZonaTipo[];
 
-  @Field(() => [String], { description: 'Límites que hay que mostrar junto a los riesgos.' })
+  @Field(() => [String], { description: 'Limits that must be shown next to the risks.' })
   advertencias: string[];
 }
 
-@ObjectType('AporteCultivo', { description: 'Cuánto aporta un criterio al puntaje de un cultivo.' })
+@ObjectType('AporteCultivo', { description: 'How much a criterion contributes to a crop score.' })
 export class AporteCultivoTipo {
   @Field(() => String, { description: 'ingreso | suelo | agua | erosion | local' })
   factor: string;
 
-  @Field(() => Int, { description: '0–100: qué tan bien le va al cultivo en este criterio.' })
+  @Field(() => Int, { description: '0–100: how well the crop does on this criterion.' })
   puntaje: number;
 
-  @Field(() => Float, { description: 'Peso efectivo del criterio (ya con prioridades y riesgos de la zona).' })
+  @Field(() => Float, { description: 'Effective weight of the criterion (already with priorities and area risks).' })
   peso: number;
 
-  @Field(() => Boolean, { description: 'true = no hay dato de este criterio para el cultivo: cuenta como neutro (50), no se inventa.' })
+  @Field(() => Boolean, { description: 'true = there is no data for this criterion for the crop: it counts as neutral (50), nothing is made up.' })
   sinDato: boolean;
 }
 
 @ObjectType('SugerenciaCultivo', {
-  description: 'Un cultivo evaluado con los modelos de ml/, los riesgos de la zona y las prioridades del agricultor.',
+  description: 'A crop evaluated with the ml/ models, the area risks and the farmer priorities.',
 })
 export class SugerenciaCultivoTipo {
-  @Field(() => String, { description: 'Código del catálogo (query cultivos); se puede guardar como cultivoActual.' })
+  @Field(() => String, { description: 'Catalog code (cultivos query); it can be saved as cultivoActual.' })
   cultivo: string;
 
   @Field(() => String)
   nombre: string;
 
-  @Field(() => Int, { description: '0–100. Orden relativo entre las opciones, no una probabilidad de éxito.' })
+  @Field(() => Int, { description: '0–100. Relative order among the options, not a probability of success.' })
   puntaje: number;
 
-  @Field(() => [AporteCultivoTipo], { description: 'El puntaje desglosado por criterio.' })
+  @Field(() => [AporteCultivoTipo], { description: 'The score broken down by criterion.' })
   aportes: AporteCultivoTipo[];
 
-  @Field(() => Float, { nullable: true, description: '% de los píxeles de cultivo de Weld que tenían el cultivo base el año anterior y sembraron este (c02, CDL).' })
+  @Field(() => Float, { nullable: true, description: '% of the Weld cropland pixels that had the base crop the previous year and planted this one (c02, CDL).' })
   probabilidadSiguientePct?: number | null;
 
-  @Field(() => Float, { nullable: true, description: 'Cambio % del precio entre el último dato y el último mes pronosticado (c10, exploratorio).' })
+  @Field(() => Float, { nullable: true, description: '% change of the price between the latest data and the last forecast month (c10, exploratory).' })
   cambioPrecioPct?: number | null;
 
   @Field(() => String, { nullable: true })
   unidadPrecio?: string | null;
 
-  @Field(() => Float, { nullable: true, description: 'Rendimiento estimado del condado en t/ha (c01). Solo maíz y trigo de invierno.' })
+  @Field(() => Float, { nullable: true, description: 'Estimated county yield in t/ha (c01). Only maize and winter wheat.' })
   rendimientoTHa?: number | null;
 
-  @Field(() => Float, { nullable: true, description: 'Rendimiento histórico del condado en t/ha, para comparar con el estimado.' })
+  @Field(() => Float, { nullable: true, description: 'Historical county yield in t/ha, to compare with the estimate.' })
   rendimientoHistoricoTHa?: number | null;
 
-  @Field(() => Int, { nullable: true, description: 'Días de siembra a cosecha, mediana de 10 años (c07). Pocos cultivos tienen dato.' })
+  @Field(() => Int, { nullable: true, description: 'Days from planting to harvest, 10-year median (c07). Few crops have data.' })
   cicloDias?: number | null;
 
-  @Field(() => Boolean, { nullable: true, description: 'true = otra familia botánica que el cultivo base. null si no se conoce.' })
+  @Field(() => Boolean, { nullable: true, description: 'true = a different botanical family than the base crop. null if unknown.' })
   otraFamilia?: boolean | null;
 
-  @Field(() => Boolean, { description: 'Fija nitrógeno (leguminosa). Clasificación general [POR VERIFICAR].' })
+  @Field(() => Boolean, { description: 'Fixes nitrogen (legume). General classification [TO VERIFY].' })
   fijaNitrogeno: boolean;
 
-  @Field(() => String, { description: 'baja | media | alta. Clasificación general [POR VERIFICAR].' })
+  @Field(() => String, { description: 'baja | media | alta (low | medium | high). General classification [TO VERIFY].' })
   demandaAgua: string;
 
-  @Field(() => String, { description: 'baja | media | alta (cobertura del suelo contra la erosión). Clasificación general [POR VERIFICAR].' })
+  @Field(() => String, { description: 'baja | media | alta (low | medium | high; soil cover against erosion). General classification [TO VERIFY].' })
   coberturaSuelo: string;
 
-  @Field(() => Boolean, { description: 'El agricultor lo marcó como preferido.' })
+  @Field(() => Boolean, { description: 'The farmer marked it as preferred.' })
   preferido: boolean;
 }
 
-@ObjectType('PesosEvaluacion', { description: 'Peso efectivo de cada criterio tras aplicar prioridades y riesgos de la zona.' })
+@ObjectType('PesosEvaluacion', { description: 'Effective weight of each criterion after applying priorities and area risks.' })
 export class PesosEvaluacionTipo {
   @Field(() => Float) agua: number;
   @Field(() => Float) suelo: number;
   @Field(() => Float) erosion: number;
   @Field(() => Float) ingreso: number;
-  @Field(() => Float, { description: 'Práctica local observada (c02); peso fijo y bajo.' }) local: number;
+  @Field(() => Float, { description: 'Observed local practice (c02); fixed, low weight.' }) local: number;
 }
 
 @ObjectType('SugerenciasCultivo')
 export class SugerenciasCultivoTipo {
-  @Field(() => String, { nullable: true, description: 'Cultivo desde el que se calcula (el actual o el último del historial).' })
+  @Field(() => String, { nullable: true, description: 'Crop it is calculated from (the current one or the last in the history).' })
   cultivoBase?: string | null;
 
-  @Field(() => String, { nullable: true, description: '"actual" o "historial". null si no hay.' })
+  @Field(() => String, { nullable: true, description: '"actual" or "historial". null if there is none.' })
   origenBase?: string | null;
 
-  @Field(() => SugerenciaCultivoTipo, { nullable: true, description: 'El cultivo base evaluado con los mismos criterios, para comparar.' })
+  @Field(() => SugerenciaCultivoTipo, { nullable: true, description: 'The base crop evaluated with the same criteria, to compare.' })
   actual?: SugerenciaCultivoTipo | null;
 
   @Field(() => [SugerenciaCultivoTipo])
   sugerencias: SugerenciaCultivoTipo[];
 
-  @Field(() => Prioridades, { description: 'Las prioridades con las que se calculó (las guardadas o las que se probaron).' })
+  @Field(() => Prioridades, { description: 'The priorities it was calculated with (the saved ones or the ones tried).' })
   prioridades: Prioridades;
 
   @Field(() => PesosEvaluacionTipo)
   pesos: PesosEvaluacionTipo;
 
-  @Field(() => [String], { description: 'Códigos de los ajustes por riesgos: agua_riesgo | agua_riego | erosion_vulnerabilidad.' })
+  @Field(() => [String], { description: 'Codes of the risk adjustments: agua_riesgo | agua_riego | erosion_vulnerabilidad.' })
   ajustes: string[];
 
   @Field(() => [RiesgoZonaTipo])
@@ -153,7 +153,7 @@ export class SugerenciasCultivoTipo {
   @Field(() => String)
   metodo: string;
 
-  @Field(() => Boolean, { description: 'false = las clasificaciones de agua, nitrógeno y cobertura son generales y aún no están verificadas.' })
+  @Field(() => Boolean, { description: 'false = the water, nitrogen and cover classifications are general and not verified yet.' })
   rasgosVerificados: boolean;
 
   @Field(() => [String])

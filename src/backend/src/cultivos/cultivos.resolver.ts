@@ -6,7 +6,7 @@ import { CultivosService } from './cultivos.service';
 export class CultivosResolver {
   constructor(private readonly cultivos: CultivosService) {}
 
-  @Query(() => [Cultivo], { name: 'cultivos', description: 'Catálogo de cultivos disponibles.' })
+  @Query(() => [Cultivo], { name: 'cultivos', description: 'Catalog of available crops.' })
   listar() {
     return this.cultivos.listar();
   }

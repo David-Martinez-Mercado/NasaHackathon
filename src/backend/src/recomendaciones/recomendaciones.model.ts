@@ -7,7 +7,7 @@ export enum SemaforoGql {
   AMARILLO = 'AMARILLO',
   ROJO = 'ROJO',
 }
-registerEnumType(SemaforoGql, { name: 'Semaforo', description: 'Verde ≥ 70, amarillo 40–69, rojo < 40.' });
+registerEnumType(SemaforoGql, { name: 'Semaforo', description: 'Green ≥ 70, yellow 40–69, red < 40.' });
 
 /** Rangos de los sliders de la convocatoria (lluvia ±%, temperatura ±°C). */
 export const LLUVIA_PCT = { min: -100, max: 100 } as const;
@@ -31,7 +31,7 @@ export class Semaforos {
 
 @ObjectType()
 export class RotacionEvaluada {
-  @Field(() => [String], { description: 'Cultivo de cada uno de los 3 años (códigos)' })
+  @Field(() => [String], { description: 'Crop of each of the 3 years (codes)' })
   anios: string[];
 
   @Field(() => Puntajes)
@@ -40,32 +40,32 @@ export class RotacionEvaluada {
   @Field(() => Semaforos)
   semaforos: Semaforos;
 
-  @Field(() => String, { description: 'Por qué conviene, en lenguaje sencillo' })
+  @Field(() => String, { description: 'Why it is a good option, in plain language' })
   explicacion: string;
 
-  @Field(() => [String], { description: 'Dónde importa el criterio del agricultor o del técnico' })
+  @Field(() => [String], { description: 'Where the judgment of the farmer or technician matters' })
   criterioHumano: string[];
 }
 
 @InputType()
 export class EscenarioInput {
-  @Field(() => Int, { description: 'Cambio de lluvia en %, de -100 a 100' })
-  @IsInt({ message: 'El cambio de lluvia debe ser un número entero.' })
-  @Min(LLUVIA_PCT.min, { message: 'La lluvia no puede bajar más de 100 %.' })
-  @Max(LLUVIA_PCT.max, { message: 'El cambio de lluvia no puede pasar de +100 %.' })
+  @Field(() => Int, { description: 'Rain change in %, from -100 to 100' })
+  @IsInt({ message: 'The rain change must be a whole number.' })
+  @Min(LLUVIA_PCT.min, { message: 'Rain cannot drop by more than 100 %.' })
+  @Max(LLUVIA_PCT.max, { message: 'The rain change cannot exceed +100 %.' })
   lluviaPct: number;
 
-  @Field(() => Float, { description: 'Cambio de temperatura en °C, de -10 a 10' })
-  @IsNumber({}, { message: 'El cambio de temperatura debe ser un número.' })
-  @Min(TEMP_DELTA_C.min, { message: 'El cambio de temperatura no puede bajar de -10 °C.' })
-  @Max(TEMP_DELTA_C.max, { message: 'El cambio de temperatura no puede pasar de +10 °C.' })
+  @Field(() => Float, { description: 'Temperature change in °C, from -10 to 10' })
+  @IsNumber({}, { message: 'The temperature change must be a number.' })
+  @Min(TEMP_DELTA_C.min, { message: 'The temperature change cannot go below -10 °C.' })
+  @Max(TEMP_DELTA_C.max, { message: 'The temperature change cannot exceed +10 °C.' })
   tempDeltaC: number;
 }
 
 @InputType()
 export class RecomendacionInput {
   @Field(() => ID)
-  @IsUUID('all', { message: 'El identificador de la parcela no es válido.' })
+  @IsUUID('all', { message: 'The field identifier is not valid.' })
   parcelaId: string;
 
   @Field(() => EscenarioInput, { nullable: true, description: 'Sin escenario = condiciones normales' })
@@ -78,7 +78,7 @@ export class RecomendacionInput {
 @InputType()
 export class SimulacionInput {
   @Field(() => ID)
-  @IsUUID('all', { message: 'El identificador de la parcela no es válido.' })
+  @IsUUID('all', { message: 'The field identifier is not valid.' })
   parcelaId: string;
 
   @Field(() => EscenarioInput)

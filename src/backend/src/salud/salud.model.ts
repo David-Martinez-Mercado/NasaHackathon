@@ -9,7 +9,7 @@ registerEnumType(NivelEstado, { name: 'NivelEstado' });
 
 @ObjectType()
 export class EstadoFuente {
-  @Field(() => String, { description: 'p. ej. "base de datos", "motor de reglas"' })
+  @Field(() => String, { description: 'e.g. "base de datos", "motor de reglas" (database, rules engine)' })
   nombre: string;
 
   @Field(() => NivelEstado)
@@ -30,7 +30,7 @@ export class EstadoServicio {
   @Field(() => String)
   entorno: string;
 
-  @Field(() => Boolean, { description: 'true = usa fixtures en vez de APIs externas' })
+  @Field(() => Boolean, { description: 'true = uses fixtures instead of external APIs' })
   demoOffline: boolean;
 
   @Field(() => [EstadoFuente])

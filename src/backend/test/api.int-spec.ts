@@ -32,7 +32,7 @@ describe('API general (base real)', () => {
       expect(sin.body.data.salud.estado).toBe('DEGRADADO');
       const fuentes = Object.fromEntries(sin.body.data.salud.fuentes.map((f: any) => [f.nombre, f]));
       expect(fuentes['base de datos'].estado).toBe('OK');
-      expect(fuentes.PostGIS).toMatchObject({ estado: 'OK', detalle: expect.stringMatching(/^versión 3\./) });
+      expect(fuentes.PostGIS).toMatchObject({ estado: 'OK', detalle: expect.stringMatching(/^version 3\./) });
       expect(fuentes['motor de reglas'].estado).toBe('NO_DISPONIBLE');
       expect(fuentes['predicciones de los modelos (ml/)']).toMatchObject({
         estado: 'NO_DISPONIBLE',
@@ -42,7 +42,7 @@ describe('API general (base real)', () => {
       await app.get(ImportacionService).importar(EXPORT_V1, { validador: ValidadorExport.desdeArchivo(ESQUEMA_EXPORT) });
       const con = await gql(app, '{ salud { fuentes { nombre estado detalle } } }');
       const pred = con.body.data.salud.fuentes.find((f: any) => f.nombre.startsWith('predicciones'));
-      expect(pred).toMatchObject({ estado: 'OK', detalle: expect.stringMatching(/versión v2, datos al 2026-/) });
+      expect(pred).toMatchObject({ estado: 'OK', detalle: expect.stringMatching(/version v2, data up to 2026-/) });
     });
 
     it('cultivos: lista el catálogo', async () => {

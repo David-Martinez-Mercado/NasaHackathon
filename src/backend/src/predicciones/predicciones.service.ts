@@ -36,7 +36,7 @@ export class PrediccionesService {
     if (!version) {
       throw new AppError(
         CodigoError.SIN_PREDICCIONES,
-        'Todavía no hay predicciones cargadas. Importa un export de ml/ con "npm run import:predicciones".',
+        'There are no predictions loaded yet. Import an ml/ export with "npm run import:predicciones".',
       );
     }
     return version;

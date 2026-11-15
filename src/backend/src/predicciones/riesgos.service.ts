@@ -40,7 +40,7 @@ export class RiesgosService {
 
   async paraParcela(parcelaId: string): Promise<RiesgosParcelaTipo> {
     const parcela = await this.prisma.parcela.findUnique({ where: { id: parcelaId }, select: { centroideLat: true, centroideLon: true } });
-    if (!parcela) throw noEncontrado('esa parcela');
+    if (!parcela) throw noEncontrado('That field');
     return this.enPunto(parcela.centroideLat, parcela.centroideLon);
   }
 
@@ -77,7 +77,7 @@ export class RiesgosService {
         resolucionM: 50_000, interpolada: true,
       },
       {
-        clave: 'estres', valor: estres.criticos, unidad: 'puntos críticos', modelo: 'c03', datosAl: iso(version?.datosAl) ?? null,
+        clave: 'estres', valor: estres.criticos, unidad: 'critical points', modelo: 'c03', datosAl: iso(version?.datosAl) ?? null,
         nivel: estres.total === 0 ? 'BAJO' : estres.criticos > 0 ? 'ALTO' : 'MEDIO',
         puntosCercanos: estres.total, puntosCriticos: estres.criticos, radioKm: RADIO_ESTRES_KM, resolucionM: 70, interpolada: false,
       },
@@ -86,16 +86,16 @@ export class RiesgosService {
       { ...deCapa('pendiente', pendiente, 'dem', UMBRALES.vulnerabilidad), nivel: null },
       { ...deCapa('elevacion', elevacion, 'dem', UMBRALES.vulnerabilidad), nivel: null, unidad: 'm' },
       {
-        clave: 'lluvia', valor: clima?.lluviaMensualMm?.[0] ?? null, unidad: 'mm (próximo mes, climatología)', modelo: 'c08b',
+        clave: 'lluvia', valor: clima?.lluviaMensualMm?.[0] ?? null, unidad: 'mm (next month, climatology)', modelo: 'c08b',
         datosAl: clima?.datosAl ?? null, nivel: null, resolucionM: 50_000, interpolada: true,
       },
     ];
     return {
       riesgos,
       advertencias: [
-        'Los niveles usan umbrales provisionales y datos de reanálisis de ~25–50 km: sirven para comparar zonas, no para decidir.',
-        'Los puntos de estrés son una muestra de 2,499 píxeles de Weld, CO, no un recorrido de tu parcela.',
-        'La erosión es un potencial relativo (suelo × pendiente × lluvia), no erosión medida ni toneladas de suelo.',
+        'The levels use provisional thresholds and reanalysis data of ~25–50 km: they are for comparing areas, not for deciding.',
+        'The stress points are a sample of 2,499 pixels in Weld, CO, not a walk through your field.',
+        'Erosion is a relative potential (soil × slope × rain), not measured erosion or tons of soil.',
       ],
     };
   }

@@ -25,7 +25,7 @@ export class ValidadorExport {
 
   static desdeArchivo(ruta: string = rutaEsquemaPorDefecto()): ValidadorExport {
     if (!existsSync(ruta)) {
-      throw new Error(`No encuentro el esquema del export en ${ruta}. Genéralo con "fieldshift-ml deploy schema" o define EXPORT_SCHEMA_PATH.`);
+      throw new Error(`Cannot find the export schema at ${ruta}. Generate it with "fieldshift-ml deploy schema" or set EXPORT_SCHEMA_PATH.`);
     }
     return new ValidadorExport(JSON.parse(readFileSync(ruta, 'utf8')) as Record<string, unknown>);
   }
@@ -33,8 +33,8 @@ export class ValidadorExport {
   /** Lista de problemas (vacía si el archivo es válido). */
   validar(tipo: TipoArchivoExport, dato: unknown): string[] {
     const funcion = this.ajv.getSchema(`export#/$defs/file_${tipo}`);
-    if (!funcion) throw new Error(`El esquema no define file_${tipo}`);
+    if (!funcion) throw new Error(`The schema does not define file_${tipo}`);
     if (funcion(dato)) return [];
-    return (funcion.errors ?? []).slice(0, 8).map((e) => `${e.instancePath || '/'} ${e.message ?? 'inválido'}`);
+    return (funcion.errors ?? []).slice(0, 8).map((e) => `${e.instancePath || '/'} ${e.message ?? 'invalid'}`);
   }
 }

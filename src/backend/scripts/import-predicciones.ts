@@ -21,7 +21,7 @@ async function main() {
   const args = process.argv.slice(2);
   const carpeta = args.find((a) => !a.startsWith('--'));
   if (!carpeta) {
-    console.error('Uso: npm run import:predicciones -- <carpeta-del-export> [--sin-activar]');
+    console.error('Usage: npm run import:predicciones -- <export-folder> [--sin-activar]');
     process.exit(2);
   }
   const app = await NestFactory.createApplicationContext(ImportarModule, { logger: ['error', 'warn', 'log'] });
@@ -34,6 +34,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(`No se importó nada: ${error instanceof Error ? error.message : String(error)}`);
+  console.error(`Nothing was imported: ${error instanceof Error ? error.message : String(error)}`);
   process.exit(1);
 });

@@ -8,7 +8,7 @@ export class SaludResolver {
 
   @Query(() => EstadoServicio, {
     name: 'salud',
-    description: 'Estado del servidor y de cada pieza de la que depende.',
+    description: 'Status of the server and of each part it depends on.',
   })
   estado() {
     return this.salud.estado();

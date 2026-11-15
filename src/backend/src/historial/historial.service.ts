@@ -24,12 +24,12 @@ function fechaDeSiembra(input: HistorialInput): Date | null {
   if (!input.fechaSiembra) return null;
   const fecha = new Date(`${input.fechaSiembra}T00:00:00.000Z`);
   if (Number.isNaN(fecha.getTime()) || iso(fecha) !== input.fechaSiembra) {
-    throw new AppError(CodigoError.VALIDACION_FALLIDA, 'La fecha de siembra no es una fecha real.');
+    throw new AppError(CodigoError.VALIDACION_FALLIDA, 'The planting date is not a real date.');
   }
   // El trigo de invierno se siembra el otoño anterior: se acepta el año del registro o el anterior.
   const anio = fecha.getUTCFullYear();
   if (anio !== input.anio && anio !== input.anio - 1) {
-    throw new AppError(CodigoError.VALIDACION_FALLIDA, `La fecha de siembra debe ser de ${input.anio - 1} o de ${input.anio}.`);
+    throw new AppError(CodigoError.VALIDACION_FALLIDA, `The planting date must be in ${input.anio - 1} or ${input.anio}.`);
   }
   return fecha;
 }
@@ -54,7 +54,7 @@ export class HistorialService {
     const existe = await tx.$queryRaw<{ existe: boolean }[]>`
       SELECT EXISTS (SELECT 1 FROM "Parcela" WHERE "id" = ${parcelaId}::uuid) AS existe
     `;
-    if (!existe[0]?.existe) throw new AppError(CodigoError.NO_ENCONTRADO, 'No encontramos esa parcela.');
+    if (!existe[0]?.existe) throw new AppError(CodigoError.NO_ENCONTRADO, 'That field was not found.');
     const datos = { cultivo: input.cultivo, fechaSiembra, descripcion: input.descripcion ?? null };
     const fila = await tx.historialParcela.upsert({
       where: { parcelaId_anio: { parcelaId, anio: input.anio } },
@@ -72,7 +72,7 @@ export class HistorialService {
   guardarVarios(tx: Tx, parcelaId: string, registros: HistorialInput[]): Promise<RegistroHistorial[]> {
     const anios = registros.map((r) => r.anio);
     if (new Set(anios).size !== anios.length) {
-      throw new AppError(CodigoError.VALIDACION_FALLIDA, 'El historial repite un año: cada año se declara una sola vez.');
+      throw new AppError(CodigoError.VALIDACION_FALLIDA, 'The history repeats a year: each year is declared only once.');
     }
     return registros.reduce<Promise<RegistroHistorial[]>>(
       async (previo, registro) => [...(await previo), await this.guardarEn(tx, parcelaId, registro)],

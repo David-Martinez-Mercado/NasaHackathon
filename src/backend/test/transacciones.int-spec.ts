@@ -66,7 +66,7 @@ describe('Transacciones de la API GraphQL (PostgreSQL/PostGIS real)', () => {
         input: { punto: PUNTO, historial: [{ anio: 2023, cultivo: 'maiz' }, { anio: 2023, cultivo: 'avena' }] },
       });
       expect(codigo(res)).toBe('VALIDACION_FALLIDA');
-      expect(res.body.errors[0].message).toMatch(/repite un año/);
+      expect(res.body.errors[0].message).toMatch(/repeats a year/);
       expect((await contar()).parcelas).toBe(0);
     });
 
@@ -155,7 +155,7 @@ describe('Transacciones de la API GraphQL (PostgreSQL/PostGIS real)', () => {
       await gql(app, ACTUALIZAR, { id, input: { version: 1, nombre: 'Primero' } });
       const res = await gql(app, ACTUALIZAR, { id, input: { version: 1, nombre: 'Pisando al otro' } });
       expect(codigo(res)).toBe('CONFLICTO_VERSION');
-      expect(res.body.errors[0].message).toMatch(/cambió mientras la editabas/);
+      expect(res.body.errors[0].message).toMatch(/changed while you were editing it/);
       const fila = await prisma.parcela.findUnique({ where: { id }, select: { nombre: true, version: true } });
       expect(fila).toEqual({ nombre: 'Primero', version: 2 });
     });

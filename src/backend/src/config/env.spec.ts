@@ -36,6 +36,6 @@ describe('validateEnv', () => {
     ['profundidad demasiado alta', { GRAPHQL_MAX_DEPTH: '50' }],
     ['límite en cero', { THROTTLE_LIMIT: '0' }],
   ])('rechaza %s', (_nombre, extra) => {
-    expect(() => validateEnv({ ...base, ...extra })).toThrow(/Configuración inválida/);
+    expect(() => validateEnv({ ...base, ...extra })).toThrow(/Invalid configuration/);
   });
 });

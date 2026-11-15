@@ -16,7 +16,7 @@ export enum CodigoError {
   ERROR_INTERNO = 'ERROR_INTERNO',
 }
 
-/** Error esperado de la aplicación: el mensaje está en español y se puede mostrar al usuario. */
+/** Error esperado de la aplicación: el mensaje está in English and can mostrar al usuario. */
 export class AppError extends Error {
   constructor(
     readonly codigo: CodigoError,
@@ -27,4 +27,4 @@ export class AppError extends Error {
   }
 }
 
-export const noEncontrado = (que: string) => new AppError(CodigoError.NO_ENCONTRADO, `No encontramos ${que}.`);
+export const noEncontrado = (que: string) => new AppError(CodigoError.NO_ENCONTRADO, `${que} was not found.`);

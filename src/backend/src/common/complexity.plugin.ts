@@ -28,7 +28,7 @@ export class ComplexityPlugin implements ApolloServerPlugin {
         if (complejidad > maximo) {
           throw new AppError(
             CodigoError.CONSULTA_DEMASIADO_COMPLEJA,
-            `La consulta es demasiado pesada (${complejidad}, máximo ${maximo}). Pide menos datos a la vez.`,
+            `The query is too heavy (${complejidad}, maximum ${maximo}). Ask for less data at a time.`,
           );
         }
       },

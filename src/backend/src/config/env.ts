@@ -16,7 +16,7 @@ export class Env {
   PORT: number = 3000;
 
   @IsString()
-  @IsNotEmpty({ message: 'DATABASE_URL es obligatoria' })
+  @IsNotEmpty({ message: 'DATABASE_URL is required' })
   DATABASE_URL: string;
 
   /** Orígenes permitidos para CORS, separados por comas. Vacío = ninguno (solo mismo origen). */
@@ -68,7 +68,7 @@ export class Env {
   /** Servicio de predicciones en vivo de ml/ (FastAPI). Sin URL, `prediccionesEnVivo` usa siempre el último lote. */
   @Transform(({ value }) => (value === '' ? undefined : value))
   @ValidateIf((o: Env) => o.ML_SERVICE_URL !== undefined)
-  @IsUrl({ require_tld: false, protocols: ['http', 'https'] }, { message: 'ML_SERVICE_URL debe ser una URL http(s)' })
+  @IsUrl({ require_tld: false, protocols: ['http', 'https'] }, { message: 'ML_SERVICE_URL must be an http(s) URL' })
   ML_SERVICE_URL?: string;
 
   /** Secreto compartido con el servicio (cabecera X-ML-Token). Nunca viaja al navegador. */
@@ -111,7 +111,7 @@ export function validateEnv(config: Record<string, unknown>): Env {
     const detalle = errors
       .map((e) => `${e.property}: ${Object.values(e.constraints ?? {}).join(', ')}`)
       .join('; ');
-    throw new Error(`Configuración inválida (${detalle})`);
+    throw new Error(`Invalid configuration (${detalle})`);
   }
   return env;
 }

@@ -7,12 +7,12 @@ import { HistorialService } from './historial.service';
 export class HistorialResolver {
   constructor(private readonly historial: HistorialService) {}
 
-  @Query(() => [RegistroHistorial], { name: 'historial', description: 'Qué se sembró en la parcela cada año (el más reciente primero).' })
+  @Query(() => [RegistroHistorial], { name: 'historial', description: 'What was planted in the field each year (most recent first).' })
   listar(@Args('parcelaId', { type: () => ID }, uuidPipe()) parcelaId: string) {
     return this.historial.listar(parcelaId);
   }
 
-  @Mutation(() => RegistroHistorial, { description: 'Crea o reemplaza el registro de un año del historial de la parcela.' })
+  @Mutation(() => RegistroHistorial, { description: 'Creates or replaces the record of one year in the field history.' })
   guardarHistorial(
     @Args('parcelaId', { type: () => ID }, uuidPipe()) parcelaId: string,
     @Args('input') input: HistorialInput,
@@ -20,7 +20,7 @@ export class HistorialResolver {
     return this.historial.guardar(parcelaId, input);
   }
 
-  @Mutation(() => Boolean, { description: 'Borra el registro de un año. Devuelve false si no existía.' })
+  @Mutation(() => Boolean, { description: 'Deletes the record of a year. Returns false if it did not exist.' })
   eliminarHistorial(
     @Args('parcelaId', { type: () => ID }, uuidPipe()) parcelaId: string,
     @Args('anio', { type: () => Int }) anio: number,

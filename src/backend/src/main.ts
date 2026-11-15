@@ -11,7 +11,7 @@ async function bootstrap() {
   const { env } = app.get(AppConfig);
   await app.listen(env.PORT);
   const logger = new Logger('Bootstrap');
-  logger.log(`Field Shift API en el puerto ${env.PORT} (${env.NODE_ENV}${env.DEMO_OFFLINE ? ', modo demo' : ''})`);
+  logger.log(`Field Shift API on port ${env.PORT} (${env.NODE_ENV}${env.DEMO_OFFLINE ? ', demo mode' : ''})`);
 }
 
 bootstrap().catch((error) => {

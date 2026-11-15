@@ -55,18 +55,18 @@ export class TransaccionService {
         return await this.prisma.$transaction(trabajo, { isolationLevel: aislamiento, timeout: timeoutMs, maxWait: 5_000 });
       } catch (error) {
         if (esReintentable(error) && intento < reintentos) {
-          this.logger.warn(`Transacción abortada por concurrencia; reintento ${intento + 1} de ${reintentos}`);
+          this.logger.warn(`Transaction aborted due to concurrency; retry ${intento + 1} of ${reintentos}`);
           await new Promise((resolver) => setTimeout(resolver, 20 * 2 ** intento));
           continue;
         }
         if (esReintentable(error)) {
           throw new AppError(
             CodigoError.CONFLICTO_CONCURRENCIA,
-            'Otra operación modificó los mismos datos al mismo tiempo. Intenta de nuevo en un momento.',
+            'Another operation changed the same data at the same time. Please try again in a moment.',
           );
         }
         if ((error as { code?: string })?.code === 'P2028') {
-          throw new AppError(CodigoError.ERROR_INTERNO, 'La operación tardó demasiado y se canceló sin guardar nada.');
+          throw new AppError(CodigoError.ERROR_INTERNO, 'The operation took too long and was cancelled without saving anything.');
         }
         throw error;
       }

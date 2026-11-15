@@ -10,33 +10,33 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 const CULTIVOS: { codigo: string; nombre: string; familiaBotanica: string }[] = [
-  { codigo: 'frijol', nombre: 'Frijol', familiaBotanica: 'Fabaceae' },
-  { codigo: 'maiz', nombre: 'Maíz', familiaBotanica: 'Poaceae' },
-  { codigo: 'avena', nombre: 'Avena', familiaBotanica: 'Poaceae' },
-  { codigo: 'sorgo', nombre: 'Sorgo', familiaBotanica: 'Poaceae' },
-  { codigo: 'trigo', nombre: 'Trigo', familiaBotanica: 'Poaceae' },
-  { codigo: 'cebada', nombre: 'Cebada', familiaBotanica: 'Poaceae' },
-  { codigo: 'chile', nombre: 'Chile', familiaBotanica: 'Solanaceae' },
-  { codigo: 'papa', nombre: 'Papa', familiaBotanica: 'Solanaceae' },
+  { codigo: 'frijol', nombre: 'Bean', familiaBotanica: 'Fabaceae' },
+  { codigo: 'maiz', nombre: 'Maize', familiaBotanica: 'Poaceae' },
+  { codigo: 'avena', nombre: 'Oats', familiaBotanica: 'Poaceae' },
+  { codigo: 'sorgo', nombre: 'Sorghum', familiaBotanica: 'Poaceae' },
+  { codigo: 'trigo', nombre: 'Wheat', familiaBotanica: 'Poaceae' },
+  { codigo: 'cebada', nombre: 'Barley', familiaBotanica: 'Poaceae' },
+  { codigo: 'chile', nombre: 'Chili pepper', familiaBotanica: 'Solanaceae' },
+  { codigo: 'papa', nombre: 'Potato', familiaBotanica: 'Solanaceae' },
   { codigo: 'alfalfa', nombre: 'Alfalfa', familiaBotanica: 'Fabaceae' },
-  { codigo: 'veza', nombre: 'Veza (abono verde)', familiaBotanica: 'Fabaceae' },
-  { codigo: 'soya', nombre: 'Soya', familiaBotanica: 'Fabaceae' },
-  { codigo: 'girasol', nombre: 'Girasol', familiaBotanica: 'Asteraceae' },
-  { codigo: 'remolacha', nombre: 'Remolacha azucarera', familiaBotanica: 'Amaranthaceae' },
-  { codigo: 'barbecho', nombre: 'Barbecho', familiaBotanica: 'Ninguna' },
+  { codigo: 'veza', nombre: 'Vetch (green manure)', familiaBotanica: 'Fabaceae' },
+  { codigo: 'soya', nombre: 'Soybean', familiaBotanica: 'Fabaceae' },
+  { codigo: 'girasol', nombre: 'Sunflower', familiaBotanica: 'Asteraceae' },
+  { codigo: 'remolacha', nombre: 'Sugar beet', familiaBotanica: 'Amaranthaceae' },
+  { codigo: 'barbecho', nombre: 'Fallow', familiaBotanica: 'None' },
 ];
 
 // Puntos de referencia de la zona de estudio
 const PARCELAS = [
-  { id: '00000000-0000-4000-8000-000000000001', nombre: 'Greeley (riego)', lat: 40.42, lon: -104.71, sistemaRiego: 'ASPERSION' as const, aguaRiegoMm: 400 },
-  { id: '00000000-0000-4000-8000-000000000002', nombre: 'Nunn / CPER (temporal)', lat: 40.82, lon: -104.75, sistemaRiego: 'TEMPORAL' as const, aguaRiegoMm: null },
+  { id: '00000000-0000-4000-8000-000000000001', nombre: 'Greeley (irrigated)', lat: 40.42, lon: -104.71, sistemaRiego: 'ASPERSION' as const, aguaRiegoMm: 400 },
+  { id: '00000000-0000-4000-8000-000000000002', nombre: 'Nunn / CPER (rainfed)', lat: 40.82, lon: -104.75, sistemaRiego: 'TEMPORAL' as const, aguaRiegoMm: null },
 ];
 
 async function main() {
   for (const cultivo of CULTIVOS) {
     await prisma.cultivo.upsert({ where: { codigo: cultivo.codigo }, create: cultivo, update: { nombre: cultivo.nombre, familiaBotanica: cultivo.familiaBotanica } });
   }
-  console.log(`Cultivos: ${CULTIVOS.length}`);
+  console.log(`Crops: ${CULTIVOS.length}`);
 
   for (const p of PARCELAS) {
     const punto = JSON.stringify({ type: 'Point', coordinates: [p.lon, p.lat] });
