@@ -2,6 +2,8 @@ import type maplibregl from 'maplibre-gl';
 import { useEffect, useState } from 'react';
 import { gql } from '../data/api';
 import { ApiError, errorMessage } from '../data';
+import type { GridLayer } from '../data';
+import { renderGrid } from '../map/gridCanvas';
 import { Chips } from './ui';
 
 interface Cell {
@@ -10,23 +12,18 @@ interface Cell {
 }
 interface Result { celdas: Cell[]; solicitadas: number; faltantes: number; muestreado: boolean; pasoLatitud: number; pasoLongitud: number; datosAl: string | null }
 
+/** The SAME color ramps as the normal layers (temperature, humidity and rain), so a color means the same thing in both modes. */
+const TEMP_RAMP = ['#2E86DE', '#F7DC6F', '#E74C3C'];
+const MOISTURE_RAMP = ['#C0392B', '#F4D03F', '#2471A3'];
+const RAIN_RAMP = ['#BFE3FF', '#4DB3F0', '#1B4FD0', '#0B2A8A'];
 const VARS = {
-  Temperature: { key: 'tempMediaC', unit: '°C', min: -10, max: 40, ramp: ['#2E86DE', '#6FFF00', '#F2EC36', '#FF8A00', '#FF0000'] },
-  'Rain (7 days)': { key: 'lluvia7dMm', unit: 'mm', min: 0, max: 40, ramp: ['#FFFFE0', '#8FD3FF', '#1E9BE0', '#1B4FD0', '#0B2A8A'] },
-  'Soil moisture': { key: 'humedadSueloPct', unit: '%', min: 0, max: 80, ramp: ['#C0392B', '#F4D03F', '#19E3D2', '#1B4FD0'] },
-  Humidity: { key: 'humedadRelativaPct', unit: '%', min: 0, max: 100, ramp: ['#F4D03F', '#19E3D2', '#0B2A8A'] },
+  Temperature: { key: 'tempMediaC', unit: '°C', min: -10, max: 40, ramp: TEMP_RAMP },
+  'Rain (7 days)': { key: 'lluvia7dMm', unit: 'mm', min: 0, max: 40, ramp: RAIN_RAMP },
+  'Soil moisture': { key: 'humedadSueloPct', unit: '%', min: 0, max: 80, ramp: MOISTURE_RAMP },
+  Humidity: { key: 'humedadRelativaPct', unit: '%', min: 0, max: 100, ramp: MOISTURE_RAMP },
 } as const;
 type VarName = keyof typeof VARS;
 
-const hex = (c: string) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
-function colorAt(ramp: readonly string[], t: number): string {
-  const x = Math.min(1, Math.max(0, t)) * (ramp.length - 1);
-  const i = Math.min(ramp.length - 2, Math.floor(x));
-  const a = hex(ramp[i]);
-  const b = hex(ramp[i + 1]);
-  const k = x - i;
-  return `rgb(${a.map((v, j) => Math.round(v + (b[j] - v) * k)).join(',')})`;
-}
 const spacing = (values: number[], fallback: number) => {
   const u = [...new Set(values)].sort((a, b) => a - b);
   const d = u.slice(1).map((v, i) => v - u[i]);
@@ -75,32 +72,47 @@ export function GlobalLayer({ map, ready }: { map: maplibregl.Map | null; ready:
   useEffect(() => {
     if (!ready || !map) return;
     const v = VARS[name];
-    const dLat = spacing((data?.celdas ?? []).map((c) => c.latitud), data?.pasoLatitud ?? 0.5);
-    const dLon = spacing((data?.celdas ?? []).map((c) => c.longitud), data?.pasoLongitud ?? 0.625);
-    const features = (data?.celdas ?? []).flatMap((c) => {
-      const value = c[v.key];
-      if (value == null) return [];
-      const [w, e, s, n] = [c.longitud - dLon / 2, c.longitud + dLon / 2, c.latitud - dLat / 2, c.latitud + dLat / 2];
-      return [{
-        type: 'Feature' as const, properties: { color: colorAt(v.ramp, (value - v.min) / (v.max - v.min)), value },
-        geometry: { type: 'Polygon' as const, coordinates: [[[w, s], [e, s], [e, n], [w, n], [w, s]]] },
-      }];
-    });
-    const collection = { type: 'FeatureCollection' as const, features };
-    const source = map.getSource('global-cells') as maplibregl.GeoJSONSource | undefined;
-    if (source) source.setData(collection);
-    else {
-      map.addSource('global-cells', { type: 'geojson', data: collection });
-      map.addLayer({ id: 'global-fill', type: 'fill', source: 'global-cells', paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.72 } }, map.getLayer('field-line') ? 'field-line' : undefined);
-      map.addLayer({ id: 'global-line', type: 'line', source: 'global-cells', paint: { 'line-color': '#ffffff', 'line-width': 0.5, 'line-opacity': 0.5 } }, map.getLayer('field-line') ? 'field-line' : undefined);
+    const cells = (data?.celdas ?? []).filter((c) => c[v.key] != null);
+    const image = map.getSource('global-img') as maplibregl.ImageSource | undefined;
+    if (!cells.length) {
+      if (map.getLayer('global-img')) map.setLayoutProperty('global-img', 'visibility', 'none');
+      return;
     }
+    // A regular grid over the cells in view, painted with the same renderer as the normal layers (soft blend, same look)
+    const dLat = spacing(cells.map((c) => c.latitud), data?.pasoLatitud ?? 0.5);
+    const dLon = spacing(cells.map((c) => c.longitud), data?.pasoLongitud ?? 0.625);
+    const lats = cells.map((c) => c.latitud);
+    const lons = cells.map((c) => c.longitud);
+    const [south, north] = [Math.min(...lats) - dLat / 2, Math.max(...lats) + dLat / 2];
+    const [west, east] = [Math.min(...lons) - dLon / 2, Math.max(...lons) + dLon / 2];
+    const cols = Math.max(1, Math.round((east - west) / dLon));
+    const rows = Math.max(1, Math.round((north - south) / dLat));
+    const values: (number | null)[] = new Array(cols * rows).fill(null);
+    for (const c of cells) {
+      const col = Math.min(cols - 1, Math.max(0, Math.floor((c.longitud - west) / dLon)));
+      const row = Math.min(rows - 1, Math.max(0, Math.floor((north - c.latitud) / dLat)));
+      values[row * cols + col] = c[v.key];
+    }
+    const layer: GridLayer = {
+      kind: 'temperature', title: name, unit: v.unit, min: v.min, max: v.max,
+      ramp: v.ramp.map((color, i, all) => ({ at: i / (all.length - 1), color })), legend: [], grid: { bbox: [west, south, east, north], cols, rows, values },
+      clipToFields: false, fadeLow: false, source: 'NASA POWER', resolutionMeters: 50_000, interpolated: true, dataAsOf: data?.datosAl ?? '', notes: [], scenarioApplies: false,
+    };
+    const url = renderGrid(layer);
+    const coordinates: [[number, number], [number, number], [number, number], [number, number]] = [[west, north], [east, north], [east, south], [west, south]];
+    if (image) image.updateImage({ url, coordinates });
+    else {
+      map.addSource('global-img', { type: 'image', url, coordinates });
+      map.addLayer({ id: 'global-img', type: 'raster', source: 'global-img', paint: { 'raster-fade-duration': 0, 'raster-opacity': 0.72 } }, map.getLayer('field-line') ? 'field-line' : undefined);
+    }
+    map.setLayoutProperty('global-img', 'visibility', 'visible');
   }, [ready, map, data, name]);
 
   // turning global mode off removes the cells and the map goes back to how it was
   useEffect(() => () => {
     if (!map) return;
-    for (const id of ['global-fill', 'global-line']) if (map.getLayer(id)) map.removeLayer(id);
-    if (map.getSource('global-cells')) map.removeSource('global-cells');
+    if (map.getLayer('global-img')) map.removeLayer('global-img');
+    if (map.getSource('global-img')) map.removeSource('global-img');
   }, [map]);
 
   const v = VARS[name];

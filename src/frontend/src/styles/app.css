@@ -349,3 +349,6 @@ h1, h2, h3, p { margin: 0; }
 .recommendations::-webkit-scrollbar, .note-list::-webkit-scrollbar { width: 6px; }
 .recommendations::-webkit-scrollbar-thumb, .note-list::-webkit-scrollbar-thumb { background: #c4c9d0; border-radius: 3px; }
 .judgment-note { flex-shrink: 0; }
+.global-panel { box-sizing: border-box; max-width: calc(100% - 62px); }
+.global-panel .chips { gap: 6px 8px; }
+.global-panel .chip { height: auto; min-height: 25px; padding: 3px 10px; white-space: nowrap; }
