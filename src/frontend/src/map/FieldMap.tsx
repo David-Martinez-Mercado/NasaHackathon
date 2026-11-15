@@ -1,5 +1,5 @@
 import {
-  Archive, ChevronLeft, ChevronRight, CirclePlus, CloudRain, Cpu, Cylinder, Droplet, Droplets, Info, Mountain, Sun,
+  Archive, ChevronLeft, Globe, ChevronRight, CirclePlus, CloudRain, Cpu, Cylinder, Droplet, Droplets, Info, Mountain, Sun,
   Thermometer, ThermometerSun, TriangleAlert, ZoomIn, ZoomOut, type LucideIcon,
 } from 'lucide-react';
 import maplibregl, { type GeoJSONSource, type ImageSource } from 'maplibre-gl';
@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import { DEFAULT_CENTER, DEFAULT_ZOOM, type Field, type LngLat, type MapPoint, type MapTool } from '../data';
+import { GlobalLayer } from '../components/GlobalLayer';
 import { rampCss, renderGrid } from './gridCanvas';
 
 const TILES = import.meta.env.VITE_BASEMAP_TILES_URL as string | undefined;
@@ -55,7 +56,7 @@ const TOOLS: { tool: MapTool; icon: LucideIcon; label: string }[] = [
 ];
 
 export function FieldMap() {
-  const { mapConfig: cfg, draft, setDraft, fields, currentField } = useApp();
+  const { mapConfig: cfg, draft, setDraft, fields, currentField, globalMode, setGlobalMode } = useApp();
   const navigate = useNavigate();
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -175,6 +176,11 @@ export function FieldMap() {
           </div>
         );
       })}
+
+      <button className="glass global-button" aria-pressed={globalMode} onClick={() => setGlobalMode(!globalMode)} title="Show observed weather for any place in the world">
+        <Globe size={20} /> Global mode <i className="switch" aria-hidden />
+      </button>
+      {globalMode && <GlobalLayer map={mapRef.current} ready={ready} />}
 
       <button className="glass field-button" onClick={() => navigate('/fields/new')}>
         Field <CirclePlus size={30} strokeWidth={2.4} />

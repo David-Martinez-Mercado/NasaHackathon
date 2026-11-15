@@ -27,6 +27,7 @@ from fieldshift_ml.deploy.predict import load_bundle, load_manifest
 from fieldshift_ml.io.live.cache import HistoryCache
 from fieldshift_ml.io.live.power_api import POWER_URL, PowerClient, PowerError, PowerSource, days_since
 from fieldshift_ml.service import predictors
+from fieldshift_ml.service.global_mode import GlobalGrid
 
 log = logging.getLogger("fieldshift_ml")
 
@@ -36,6 +37,14 @@ class ScenarioIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     rain_pct: float = Field(0, ge=-50, le=50, description="Cambio de lluvia en % (los sliders de la app)")
     temp_delta: float = Field(0, ge=-2, le=4, description="Cambio de temperatura en °C")
+
+
+class ViewIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    west: float = Field(ge=-180, le=180)
+    south: float = Field(ge=-90, le=90)
+    east: float = Field(ge=-180, le=180)
+    north: float = Field(ge=-90, le=90)
 
 
 class PredictIn(BaseModel):
@@ -104,6 +113,7 @@ class State:
         folder = cache_dir if cache_dir is not None else (None if injected else get_settings().subdir("live_cache"))
         self.cache = HistoryCache(source, folder, ttl_seconds=ttl * 3600)
         self.limit = asyncio.Semaphore(max_concurrency or int(os.environ.get("ML_SERVICE_MAX_CONCURRENCY", "4")))
+        self.grid = GlobalGrid(source)
         self.bundles: dict[str, dict] = {}
         self.info: dict[str, dict] = {}
         self.load_errors: dict[str, str] = {}
@@ -157,6 +167,13 @@ def create_app(state: State | None = None) -> FastAPI:
             "por_lotes": {"c05a": "ERA5 (cola de minutos a horas)", "c03": "ECOSTRESS (escenas)", "c01": "NASS + PRISM (anual)",
                           "c07": "NASS (anual)", "c10": "NASS precios (necesita llave)", "c02": "CDL (anual)", "c06": "estático"},
         }
+
+    @app.post("/global", dependencies=[Depends(auth)])
+    async def global_view(body: ViewIn, request: Request) -> dict:
+        if not (body.west < body.east and body.south < body.north):
+            raise HTTPException(status_code=422, detail="Caja del mapa no válida")
+        async with ml(request).limit:
+            return await asyncio.to_thread(ml(request).grid.view, body.west, body.south, body.east, body.north)
 
     @app.post("/predict", response_model=PredictOut, dependencies=[Depends(auth)])
     async def predict(body: PredictIn, request: Request) -> PredictOut:

@@ -66,6 +66,13 @@ input CajaInput {
   bbox: [Float!]!
 }
 
+input CajaMundoInput {
+  este: Float!
+  norte: Float!
+  oeste: Float!
+  sur: Float!
+}
+
 type CapaMapa {
   """Modelo de ml/ del que sale (p. ej. c05b)"""
   concepto: String!
@@ -97,6 +104,34 @@ type CapaMapa {
 
   """Versión del export de ml/ de la que sale"""
   version: String!
+}
+
+type CeldaClima {
+  datosAl: String!
+  humedadRelativaPct: Float
+  humedadSueloPct: Float
+  latitud: Float!
+  lluvia7dMm: Float
+  longitud: Float!
+  tempMaxC: Float
+  tempMediaC: Float
+}
+
+"""
+Clima OBSERVADO de la última semana en las celdas visibles (NASA POWER). No son predicciones: los modelos solo valen en Weld.
+"""
+type ClimaGlobal {
+  celdas: [CeldaClima!]!
+  datosAl: String
+  faltantes: Int!
+
+  """
+  true = la vista era muy grande y se muestrea una de cada varias celdas.
+  """
+  muestreado: Boolean!
+  pasoLatitud: Float!
+  pasoLongitud: Float!
+  solicitadas: Int!
 }
 
 type ConjuntoPuntos {
@@ -479,6 +514,11 @@ type Query {
   Una capa del mapa para un escenario de lluvia y temperatura (los sliders). Entre los escenarios precalculados se interpola; sin escenario, condiciones normales. null si esa capa no se cargó.
   """
   capa(escenario: EscenarioInput, tipo: TipoCapa!): CapaMapa
+
+  """
+  Modo global: clima observado de la última semana en las celdas del mapa visibles, en cualquier parte del mundo.
+  """
+  climaGlobal(caja: CajaMundoInput!): ClimaGlobal!
 
   """Catálogo de cultivos disponibles."""
   cultivos: [Cultivo!]!

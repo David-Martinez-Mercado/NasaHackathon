@@ -36,6 +36,8 @@ interface AppState {
   currentField: Field | null;
   selectField: (id: string) => void;
   status: ServerStatus | null;
+  globalMode: boolean;
+  setGlobalMode: (on: boolean) => void;
 }
 
 const Ctx = createContext<AppState | null>(null);
@@ -48,6 +50,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [fieldsError, setFieldsError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [status, setStatus] = useState<ServerStatus | null>(null);
+  const [globalMode, setGlobalMode] = useState(false);
 
   const refreshFields = useCallback(async () => {
     try {
@@ -74,9 +77,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       scenario, setScenario, mapConfig, setMapConfig, draft, setDraft,
-      fields, fieldsError, refreshFields, currentField, selectField: setSelectedId, status,
+      fields, fieldsError, refreshFields, currentField, selectField: setSelectedId, status, globalMode, setGlobalMode,
     }),
-    [scenario, mapConfig, draft, fields, fieldsError, refreshFields, currentField, status],
+    [scenario, mapConfig, draft, fields, fieldsError, refreshFields, currentField, status, globalMode],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

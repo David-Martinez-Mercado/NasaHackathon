@@ -271,3 +271,24 @@ def test_production_refuses_to_start_without_a_token():
 
     with pytest.raises(RuntimeError, match="ML_SERVICE_TOKEN"):
         State(source=CountingSource(date.today()), token="", env="production", load_models=False)
+
+
+# ------------------------------------------------------------------------------------------------ global mode
+def test_global_view_requests_only_visible_cells_and_caches_them():
+    from fieldshift_ml.service.global_mode import MAX_CELLS, GlobalGrid, cells_in_view
+
+    cells, sub = cells_in_view(-105.0, 40.0, -104.0, 41.0)
+    assert 0 < len(cells) <= 9 and not sub
+    world, sub = cells_in_view(-180, -80, 180, 80)
+    assert len(world) <= MAX_CELLS and sub
+    with pytest.raises(ValueError):
+        cells_in_view(10, 5, 5, 6)
+    source = CountingSource(date.today() - timedelta(days=2))
+    grid = GlobalGrid(source, workers=1)
+    first = grid.view(-105.0, 40.0, -104.0, 41.0)
+    assert first["cells"] and first["missing"] == 0 and first["cells"][0]["soil_moisture_pct"] is not None
+    calls = len(source.calls)
+    grid.view(-105.0, 40.0, -104.0, 41.0)
+    assert len(source.calls) == calls  # second look at the same place: no new API calls
+    source.fail = True
+    assert GlobalGrid(source).view(10.0, 10.0, 11.0, 11.0)["missing"] > 0  # a dead source leaves holes, never invented values

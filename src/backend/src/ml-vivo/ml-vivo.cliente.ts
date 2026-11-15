@@ -111,6 +111,11 @@ export class MlVivoCliente {
     return validarRespuesta(await this.pedir('/predict', { method: 'POST', headers: this.cabeceras(), body: cuerpo }, this.config.env.ML_SERVICE_TIMEOUT_MS));
   }
 
+  async mundo(c: { oeste: number; sur: number; este: number; norte: number }): Promise<any> {
+    const cuerpo = JSON.stringify({ west: c.oeste, south: c.sur, east: c.este, north: c.norte });
+    return this.pedir('/global', { method: 'POST', headers: this.cabeceras(), body: cuerpo }, this.config.env.ML_SERVICE_TIMEOUT_MS);
+  }
+
   /** Para /health: una consulta barata con tiempo límite corto. */
   async salud(): Promise<{ ok: boolean; detalle?: string }> {
     if (!this.configurado) return { ok: false, detalle: 'ML_SERVICE_URL no está definida: se usan las predicciones del último lote' };
