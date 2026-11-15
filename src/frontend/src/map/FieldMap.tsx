@@ -113,7 +113,13 @@ export function FieldMap() {
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map) return;
-    const layer = cfg.layer;
+    const layer = globalMode ? null : cfg.layer; // global mode shows only its own colors: no field layer or orange tint under them
+    if (globalMode) {
+      if (map.getLayer('heat')) map.setLayoutProperty('heat', 'visibility', 'none');
+      map.setPaintProperty('field-fill', 'fill-opacity', 0);
+      map.setLayoutProperty('field-line', 'visibility', 'visible');
+      return;
+    }
     if (!layer) {
       if (map.getLayer('heat')) map.setLayoutProperty('heat', 'visibility', 'none');
       map.setPaintProperty('field-fill', 'fill-opacity', cfg.draw ? 0 : 0.6);
@@ -135,7 +141,7 @@ export function FieldMap() {
     map.setLayoutProperty('heat', 'visibility', 'visible');
     map.setPaintProperty('field-fill', 'fill-opacity', 0); // the orange tint would change the layer colors
     map.setLayoutProperty('field-line', 'visibility', 'visible');
-  }, [ready, cfg.layer, cfg.draw, fields]);
+  }, [ready, cfg.layer, cfg.draw, fields, globalMode]);
 
   // Field shapes from the server + fly to the selected field
   useEffect(() => {

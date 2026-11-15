@@ -91,8 +91,8 @@ export function GlobalLayer({ map, ready }: { map: maplibregl.Map | null; ready:
     if (source) source.setData(collection);
     else {
       map.addSource('global-cells', { type: 'geojson', data: collection });
-      map.addLayer({ id: 'global-fill', type: 'fill', source: 'global-cells', paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.62 } });
-      map.addLayer({ id: 'global-line', type: 'line', source: 'global-cells', paint: { 'line-color': '#ffffff', 'line-width': 0.5, 'line-opacity': 0.5 } });
+      map.addLayer({ id: 'global-fill', type: 'fill', source: 'global-cells', paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.72 } }, map.getLayer('field-line') ? 'field-line' : undefined);
+      map.addLayer({ id: 'global-line', type: 'line', source: 'global-cells', paint: { 'line-color': '#ffffff', 'line-width': 0.5, 'line-opacity': 0.5 } }, map.getLayer('field-line') ? 'field-line' : undefined);
     }
   }, [ready, map, data, name]);
 
