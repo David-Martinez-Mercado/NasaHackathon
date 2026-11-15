@@ -1,0 +1,32 @@
+# Blueprint de Render (plan gratuito) para la API de Field Shift.
+# La base de datos vive en Neon (PostGIS, sin caducidad); las migraciones y la carga de predicciones
+# se ejecutan desde una máquina local contra Neon (ver docs/deploy-gratis.md).
+services:
+  - type: web
+    name: fieldshift-api
+    runtime: node
+    plan: free
+    branch: produccion
+    rootDir: src/backend
+    # --include=dev: Nest CLI y Prisma son devDependencies y Render fija NODE_ENV=production.
+    buildCommand: npm ci --include=dev && npx prisma generate && npm run build
+    startCommand: node dist/main.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false # URL "pooled" de Neon, con ?sslmode=require
+      - key: CORS_ORIGIN
+        sync: false # URL del frontend, p. ej. https://fieldshift.pages.dev
+      - key: TRUST_PROXY
+        value: "1"
+      - key: DEMO_OFFLINE
+        value: "true"
+      - key: GRAPHQL_MAX_DEPTH
+        value: "6"
+      - key: GRAPHQL_MAX_COMPLEXITY
+        value: "400"

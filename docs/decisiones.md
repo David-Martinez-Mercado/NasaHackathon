@@ -206,3 +206,9 @@ el backend lo llama con token, tiempo límite, circuit breaker y respaldo al lot
 - **Límites declarados:** los modelos se entrenaron con 2 puntos de Weld (se usa el más cercano como categoría `site`); otras coordenadas son una extrapolación suave; fuera de Weld ± 0.25° no se predice. El modelo de olas de calor solo corre de mayo a septiembre.
   Los límites de uso de la API de POWER son [POR VERIFICAR]; el servicio tiene reintentos, caché y respaldo. Las pruebas de CI no usan red: respuestas simuladas y la respuesta real grabada del disco de datos.
 - **Cuidado detectado y corregido:** las pruebas del servicio escribieron datos falsos en la caché real; ahora un origen inyectado nunca toca la caché real y una copia en disco sin todas las variables de POWER se ignora.
+
+## 2026-11-16 — Deploy gratuito en línea (decisión del usuario)
+- **Excepción a "servidor propio, sin nube":** se publica en capas gratuitas: Neon (PostgreSQL 16 + PostGIS), Render Free (API NestJS) y Cloudflare Pages (frontend). Guía: `docs/deploy-gratis.md`; blueprint: `render.yaml`.
+- **Migraciones y carga de predicciones** se ejecutan desde la laptop contra la cadena directa de Neon (el plan Free de Render no tiene pre-deploy); la API usa la cadena pooled.
+- **Sin servicio ML en vivo** por ahora (`ML_SERVICE_URL` vacío): el backend usa el respaldo del lote (`exports/v2`).
+- **Límites:** la API se duerme a los 15 min (primer acceso ≈ 30 s). Cuotas y detalles de los planes gratuitos [POR VERIFICAR] al crear las cuentas.
