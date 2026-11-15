@@ -1,0 +1,10 @@
+{
+  // Despliegue estático del frontend en Cloudflare Workers (assets).
+  "name": "fieldshift",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./dist",
+    // React Router (BrowserRouter): cualquier ruta desconocida devuelve index.html.
+    "not_found_handling": "single-page-application"
+  }
+}
