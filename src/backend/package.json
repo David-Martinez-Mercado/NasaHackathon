@@ -19,7 +19,8 @@
     "lint": "eslint src test scripts prisma/seed.ts",
     "test": "jest",
     "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
-    "verify:sql": "ts-node --transpile-only scripts/verify-sql.ts"
+    "test:int": "jest --config ./test/jest-int.json --runInBand",
+    "import:predicciones": "ts-node --transpile-only scripts/import-predicciones.ts"
   },
   "dependencies": {
     "@apollo/server": "^5.5.2",
@@ -32,6 +33,8 @@
     "@nestjs/platform-express": "^11.2.10",
     "@nestjs/throttler": "^6.7.1",
     "@prisma/client": "^6.19.3",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "graphql": "^16.15.0",
@@ -44,6 +47,7 @@
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.16",
     "@electric-sql/pglite-postgis": "^0.2.16",
+    "@electric-sql/pglite-socket": "^0.2.19",
     "@eslint/js": "^9.39.5",
     "@nestjs/cli": "^11.0.24",
     "@nestjs/testing": "^11.2.10",

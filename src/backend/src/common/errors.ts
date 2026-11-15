@@ -7,6 +7,12 @@ export enum CodigoError {
   LIMITE_EXCEDIDO = 'LIMITE_EXCEDIDO',
   CONSULTA_DEMASIADO_COMPLEJA = 'CONSULTA_DEMASIADO_COMPLEJA',
   FUENTE_NO_DISPONIBLE = 'FUENTE_NO_DISPONIBLE',
+  /** Alguien cambió el recurso desde que el cliente lo leyó (bloqueo optimista). */
+  CONFLICTO_VERSION = 'CONFLICTO_VERSION',
+  /** PostgreSQL abortó la transacción por concurrencia y se agotaron los reintentos. */
+  CONFLICTO_CONCURRENCIA = 'CONFLICTO_CONCURRENCIA',
+  /** Todavía no hay predicciones importadas. */
+  SIN_PREDICCIONES = 'SIN_PREDICCIONES',
   ERROR_INTERNO = 'ERROR_INTERNO',
 }
 

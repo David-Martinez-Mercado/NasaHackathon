@@ -23,12 +23,13 @@ const CULTIVOS: { codigo: string; nombre: string; familiaBotanica: string }[] = 
   { codigo: 'soya', nombre: 'Soya', familiaBotanica: 'Fabaceae' },
   { codigo: 'girasol', nombre: 'Girasol', familiaBotanica: 'Asteraceae' },
   { codigo: 'remolacha', nombre: 'Remolacha azucarera', familiaBotanica: 'Amaranthaceae' },
+  { codigo: 'barbecho', nombre: 'Barbecho', familiaBotanica: 'Ninguna' },
 ];
 
 // Puntos de referencia de la zona de estudio
 const PARCELAS = [
-  { id: '00000000-0000-4000-8000-000000000001', nombre: 'Greeley (riego)', lat: 40.42, lon: -104.71, riego: true, aguaRiegoMm: 400 },
-  { id: '00000000-0000-4000-8000-000000000002', nombre: 'Nunn / CPER (temporal)', lat: 40.82, lon: -104.75, riego: false, aguaRiegoMm: null },
+  { id: '00000000-0000-4000-8000-000000000001', nombre: 'Greeley (riego)', lat: 40.42, lon: -104.71, sistemaRiego: 'ASPERSION' as const, aguaRiegoMm: 400 },
+  { id: '00000000-0000-4000-8000-000000000002', nombre: 'Nunn / CPER (temporal)', lat: 40.82, lon: -104.75, sistemaRiego: 'TEMPORAL' as const, aguaRiegoMm: null },
 ];
 
 async function main() {
@@ -46,7 +47,7 @@ async function main() {
     `;
     await prisma.preferencias.upsert({
       where: { parcelaId: p.id },
-      create: { parcelaId: p.id, riego: p.riego, aguaRiegoMm: p.aguaRiegoMm, maquinaria: [], cultivosPreferidos: [], cultivosExcluidos: [] },
+      create: { parcelaId: p.id, sistemaRiego: p.sistemaRiego, aguaRiegoMm: p.aguaRiegoMm, maquinaria: [], cultivosPreferidos: [], cultivosExcluidos: [] },
       update: {},
     });
   }

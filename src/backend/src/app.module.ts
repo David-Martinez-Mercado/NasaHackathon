@@ -16,8 +16,9 @@ import { DatosModule } from './datos/datos.port';
 import { EscenariosModule } from './escenarios/escenarios.module';
 import { MotorModule } from './motor/motor.port';
 import { ParcelasModule } from './parcelas/parcelas.module';
+import { PrediccionesModule } from './predicciones/predicciones.module';
 import { PreferenciasModule } from './preferencias/preferencias.module';
-import { PrismaModule } from './prisma/prisma.service';
+import { PrismaModule } from './prisma/prisma.module';
 import { RecomendacionesModule } from './recomendaciones/recomendaciones.module';
 import { SaludModule } from './salud/salud.module';
 
@@ -69,6 +70,7 @@ import { SaludModule } from './salud/salud.module';
     PreferenciasModule,
     RecomendacionesModule,
     EscenariosModule,
+    PrediccionesModule,
     SaludModule,
   ],
   providers: [ComplexityPlugin, { provide: APP_GUARD, useClass: GqlThrottlerGuard }],

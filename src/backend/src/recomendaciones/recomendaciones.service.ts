@@ -24,11 +24,17 @@ export class RecomendacionesService {
     }
     const prefs: PreferenciasAgricultor = {
       riego: guardadas.riego,
+      sistemaRiego: guardadas.sistemaRiego,
       aguaRiegoMm: guardadas.aguaRiegoMm ?? undefined,
+      tipoSuelo: guardadas.tipoSuelo,
+      mesesVacios:
+        guardadas.mesesVaciosDesde != null && guardadas.mesesVaciosHasta != null
+          ? { desde: guardadas.mesesVaciosDesde, hasta: guardadas.mesesVaciosHasta }
+          : undefined,
       maquinaria: guardadas.maquinaria,
       cultivosPreferidos: guardadas.cultivosPreferidos,
       cultivosExcluidos: guardadas.cultivosExcluidos,
-      prioridad: guardadas.prioridad,
+      prioridades: guardadas.prioridades,
     };
     const contexto = await this.datos.contexto(parcela.latitud, parcela.longitud);
     return this.motor.recomendar(contexto, prefs, escenario);

@@ -1,4 +1,4 @@
-import { Global, Injectable, Logger, Module, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { AppConfig } from '../config/config.service';
 
@@ -23,7 +23,3 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     await this.$disconnect();
   }
 }
-
-@Global()
-@Module({ providers: [PrismaService], exports: [PrismaService] })
-export class PrismaModule {}

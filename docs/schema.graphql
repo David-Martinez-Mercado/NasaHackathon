@@ -1,10 +1,111 @@
 # Generado con `npm run schema` en src/backend/. No editar a mano.
 
+input ActualizarParcelaInput {
+  """Omitido = no cambia; null = borrar"""
+  cultivoActual: String
+
+  """Omitido = no cambia; null = borrar"""
+  descripcion: String
+
+  """Omitido = no cambia; null = borrar"""
+  nombre: String
+
+  """Nueva forma como polígono (no se combina con punto)."""
+  poligono: GeoJSON
+
+  """Nueva ubicación como punto (no se combina con poligono)."""
+  punto: PuntoInput
+
+  """
+  La versión de la parcela que el cliente leyó. Si cambió, la actualización se rechaza.
+  """
+  version: Int!
+}
+
+type AlertaResumen {
+  concepto: String!
+  datosAl: String!
+
+  """Qué mide exactamente el valor"""
+  definicion: String!
+  detalle: String!
+
+  """
+  "drought" o "stress"
+  """
+  tipo: String!
+  titulo: String!
+  unidad: String!
+  valor: Float!
+}
+
+input CajaInput {
+  """oeste, sur, este, norte (grados)"""
+  bbox: [Float!]!
+}
+
+type CapaMapa {
+  """Modelo de ml/ del que sale (p. ej. c05b)"""
+  concepto: String!
+
+  """Fecha de los datos, AAAA-MM-DD"""
+  datosAl: String!
+  escenario: EscenarioAplicado!
+  fuente: String!
+
+  """
+  true = el detalle dentro de la parcela es interpolación, no variación medida
+  """
+  interpolada: Boolean!
+
+  """Etiquetas de arriba (máximo) hacia abajo (mínimo)"""
+  leyenda: [String!]!
+  max: Float!
+  min: Float!
+  notas: [String!]!
+  rampa: [ParadaColor!]!
+  rejilla: RejillaCapa!
+
+  """Resolución real del dato de origen, en metros"""
+  resolucionM: Int!
+  tipo: TipoCapa!
+  titulo: String!
+  unidad: String!
+  variable: String!
+
+  """Versión del export de ml/ de la que sale"""
+  version: String!
+}
+
+type ConjuntoPuntos {
+  concepto: String!
+  datosAl: String!
+  fuente: String!
+  notas: [String!]!
+  puntos: [PuntoMapa!]!
+  tipo: TipoPunto!
+  unidad: String
+}
+
 input CrearParcelaInput {
+  """
+  Clave que genera el cliente (p. ej. un UUID). Si la creación se repite con la misma clave, no se duplica: se devuelve la parcela ya creada.
+  """
+  claveIdempotencia: String
+
+  """Código de cultivo (ver query cultivos)"""
+  cultivoActual: String
+  descripcion: String
+
+  """Años ya sembrados; si uno falla, no se crea nada."""
+  historial: [HistorialInput!]
   nombre: String
 
   """Polígono GeoJSON (longitud, latitud)."""
   poligono: GeoJSON
+
+  """Se guardan junto con la parcela, en la misma transacción."""
+  preferencias: PreferenciasInput
 
   """Usa punto o poligono, no ambos."""
   punto: PuntoInput
@@ -27,6 +128,23 @@ type Cultivo {
 A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
 """
 scalar DateTime
+
+type EscenarioAplicado {
+  """
+  false = esta capa no cambia con los sliders (el modelo no usa lluvia ni temperatura)
+  """
+  aplica: Boolean!
+
+  """true = se interpoló entre dos escenarios precalculados"""
+  interpolado: Boolean!
+  lluviaPct: Float!
+
+  """
+  true = el valor pedido estaba fuera del rango calculado y se recortó al borde
+  """
+  recortado: Boolean!
+  tempDeltaC: Float!
+}
 
 type EscenarioGuardado {
   creadoEn: DateTime!
@@ -58,6 +176,18 @@ type EstadoFuente {
   nombre: String!
 }
 
+type EstadoPredicciones {
+  """Fecha más reciente de los datos, AAAA-MM-DD"""
+  datosAl: String!
+  generadaEn: DateTime!
+  importadaEn: DateTime!
+
+  """Lo que hay que saber antes de fiarse de las predicciones"""
+  limitaciones: [String!]!
+  modelos: [InfoModelo!]!
+  version: String!
+}
+
 type EstadoServicio {
   """true = usa fixtures en vez de APIs externas"""
   demoOffline: Boolean!
@@ -77,12 +207,64 @@ input GuardarEscenarioInput {
   tempDeltaC: Float!
 }
 
+input HistorialInput {
+  anio: Int!
+  cultivo: String!
+  descripcion: String
+
+  """AAAA-MM-DD"""
+  fechaSiembra: String
+}
+
+type InfoModelo {
+  algoritmo: String!
+  base: String
+  concepto: String!
+  filasEntrenamiento: Int!
+
+  """Límite inferior del intervalo de confianza al 95 %"""
+  intervaloInf: Float
+  intervaloSup: Float
+  metrica: String!
+  nombre: String!
+  notas: [String!]!
+
+  """modelo, regla-base o indice"""
+  rol: String!
+
+  """Reducción del error frente a la mejor base (> 0 = la supera)"""
+  skill: Float
+  valor: Float
+  valorBase: Float
+}
+
+"""Valor JSON arbitrario (objetos, listas, números, textos)."""
+scalar JSON
+
 type Mutation {
-  """Crea una parcela a partir de un punto o de un polígono GeoJSON."""
+  """
+  Cambia datos de la parcela. Rechaza el cambio si la versión ya no es la actual.
+  """
+  actualizarParcela(id: ID!, input: ActualizarParcelaInput!): Parcela!
+
+  """
+  Crea una parcela con sus preferencias e historial en una sola transacción (todo o nada). Con claveIdempotencia se puede reintentar sin duplicar.
+  """
   crearParcela(input: CrearParcelaInput!): Parcela!
+
+  """Borra el registro de un año. Devuelve false si no existía."""
+  eliminarHistorial(anio: Int!, parcelaId: ID!): Boolean!
+
+  """
+  Elimina la parcela y todo lo suyo. Exige la versión que el cliente vio.
+  """
+  eliminarParcela(id: ID!, version: Int!): Boolean!
 
   """Calcula y guarda un escenario de lluvia y temperatura."""
   guardarEscenario(input: GuardarEscenarioInput!): EscenarioGuardado!
+
+  """Crea o reemplaza el registro de un año del historial de la parcela."""
+  guardarHistorial(input: HistorialInput!, parcelaId: ID!): RegistroHistorial!
 
   """Guarda (o reemplaza) las prioridades y restricciones de una parcela."""
   guardarPreferencias(input: PreferenciasInput!, parcelaId: ID!): Preferencias!
@@ -94,11 +276,28 @@ enum NivelEstado {
   OK
 }
 
+type ParadaColor {
+  """#RRGGBB"""
+  color: String!
+
+  """Posición en la rampa, de 0 a 1"""
+  en: Float!
+}
+
 type Parcela {
+  actualizadaEn: DateTime!
+
+  """Hectáreas (solo si la parcela es un polígono)"""
+  areaHa: Float
   creadaEn: DateTime!
+
+  """Código del cultivo que se siembra hoy"""
+  cultivoActual: String
+  descripcion: String
 
   """Forma de la parcela (Point o Polygon)"""
   geometria: GeoJSON!
+  historial: [RegistroHistorial!]!
   id: ID!
 
   """Latitud del centroide"""
@@ -108,6 +307,9 @@ type Parcela {
   longitud: Float!
   nombre: String
   preferencias: Preferencias
+
+  """Versión para el bloqueo optimista: mándala al actualizar o eliminar"""
+  version: Int!
 }
 
 type Preferencias {
@@ -121,11 +323,19 @@ type Preferencias {
   cultivosPreferidos: [String!]!
   id: ID!
   maquinaria: [String!]!
-  parcelaId: ID!
-  prioridad: Prioridad!
 
-  """true = riego, false = temporal"""
+  """Mes (1-12) desde el que la parcela queda vacía"""
+  mesesVaciosDesde: Int
+
+  """Mes (1-12) hasta el que la parcela queda vacía"""
+  mesesVaciosHasta: Int
+  parcelaId: ID!
+  prioridades: Prioridades!
+
+  """true si hay algún sistema de riego (cualquiera distinto de TEMPORAL)"""
   riego: Boolean!
+  sistemaRiego: SistemaRiego!
+  tipoSuelo: TipoSuelo!
 }
 
 input PreferenciasInput {
@@ -133,16 +343,34 @@ input PreferenciasInput {
   cultivosExcluidos: [String!]
   cultivosPreferidos: [String!]
   maquinaria: [String!]
-  prioridad: Prioridad = BALANCE
-  riego: Boolean!
+  mesesVaciosDesde: Int
+  mesesVaciosHasta: Int
+
+  """Sin indicar = 50 en cada una"""
+  prioridades: PrioridadesInput
+  sistemaRiego: SistemaRiego! = TEMPORAL
+  tipoSuelo: TipoSuelo! = SATELITAL
 }
 
-"""Qué le importa más al agricultor al elegir una rotación."""
-enum Prioridad {
-  AGUA
-  BALANCE
-  INGRESO
-  SUELO
+type Prioridades {
+  """Ahorrar agua / tolerar la sequía (0-100)"""
+  agua: Int!
+
+  """Detener la erosión del suelo (0-100)"""
+  erosion: Int!
+
+  """Generar ingreso extra (0-100)"""
+  ingreso: Int!
+
+  """Mejorar la fertilidad y el suelo (0-100)"""
+  suelo: Int!
+}
+
+input PrioridadesInput {
+  agua: Int! = 50
+  erosion: Int! = 50
+  ingreso: Int! = 50
+  suelo: Int! = 50
 }
 
 type Puntajes {
@@ -157,30 +385,153 @@ input PuntoInput {
   longitud: Float!
 }
 
+type PuntoMapa {
+  etiqueta: String
+  id: String!
+  latitud: Float!
+  longitud: Float!
+  severidad: Severidad
+  tipo: TipoPunto!
+  valor: Float
+}
+
+type PuntoSerie {
+  a: Float
+  b: Float
+  etiqueta: String!
+
+  """true = es un pronóstico, no un dato observado"""
+  pronostico: Boolean!
+}
+
 type Query {
+  """Alertas resumen (sequía y estrés)."""
+  alertas: [AlertaResumen!]!
+
+  """
+  Una capa del mapa para un escenario de lluvia y temperatura (los sliders). Entre los escenarios precalculados se interpola; sin escenario, condiciones normales. null si esa capa no se cargó.
+  """
+  capa(escenario: EscenarioInput, tipo: TipoCapa!): CapaMapa
+
   """Catálogo de cultivos disponibles."""
   cultivos: [Cultivo!]!
+
+  """
+  Lo que la app pide pero no tiene modelo ni dato (erosión, reservas de agua...): nunca se inventa.
+  """
+  datosNoDisponibles: [String!]!
 
   """Escenarios guardados de una parcela (los 50 más recientes)."""
   escenarios(parcelaId: ID!): [EscenarioGuardado!]!
 
+  """
+  Versión de predicciones activa, sus modelos y sus límites. null si no hay ninguna.
+  """
+  estadoPredicciones: EstadoPredicciones
+
+  """Qué se sembró en la parcela cada año (el más reciente primero)."""
+  historial(parcelaId: ID!): [RegistroHistorial!]!
+
   """Una parcela por su id (null si no existe)."""
   parcela(id: ID!): Parcela
 
+  """Las parcelas más recientes primero (máximo 100 por página)."""
+  parcelas(desplazamiento: Int! = 0, limite: Int! = 50): [Parcela!]!
+
+  """
+  Puntos de alerta (p. ej. estrés), opcionalmente dentro de una caja del mapa.
+  """
+  puntos(caja: CajaInput, tipo: TipoPunto!): ConjuntoPuntos
+
   """Las 3 mejores rotaciones a 3 años para una parcela."""
   recomendaciones(input: RecomendacionInput!): [RotacionEvaluada!]!
+  resumenClima: ResumenClima
+  resumenHumedad: ResumenHumedad
 
   """Estado del servidor y de cada pieza de la que depende."""
   salud: EstadoServicio!
 
+  """
+  Series para las gráficas: precios por cultivo ("market:") y estadísticas ("statistics:").
+  """
+  series(prefijo: String): [SerieDatos!]!
+
   """Recalcula con otro escenario de lluvia y temperatura sin guardar."""
   simularEscenario(input: SimulacionInput!): [RotacionEvaluada!]!
+
+  """Salidas de modelos sin capa: "rendimiento", "rotacion", "ciclo"."""
+  tablaModelo(clave: String!): TablaModelo
 }
 
 input RecomendacionInput {
   """Sin escenario = condiciones normales"""
   escenario: EscenarioInput
   parcelaId: ID!
+}
+
+type RegistroHistorial {
+  anio: Int!
+
+  """Código de cultivo (ver query cultivos)"""
+  cultivo: String!
+  descripcion: String
+
+  """Fecha de siembra, AAAA-MM-DD"""
+  fechaSiembra: String
+  id: ID!
+  parcelaId: ID!
+}
+
+type RejillaCapa {
+  """oeste, sur, este, norte (grados)"""
+  bbox: [Float!]!
+  columnas: Int!
+  filas: Int!
+
+  """
+  columnas × filas valores, fila por fila desde el NORTE; null = sin dato
+  """
+  valores: [Float]!
+}
+
+type ResumenClima {
+  datosAl: String!
+
+  """Probabilidad de lluvia mañana (%), modelo c08a"""
+  lluviaMananaPct: Float
+
+  """Lluvia esperada en los próximos 6 meses (mm), climatología c08b"""
+  lluviaMensualMm: [Float!]!
+  notas: [String!]!
+
+  """
+  Probabilidad de ola de calor en 7 días (%); null fuera de mayo–septiembre
+  """
+  olaDeCalor7DiasPct: Float
+
+  """Climatología del próximo mes (no es un pronóstico)"""
+  temperaturaMaxC: Float
+  temperaturaMediaC: Float
+  temperaturaMinC: Float
+}
+
+type ResumenHumedad {
+  datosAl: String!
+
+  """Flujo de evapotranspiración (MJ/m²/día, EVPTRNS de MERRA-2)"""
+  evaporacion: Float!
+  fuente: String!
+
+  """
+  0-100: la humedad de los últimos 28 días contra los mismos días de años anteriores
+  """
+  percentil: Float!
+
+  """Humedad de la zona de raíces (%)"""
+  raiz: Float!
+
+  """Humedad de la superficie (%)"""
+  superficie: Float!
 }
 
 type RotacionEvaluada {
@@ -210,7 +561,76 @@ type Semaforos {
   suelo: Semaforo!
 }
 
+type SerieDatos {
+  """
+  p. ej. "market:maiz" o "statistics:temperature"
+  """
+  clave: String!
+  concepto: String
+  etiquetaA: String
+  etiquetaB: String
+  fuente: String!
+  notas: [String!]!
+  puntos: [PuntoSerie!]!
+  titulo: String!
+  unidad: String!
+}
+
+enum Severidad {
+  ALTA
+  BAJA
+  MEDIA
+}
+
 input SimulacionInput {
   escenario: EscenarioInput!
   parcelaId: ID!
+}
+
+"""Cómo se riega la parcela (TEMPORAL = sin riego)."""
+enum SistemaRiego {
+  ASPERSION
+  GOTEO
+  GRAVEDAD
+  TEMPORAL
+}
+
+type TablaModelo {
+  """
+  "rendimiento", "rotacion" o "ciclo"
+  """
+  clave: String!
+  concepto: String!
+  datosAl: String
+
+  """
+  Filas de la tabla (cada una es un objeto con las columnas de esa tabla)
+  """
+  filas: JSON!
+  notas: [String!]!
+  titulo: String!
+  unidad: String
+}
+
+"""Capas del mapa (las de la barra inferior de la app)."""
+enum TipoCapa {
+  HUMEDAD
+  LLUVIA
+  SEQUIA
+  TEMPERATURA
+  VULNERABILIDAD
+}
+
+enum TipoPunto {
+  ESTRES
+}
+
+"""
+Tipo de suelo que percibe el agricultor; SATELITAL = usar el dato satelital.
+"""
+enum TipoSuelo {
+  ARCILLOSO
+  ARENOSO
+  FRANCO
+  SATELITAL
 }

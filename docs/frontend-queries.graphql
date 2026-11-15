@@ -1,0 +1,78 @@
+# Operaciones GraphQL para el frontend (reemplazan a src/data/index.ts de la rama `frontend`).
+# Cada operación indica a qué tipo de src/data/types.ts corresponde. Esquema completo: schema.graphql.
+
+# ---- Parcelas (Field, PlotRecord) ----
+query Parcelas {
+  parcelas(limite: 50) {
+    id version nombre descripcion cultivoActual areaHa latitud longitud geometria
+    preferencias {
+      sistemaRiego aguaRiegoMm tipoSuelo mesesVaciosDesde mesesVaciosHasta maquinaria
+      cultivosPreferidos cultivosExcluidos prioridades { agua suelo erosion ingreso }
+    }
+    historial { anio cultivo fechaSiembra descripcion }
+  }
+}
+
+# El formulario "Add a field": todo o nada. claveIdempotencia = un id nuevo por intento del usuario.
+mutation CrearParcela($input: CrearParcelaInput!) {
+  crearParcela(input: $input) { id version areaHa }
+}
+
+mutation ActualizarParcela($id: ID!, $input: ActualizarParcelaInput!) {
+  actualizarParcela(id: $id, input: $input) { id version }
+}
+
+mutation EliminarParcela($id: ID!, $version: Int!) {
+  eliminarParcela(id: $id, version: $version)
+}
+
+mutation GuardarHistorial($parcelaId: ID!, $input: HistorialInput!) {
+  guardarHistorial(parcelaId: $parcelaId, input: $input) { anio cultivo fechaSiembra descripcion }
+}
+
+# ---- Capas del mapa con los sliders (GridLayer) ----
+query Capa($tipo: TipoCapa!, $escenario: EscenarioInput) {
+  capa(tipo: $tipo, escenario: $escenario) {
+    tipo titulo variable unidad min max leyenda fuente resolucionM interpolada datosAl notas
+    rampa { en color }
+    rejilla { bbox columnas filas valores }
+    escenario { lluviaPct tempDeltaC aplica interpolado recortado }
+  }
+}
+
+# ---- Puntos y alertas (MapPoint, AlertSummary) ----
+query PuntosDeEstres($caja: CajaInput) {
+  puntos(tipo: ESTRES, caja: $caja) {
+    datosAl notas unidad
+    puntos { id latitud longitud severidad valor etiqueta }
+  }
+}
+
+query Alertas {
+  alertas { tipo titulo valor unidad detalle definicion datosAl }
+}
+
+# ---- Resúmenes (HumiditySummary, ClimatePrediction) ----
+query Resumenes {
+  resumenHumedad { raiz superficie evaporacion percentil datosAl fuente }
+  resumenClima {
+    lluviaMananaPct lluviaMensualMm olaDeCalor7DiasPct
+    temperaturaMaxC temperaturaMinC temperaturaMediaC datosAl notas
+  }
+}
+
+# ---- Gráficas (mercado y estadísticas campo vs región) ----
+query SeriesDeMercado { series(prefijo: "market:") { clave titulo unidad fuente notas puntos { etiqueta a pronostico } } }
+query Estadisticas { series(prefijo: "statistics:") { clave titulo unidad etiquetaA etiquetaB puntos { etiqueta a b } } }
+
+# ---- Tablas de modelos (p. ej. rotación) y lo que no existe ----
+query TablaModelo($clave: String!) { tablaModelo(clave: $clave) { clave concepto titulo unidad datosAl notas filas } }
+query NoDisponible { datosNoDisponibles }
+
+# ---- Transparencia: qué modelos hay detrás y qué tan buenos son ----
+query EstadoPredicciones {
+  estadoPredicciones {
+    version datosAl limitaciones
+    modelos { concepto nombre rol algoritmo metrica valor intervaloInf intervaloSup skill base notas }
+  }
+}

@@ -19,13 +19,19 @@ export interface RotacionEvaluada {
   criterioHumano: string[];
 }
 
+export type SistemaRiegoMotor = 'TEMPORAL' | 'GRAVEDAD' | 'ASPERSION' | 'GOTEO';
+
+/** Lo que el agricultor capturó, tal como lo necesita el motor (las 4 prioridades van de 0 a 100). */
 export interface PreferenciasAgricultor {
   riego: boolean;
+  sistemaRiego: SistemaRiegoMotor;
   aguaRiegoMm?: number;
+  tipoSuelo: 'ARCILLOSO' | 'ARENOSO' | 'FRANCO' | 'SATELITAL';
+  mesesVacios?: { desde: number; hasta: number };
   maquinaria: string[];
   cultivosPreferidos: string[];
   cultivosExcluidos: string[];
-  prioridad: 'AGUA' | 'SUELO' | 'INGRESO' | 'BALANCE';
+  prioridades: { agua: number; suelo: number; erosion: number; ingreso: number };
 }
 
 export interface Escenario {

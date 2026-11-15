@@ -11,7 +11,9 @@ import { dirname, resolve } from 'node:path';
 import { lexicographicSortSchema, printSchema } from 'graphql';
 import { CultivosResolver } from '../src/cultivos/cultivos.resolver';
 import { EscenariosResolver } from '../src/escenarios/escenarios.resolver';
+import { HistorialResolver } from '../src/historial/historial.resolver';
 import { ParcelasResolver } from '../src/parcelas/parcelas.resolver';
+import { PrediccionesResolver } from '../src/predicciones/predicciones.resolver';
 import { PreferenciasResolver } from '../src/preferencias/preferencias.resolver';
 import { RecomendacionesResolver } from '../src/recomendaciones/recomendaciones.resolver';
 import { SaludResolver } from '../src/salud/salud.resolver';
@@ -24,6 +26,8 @@ async function main() {
     CultivosResolver,
     ParcelasResolver,
     PreferenciasResolver,
+    HistorialResolver,
+    PrediccionesResolver,
     RecomendacionesResolver,
     EscenariosResolver,
     SaludResolver,

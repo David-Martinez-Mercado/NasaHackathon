@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { AppConfig } from '../config/config.service';
 import { DATOS, DatosPort } from '../datos/datos.port';
 import { MOTOR, MotorPort } from '../motor/motor.port';
+import { PrediccionesService } from '../predicciones/predicciones.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EstadoFuente, EstadoServicio, NivelEstado } from './salud.model';
 
@@ -22,6 +23,7 @@ export class SaludService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: AppConfig,
+    private readonly predicciones: PrediccionesService,
     @Inject(MOTOR) private readonly motor: MotorPort,
     @Inject(DATOS) private readonly datos: DatosPort,
   ) {}
@@ -44,10 +46,27 @@ export class SaludService {
     }
   }
 
+  /** ¿Hay una versión de predicciones de ml/ cargada? Sin base de datos no se puede saber: se omite la consulta. */
+  private async estadoPredicciones(base: EstadoFuente[]): Promise<EstadoFuente> {
+    const nombre = 'predicciones de los modelos (ml/)';
+    if (base.some((f) => f.estado === NivelEstado.NO_DISPONIBLE)) {
+      return { nombre, estado: NivelEstado.NO_DISPONIBLE, detalle: 'sin base de datos' };
+    }
+    try {
+      const version = await this.predicciones.versionActiva();
+      return version
+        ? { nombre, estado: NivelEstado.OK, detalle: `versión ${version.version}, datos al ${version.datosAl.toISOString().slice(0, 10)}` }
+        : { nombre, estado: NivelEstado.NO_DISPONIBLE, detalle: 'aún no se importa ninguna versión (npm run import:predicciones)' };
+    } catch {
+      return { nombre, estado: NivelEstado.NO_DISPONIBLE, detalle: 'no se pudo consultar' };
+    }
+  }
+
   async estado(): Promise<EstadoServicio> {
     const base = await this.baseDeDatos();
     const fuentes: EstadoFuente[] = [
       ...base,
+      await this.estadoPredicciones(base),
       {
         nombre: 'motor de reglas',
         estado: this.motor.disponible ? NivelEstado.OK : NivelEstado.NO_DISPONIBLE,

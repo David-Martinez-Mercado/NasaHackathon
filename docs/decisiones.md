@@ -88,3 +88,28 @@ Aplicada a c02, c03, c04, c05a, c05b y c08b (`ml/`). Para el motor de reglas y q
 - **Sin autenticación todavía:** quien conozca el UUID de una parcela puede leerla. Decidir antes de publicar la demo.
 - **Tabla `Cultivo`:** solo nombre y familia botánica; los parámetros agronómicos los aporta `agronomo-reglas` con fuente.
 - Afecta a: agronomo-reglas, ingeniero-datos, ingeniero-ia, frontend-agricultor, devops-despliegue (añadir el backend al compose).
+
+## 2026-11-15 — Backend v2: transacciones, predicciones de ml/ en PostgreSQL y rama `backend`
+- **Rama `backend`** con `ml/` (modelos para deploy) y `src/backend/`. No se fusionó `frontend` ni se tocó `main`.
+  los archivos del asistente no se versionan.
+- **Predicciones por lotes:** `ml/` exporta (`fieldshift-ml deploy export`, JSON versionado con sha256 y esquema) y el backend las
+  importa con `npm run import:predicciones` en **una transacción**; no hay Python en producción. Una sola versión activa
+  (índice único parcial). Reimportar igual = no-op; misma versión con otro contenido = error.
+- **Transacciones:** `TransaccionService.ejecutar` (transacción interactiva de Prisma, reintentos ante `P2034`/`40001`/`40P01`,
+  tiempo límite). `crearParcela` (parcela + preferencias + historial) es atómica e idempotente (`claveIdempotencia`);
+  `actualizarParcela` y `eliminarParcela` usan bloqueo optimista (`version` → `CONFLICTO_VERSION`).
+- **Modelo ampliado** para el formulario del frontend: sistema de riego (4), tipo de suelo, meses vacíos, 4 prioridades 0–100,
+  historial por año, descripción y cultivo actual. Los nombres GraphQL van en español; la tabla de equivalencias con los tipos del
+  frontend está en `docs/api.md`.
+- **Pruebas con base real sin Docker:** PGlite + PostGIS expuesto por socket (`@electric-sql/pglite-socket`) y Prisma con
+  `connection_limit=1` (`npm run test:int`). Cubre rollback, idempotencia, concurrencia, bloqueo optimista, importación atómica y consultas.
+  Limitación: PGlite no es el servidor PostgreSQL de producción; la primera ejecución sobre PostgreSQL 16 real será en el servidor.
+- **Qué NO hay (se declara en `datosNoDisponibles`):** erosión, reservas de agua / balance hídrico, elevación. `RotationImpact`
+  depende del motor de reglas, aún no conectado.
+- **Cuidado con los sliders:** los escenarios de lluvia/temperatura son la **sensibilidad del modelo** (c01, c05b, c08a), no una proyección
+  climática; las capas de temperatura, humedad y lluvia son interpolación de 2 puntos de ~50 km y se marcan `interpolada`.
+  c05a, c08b y c04 se despliegan como reglas base porque ningún modelo las supera con claridad.
+- **Sin autenticación todavía** (sigue pendiente antes de publicar). Datos de Weld, CO (no Durango).
+- Afecta a: frontend-agricultor (sustituir `data/index.ts` por `docs/frontend-queries.graphql`), devops-despliegue (compose y migraciones),
+  agronomo-reglas, ingeniero-ia.
+

@@ -12,23 +12,45 @@ datasource db {
   extensions = [postgis]
 }
 
-enum Prioridad {
-  AGUA
-  SUELO
-  INGRESO
-  BALANCE
+// ----------------------------------------------------------------------------------------------
+// Parcelas del agricultor
+// ----------------------------------------------------------------------------------------------
+
+enum SistemaRiego {
+  TEMPORAL
+  GRAVEDAD
+  ASPERSION
+  GOTEO
+}
+
+enum TipoSuelo {
+  ARCILLOSO
+  ARENOSO
+  FRANCO
+  SATELITAL // "usar dato satelital"
 }
 
 /// Parcela del agricultor: punto o polígono en WGS84. La geometría se lee y escribe con SQL parametrizado.
 model Parcela {
-  id           String   @id @default(uuid()) @db.Uuid
-  nombre       String?  @db.VarChar(120)
-  geom         Unsupported("geometry(Geometry, 4326)")
-  centroideLat Float
-  centroideLon Float
-  creadaEn     DateTime @default(now())
+  id                String                                  @id @default(uuid()) @db.Uuid
+  nombre            String?                                 @db.VarChar(120)
+  descripcion       String?                                 @db.VarChar(500)
+  /// Código de Cultivo que se siembra hoy (se valida contra el catálogo).
+  cultivoActual     String?                                 @db.VarChar(40)
+  geom              Unsupported("geometry(Geometry, 4326)")
+  centroideLat      Float
+  centroideLon      Float
+  /// Hectáreas (solo polígonos), calculadas en la base con ST_Area sobre geography.
+  areaHa            Float?
+  /// Bloqueo optimista: cada actualización exige la versión que el cliente leyó y la incrementa.
+  version           Int                                     @default(1)
+  /// Clave que manda el cliente para que reintentar una creación no duplique la parcela.
+  claveIdempotencia String?                                 @unique @db.VarChar(80)
+  creadaEn          DateTime                                @default(now())
+  actualizadaEn     DateTime                                @default(now()) @updatedAt
 
   preferencias Preferencias?
+  historial    HistorialParcela[]
   escenarios   Escenario[]
 
   @@index([geom], type: Gist)
@@ -36,17 +58,41 @@ model Parcela {
 
 /// Prioridades y restricciones del agricultor (una fila por parcela).
 model Preferencias {
-  id                 String    @id @default(uuid()) @db.Uuid
-  parcelaId          String    @unique @db.Uuid
-  riego              Boolean
+  id                 String       @id @default(uuid()) @db.Uuid
+  parcelaId          String       @unique @db.Uuid
+  sistemaRiego       SistemaRiego @default(TEMPORAL)
   aguaRiegoMm        Float?
+  tipoSuelo          TipoSuelo    @default(SATELITAL)
+  /// Meses en que la parcela queda vacía (1 = enero ... 12 = diciembre).
+  mesesVaciosDesde   Int?
+  mesesVaciosHasta   Int?
   maquinaria         String[]
   cultivosPreferidos String[]
   cultivosExcluidos  String[]
-  prioridad          Prioridad @default(BALANCE)
-  actualizadaEn      DateTime  @updatedAt
+  /// Las 4 prioridades de la pantalla "Farmer priorities" (0-100 cada una).
+  prioridadAgua      Int          @default(50)
+  prioridadSuelo     Int          @default(50)
+  prioridadErosion   Int          @default(50)
+  prioridadIngreso   Int          @default(50)
+  actualizadaEn      DateTime     @updatedAt
 
   parcela Parcela @relation(fields: [parcelaId], references: [id], onDelete: Cascade)
+}
+
+/// Qué se sembró en la parcela cada año (pantalla "Plot history"). Un registro por parcela y año.
+model HistorialParcela {
+  id            String    @id @default(uuid()) @db.Uuid
+  parcelaId     String    @db.Uuid
+  anio          Int
+  cultivo       String    @db.VarChar(40)
+  fechaSiembra  DateTime? @db.Date
+  descripcion   String?   @db.VarChar(1000)
+  creadoEn      DateTime  @default(now())
+  actualizadoEn DateTime  @updatedAt
+
+  parcela Parcela @relation(fields: [parcelaId], references: [id], onDelete: Cascade)
+
+  @@unique([parcelaId, anio])
 }
 
 /// Escenario guardado con los sliders de lluvia y temperatura y el resultado calculado.
@@ -89,4 +135,190 @@ model Cultivo {
   fuente          String?
   verificado      Boolean  @default(false)
   actualizadoEn   DateTime @updatedAt
+}
+
+// ----------------------------------------------------------------------------------------------
+// Predicciones de los modelos de ml/ (se cargan por lotes con `npm run import:predicciones`)
+// ----------------------------------------------------------------------------------------------
+
+enum TipoCapa {
+  TEMPERATURA
+  HUMEDAD
+  LLUVIA
+  SEQUIA
+  VULNERABILIDAD
+}
+
+enum TipoPunto {
+  ESTRES
+}
+
+enum Severidad {
+  BAJA
+  MEDIA
+  ALTA
+}
+
+/// Un export de ml/ ya importado. Solo una versión está activa a la vez (índice único parcial en la migración).
+model VersionPrediccion {
+  id           String   @id @default(uuid()) @db.Uuid
+  version      String   @unique @db.VarChar(80)
+  activa       Boolean  @default(false)
+  generadaEn   DateTime
+  importadaEn  DateTime @default(now())
+  datosAl      DateTime @db.Date
+  zona         Json
+  modelos      Json
+  limitaciones String[]
+  /// sha256 del manifest.json importado: reimportar la misma versión con otro contenido se rechaza.
+  huella       String   @db.VarChar(64)
+
+  capas     CapaMapa[]
+  conjuntos ConjuntoPuntos[]
+  puntos    PuntoMapa[]
+  series    SerieDato[]
+  tablas    TablaModelo[]
+  alertas   AlertaMapa[]
+  resumen   ResumenModelo?
+
+  @@index([activa])
+}
+
+model CapaMapa {
+  id              String   @id @default(uuid()) @db.Uuid
+  versionId       String   @db.Uuid
+  tipo            TipoCapa
+  concepto        String   @db.VarChar(10)
+  titulo          String   @db.VarChar(120)
+  variable        String   @db.VarChar(400)
+  unidad          String   @db.VarChar(20)
+  min             Float
+  max             Float
+  rampa           Json
+  leyenda         String[]
+  bboxOeste       Float
+  bboxSur         Float
+  bboxEste        Float
+  bboxNorte       Float
+  columnas        Int
+  filas           Int
+  escenarioAplica Boolean
+  fuente          String
+  resolucionM     Int
+  interpolada     Boolean
+  datosAl         DateTime @db.Date
+  notas           String[]
+
+  version    VersionPrediccion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  escenarios EscenarioCapa[]
+
+  @@unique([versionId, tipo])
+}
+
+/// La rejilla de una capa para un escenario de lluvia y temperatura (los sliders de la app).
+model EscenarioCapa {
+  id         String @id @default(uuid()) @db.Uuid
+  capaId     String @db.Uuid
+  lluviaPct  Int
+  tempDeltaC Float
+  /// Arreglo de columnas × filas valores (null = sin dato), fila por fila desde el NORTE.
+  valores    Json
+
+  capa CapaMapa @relation(fields: [capaId], references: [id], onDelete: Cascade)
+
+  @@unique([capaId, lluviaPct, tempDeltaC])
+}
+
+model ConjuntoPuntos {
+  id        String    @id @default(uuid()) @db.Uuid
+  versionId String    @db.Uuid
+  tipo      TipoPunto
+  concepto  String    @db.VarChar(10)
+  fuente    String
+  datosAl   DateTime  @db.Date
+  unidad    String?
+  notas     String[]
+
+  version VersionPrediccion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@unique([versionId, tipo])
+}
+
+model PuntoMapa {
+  id        String                               @id @default(uuid()) @db.Uuid
+  versionId String                               @db.Uuid
+  clave     String                               @db.VarChar(60)
+  tipo      TipoPunto
+  geom      Unsupported("geometry(Point, 4326)")
+  etiqueta  String?
+  severidad Severidad?
+  valor     Float?
+
+  version VersionPrediccion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@unique([versionId, clave])
+  @@index([geom], type: Gist)
+}
+
+/// Series para las gráficas (precios por cultivo, estadísticas de campo contra región).
+model SerieDato {
+  id        String   @id @default(uuid()) @db.Uuid
+  versionId String   @db.Uuid
+  clave     String   @db.VarChar(60) // "market:maiz", "statistics:temperature"
+  titulo    String
+  unidad    String
+  fuente    String
+  concepto  String?  @db.VarChar(10)
+  etiquetaA String?
+  etiquetaB String?
+  notas     String[]
+  puntos    Json // [{ label, a, b, forecast }]
+
+  version VersionPrediccion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@unique([versionId, clave])
+}
+
+/// Salidas de modelos sin capa de mapa (rendimiento, rotación, ciclo): filas pequeñas en JSON.
+model TablaModelo {
+  id        String    @id @default(uuid()) @db.Uuid
+  versionId String    @db.Uuid
+  clave     String    @db.VarChar(40)
+  concepto  String    @db.VarChar(10)
+  titulo    String
+  unidad    String?
+  datosAl   DateTime? @db.Date
+  notas     String[]
+  filas     Json
+
+  version VersionPrediccion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@unique([versionId, clave])
+}
+
+model AlertaMapa {
+  id         String   @id @default(uuid()) @db.Uuid
+  versionId  String   @db.Uuid
+  tipo       String   @db.VarChar(20) // "drought" | "stress"
+  titulo     String
+  valor      Float
+  unidad     String
+  detalle    String
+  definicion String
+  concepto   String   @db.VarChar(10)
+  datosAl    DateTime @db.Date
+
+  version VersionPrediccion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@unique([versionId, tipo])
+}
+
+model ResumenModelo {
+  id           String   @id @default(uuid()) @db.Uuid
+  versionId    String   @unique @db.Uuid
+  humedad      Json?
+  clima        Json?
+  noDisponible String[]
+
+  version VersionPrediccion @relation(fields: [versionId], references: [id], onDelete: Cascade)
 }
