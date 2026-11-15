@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
 
 import polars as pl
@@ -9,6 +12,19 @@ import polars as pl
 from fieldshift_ml.config import SITES, get_settings
 
 MISSING = -999.0
+# Frame to use instead of the downloaded files (the live service injects fresh API data here; see `use_daily_frame`).
+_OVERRIDE: ContextVar[pl.DataFrame | None] = ContextVar("power_daily_override", default=None)
+
+
+@contextmanager
+def use_daily_frame(frame: pl.DataFrame) -> Iterator[None]:
+    """Inside the block `read_daily_all()` returns `frame` (columns: date, site, variables), so every dataset builder
+    and deployed model runs on fresh data without reading the CSV files."""
+    token = _OVERRIDE.set(frame)
+    try:
+        yield
+    finally:
+        _OVERRIDE.reset(token)
 
 
 def _data_dir() -> Path:
@@ -45,4 +61,7 @@ def read_daily(site: str) -> pl.DataFrame:
 
 
 def read_daily_all() -> pl.DataFrame:
+    override = _OVERRIDE.get()
+    if override is not None:
+        return override
     return pl.concat([read_daily(site) for site in SITES])
