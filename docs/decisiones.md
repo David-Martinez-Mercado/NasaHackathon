@@ -123,3 +123,18 @@ Aplicada a c02, c03, c04, c05a, c05b y c08b (`ml/`). Para el motor de reglas y q
   exportadas por lotes a PostGIS en lugar de un servicio Python en línea.
 - Afecta a: frontend-agricultor (cambia de framework), backend-api (contrato de capas del mapa), ingeniero-datos,
   devops-despliegue (imagen del frontend). Pendiente actualizar las reglas del proyecto y la definición del agente frontend.
+
+## 2026-11-15 — Frontend conectado al backend (`/graphql`)
+- La rama `frontend` se integró en `backend`. `src/frontend/src/data/index.ts` ya no lee `mock.ts` (borrado): cada función es una
+  consulta o mutación de `docs/frontend-queries.graphql` (cliente `fetch` sencillo en `data/api.ts`, sin Apollo Client por ahora;
+  `VITE_API_URL`). Los componentes siguen importando solo de `data/`.
+- **Conectado:** capas del mapa con los sliders (con debounce de 300 ms), alertas de sequía y estrés, humedad, resumen de clima,
+  precios de mercado (con pronóstico punteado), estadísticas, parcelas, historial por año y "Add field" (`crearParcela` atómica e
+  idempotente, polígono dibujado en el mapa).
+- **Se quitó lo que no tiene dato (no se inventa):** sensores, puntos de erosión y de reservas de agua, balance hídrico, consejos de
+  cultivos y recomendaciones por capa, impacto de rotación (depende del motor de reglas), vecinos del mapa y el slider de humedad
+  del suelo (ninguna capa lo usa). Se muestran avisos "no disponible".
+- **La capa "Temperature" ahora es riesgo de ola de calor (%)** (modelo c05b), no grados; la de lluvia es probabilidad (%).
+  Los sliders solo repintan esas dos capas y se rotula que son sensibilidad del modelo, no proyección climática.
+- Los textos que vienen del backend (notas, definiciones, fuentes) están en español y la interfaz en inglés: pendiente i18n.
+- Sin autenticación: el frontend lista todas las parcelas del servidor.

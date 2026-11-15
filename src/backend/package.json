@@ -20,7 +20,8 @@
     "test": "jest",
     "test:e2e": "jest --config ./test/jest-e2e.json --runInBand",
     "test:int": "jest --config ./test/jest-int.json --runInBand",
-    "import:predicciones": "ts-node --transpile-only scripts/import-predicciones.ts"
+    "import:predicciones": "ts-node --transpile-only scripts/import-predicciones.ts",
+    "dev:db": "ts-node --transpile-only scripts/dev-db.ts"
   },
   "dependencies": {
     "@apollo/server": "^5.5.2",

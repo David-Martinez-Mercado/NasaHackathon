@@ -26,6 +26,10 @@ export function renderGrid(layer: GridLayer, clip?: Ring[]): string {
   const sctx = small.getContext('2d')!;
   const img = sctx.createImageData(cols, rows);
   values.forEach((v, i) => {
+    if (v == null) {
+      img.data.set([0, 0, 0, 0], i * 4); // no data: leave the cell transparent
+      return;
+    }
     const t = Math.min(1, Math.max(0, (v - layer.min) / (layer.max - layer.min)));
     const [r, g, b] = sample(layer.ramp, t);
     const alpha = layer.fadeLow ? Math.min(1, Math.max(0, (t - 0.12) / 0.45)) : 1;

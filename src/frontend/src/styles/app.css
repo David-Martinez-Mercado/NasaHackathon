@@ -221,3 +221,15 @@ h1, h2, h3, p { margin: 0; }
   .alert-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
   .sidebar { position: sticky; top: 0; height: 100vh; }
 }
+
+/* ---------- data status ---------- */
+.notice { font-size: 11px; line-height: 14px; }
+.notice-error { background: #fbe4e1; color: #8a1c10; }
+.notice-loading { color: var(--text-muted); }
+.notice small, .note-list { display: block; margin-top: 6px; }
+.note-list { padding-left: 16px; font-size: 10px; line-height: 13px; color: var(--text-muted); }
+.card .field-select { width: 100%; margin-bottom: 10px; }
+.form-actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.form-actions .primary { border: 0; border-radius: 8px; background: #292d30; color: #fff; padding: 10px 18px; font: inherit; font-weight: 600; cursor: pointer; }
+.form-actions .primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.alert[data-unavailable='true'] { opacity: 0.55; }

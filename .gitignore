@@ -19,3 +19,4 @@ coverage/
 
 # Carpeta apartada al cambiar de rama (copia vieja de ml/)
 ml.stale-pre-backend/
+.pglite/

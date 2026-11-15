@@ -53,3 +53,16 @@ El formato de `ParcelaContexto` está **[POR VERIFICAR]** hasta que exista `docs
 
 ## Variables de entorno
 Ver `.env.example`. Nada de rutas, IPs ni secretos en el código (reglas de portabilidad de las reglas del proyecto).
+
+## Correr todo sin Docker (backend + frontend)
+```bash
+# terminal 1: PostgreSQL + PostGIS embebido (datos en src/backend/.pglite, ya ignorado por git)
+cd src/backend && npm run dev:db
+# terminal 2 (con DATABASE_URL que imprime dev:db; el backend NO debe estar corriendo):
+npm run prisma:generate && npm run import:predicciones -- ../../ml/deploy/exports/v1 && npm run seed
+CORS_ORIGIN=http://localhost:5173 npm run start          # http://localhost:3000/graphql
+# terminal 3:
+cd src/frontend && npm install && npm run dev            # http://localhost:5173 (VITE_API_URL en .env.development)
+```
+La base embebida atiende una sola conexión: detén el backend antes de importar o sembrar. Es solo para desarrollo;
+el servidor usa PostgreSQL 16 con `docker compose`.

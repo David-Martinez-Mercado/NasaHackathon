@@ -58,6 +58,11 @@ export function Card({ title, children, className = '' }: { title?: string; chil
   );
 }
 
+/** Status line for loading, errors and "not available" (instead of showing made-up numbers). */
+export function Notice({ kind = 'info', children }: { kind?: 'info' | 'error' | 'loading'; children: ReactNode }) {
+  return <div className={`note-box notice notice-${kind}`} role={kind === 'error' ? 'alert' : 'status'}>{children}</div>;
+}
+
 export function ReadField({ label, value, small }: { label: string; value: string; small?: boolean }) {
   return (
     <div className="read-field">

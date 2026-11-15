@@ -1,5 +1,10 @@
-import { createContext, useContext, useEffect, useMemo, useState, type DependencyList, type ReactNode } from 'react';
-import { DEFAULT_SCENARIO, type GridLayer, type LngLat, type MapPoint, type MapTool, type Scenario } from './data';
+import {
+  createContext, useCallback, useContext, useEffect, useMemo, useState, type DependencyList, type ReactNode,
+} from 'react';
+import {
+  DEFAULT_SCENARIO, errorMessage, fetchFields, fetchStatus, type Field, type GridLayer, type LngLat, type MapPoint, type MapTool,
+  type Scenario, type ServerStatus,
+} from './data';
 
 export interface LegendItem {
   kind: MapPoint['kind'];
@@ -24,6 +29,13 @@ interface AppState {
   setMapConfig: (c: MapConfig) => void;
   draft: LngLat[];
   setDraft: (d: LngLat[]) => void;
+  /** Fields from the server. `null` until the first load finishes. */
+  fields: Field[] | null;
+  fieldsError: string | null;
+  refreshFields: () => Promise<Field[]>;
+  currentField: Field | null;
+  selectField: (id: string) => void;
+  status: ServerStatus | null;
 }
 
 const Ctx = createContext<AppState | null>(null);
@@ -32,9 +44,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [scenario, setScenario] = useState(DEFAULT_SCENARIO);
   const [mapConfig, setMapConfig] = useState<MapConfig>({});
   const [draft, setDraft] = useState<LngLat[]>([]);
+  const [fields, setFields] = useState<Field[] | null>(null);
+  const [fieldsError, setFieldsError] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [status, setStatus] = useState<ServerStatus | null>(null);
+
+  const refreshFields = useCallback(async () => {
+    try {
+      const list = await fetchFields();
+      setFields(list);
+      setFieldsError(null);
+      return list;
+    } catch (error) {
+      setFieldsError(errorMessage(error));
+      setFields((current) => current ?? []);
+      return [];
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshFields();
+    fetchStatus().then(setStatus, () => setStatus(null));
+  }, [refreshFields]);
+
+  const currentField = useMemo(
+    () => fields?.find((f) => f.id === selectedId) ?? fields?.[0] ?? null,
+    [fields, selectedId],
+  );
   const value = useMemo(
-    () => ({ scenario, setScenario, mapConfig, setMapConfig, draft, setDraft }),
-    [scenario, mapConfig, draft],
+    () => ({
+      scenario, setScenario, mapConfig, setMapConfig, draft, setDraft,
+      fields, fieldsError, refreshFields, currentField, selectField: setSelectedId, status,
+    }),
+    [scenario, mapConfig, draft, fields, fieldsError, refreshFields, currentField, status],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

@@ -1,31 +1,47 @@
 import { CloudDrizzle, Sun, TrendingUp, Triangle } from 'lucide-react';
-import { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useApp, useMapConfig } from '../AppContext';
-import { Card, Panel, Slider } from '../components/ui';
-import { alertPoints, alerts, getLayer, rotationImpact, sensors, type AlertKind } from '../data';
+import { Card, Notice, Panel, Slider } from '../components/ui';
+import { fetchAlerts, fetchStressPoints, type AlertKind } from '../data';
+import { useLayer, useRemote } from '../hooks';
 
 const signed = (v: number, unit: string) => `${v > 0 ? '+' : ''}${v}${unit}`;
 
 export function Home() {
-  const { scenario, setScenario } = useApp();
+  const { scenario, setScenario, fields, fieldsError, currentField, selectField, status } = useApp();
   const [params, setParams] = useSearchParams();
   const requested = params.get('alert');
-  const alert = alerts.some((a) => a.kind === requested) ? (requested as AlertKind) : null;
+  const alerts = useRemote(fetchAlerts, []);
+  const list = alerts.data ?? [];
+  const alert = list.some((a) => a.kind === requested && a.available) ? (requested as AlertKind) : null;
   const setAlert = (kind: AlertKind | null) => setParams(kind ? { alert: kind } : {}, { replace: true });
-  const drought = useMemo(() => getLayer('drought', scenario), [scenario]);
+
+  const drought = useLayer('drought');
+  const stress = useRemote(fetchStressPoints, [], alert === 'stress');
 
   useMapConfig(
     {
-      layer: alert === 'drought' ? drought : null,
-      points: alert ? alertPoints[alert] : sensors,
+      layer: alert === 'drought' ? drought.data : null,
+      points: alert === 'stress' ? stress.data ?? [] : [],
     },
-    [alert, drought],
+    [alert, drought.data, stress.data],
   );
 
   const icon = <CloudDrizzle size={20} />;
+  const mapError = alert === 'drought' ? drought.error : alert === 'stress' ? stress.error : null;
   return (
     <Panel title="HOME" brand>
+      {fieldsError && <Notice kind="error">{fieldsError}</Notice>}
+      {fields && fields.length > 1 && (
+        <Card title="Field">
+          <select className="field-select" value={currentField?.id ?? ''} onChange={(e) => selectField(e.target.value)}>
+            {fields.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+          </select>
+        </Card>
+      )}
+      {fields && fields.length === 0 && !fieldsError && (
+        <Notice>You have no fields yet. Use "Add field" to draw your first one on the map.</Notice>
+      )}
       <Card title="What if?" className="whatif">
         <Slider
           icon={icon} label="Rainfall change" min={-50} max={50} value={scenario.rainPct}
@@ -37,27 +53,28 @@ export function Home() {
           display={signed(scenario.tempDelta, ' °C')} marks={['-2 °C', '0 °C', '+4 °C']}
           onChange={(tempDelta) => setScenario({ ...scenario, tempDelta })}
         />
-        <Slider
-          icon={icon} label="Soil moisture" min={0} max={100} value={scenario.soilMoisture}
-          display={`${scenario.soilMoisture}%`} marks={['Critical', 'Normal', 'Optimal']}
-          onChange={(soilMoisture) => setScenario({ ...scenario, soilMoisture })}
-        />
+        <small className="note-list">
+          The sliders repaint the heat-wave and rain layers. They show how the model reacts to a change; they are not a climate projection.
+        </small>
         <hr />
         <div className="rotation">
-          <div className="rotation-row"><strong>{rotationImpact.title}</strong><span>{rotationImpact.context}</span></div>
-          <div className="rotation-row">
-            <b>{rotationImpact.currentRotation}</b>
-            <em className="risk">{rotationImpact.risk}</em>
-            <span className="metric">{rotationImpact.metric}</span>
-          </div>
-          <p>{rotationImpact.suggestion}</p>
+          <div className="rotation-row"><strong>Impact and suggested rotation</strong><span>Next 3 seasons</span></div>
+          {status?.motorAvailable
+            ? <p>The rules engine is connected; rotation suggestions will appear here.</p>
+            : <p>Rotation suggestions are not available yet: the rules engine is not connected to the server.</p>}
         </div>
       </Card>
 
       <Card title="Critical alerts" className="alerts">
+        {alerts.error && <Notice kind="error">{alerts.error}</Notice>}
+        {alerts.loading && !alerts.data && <Notice kind="loading">Loading alerts…</Notice>}
         <div className="alert-grid">
-          {alerts.map((a) => (
-            <button key={a.kind} className="alert" aria-pressed={alert === a.kind} onClick={() => setAlert(alert === a.kind ? null : a.kind)}>
+          {list.map((a) => (
+            <button
+              key={a.kind} className="alert" aria-pressed={alert === a.kind} data-unavailable={!a.available}
+              disabled={!a.available} title={a.definition || undefined}
+              onClick={() => setAlert(alert === a.kind ? null : a.kind)}
+            >
               <strong>{a.title}</strong>
               <b>{a.value}</b>
               <span>{a.detail}</span>
@@ -66,6 +83,7 @@ export function Home() {
             </button>
           ))}
         </div>
+        {mapError && <Notice kind="error">{mapError}</Notice>}
       </Card>
     </Panel>
   );

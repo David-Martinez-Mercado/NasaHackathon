@@ -7,18 +7,21 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../AppContext';
-import { field, neighbors, paintedFields, type LngLat, type MapPoint, type MapTool, type Ring } from '../data';
+import { DEFAULT_CENTER, DEFAULT_ZOOM, type Field, type LngLat, type MapPoint, type MapTool } from '../data';
 import { rampCss, renderGrid } from './gridCanvas';
 
 const TILES = import.meta.env.VITE_BASEMAP_TILES_URL as string | undefined;
 const ATTRIBUTION = (import.meta.env.VITE_BASEMAP_ATTRIBUTION as string | undefined) ?? '';
 
-const polygons = (rings: Ring[]): GeoJSON.FeatureCollection => ({
+/** Fields with a drawn boundary are polygons; fields saved as a single point are shown as a dot. */
+const fieldShapes = (fields: Field[]): GeoJSON.FeatureCollection => ({
   type: 'FeatureCollection',
-  features: rings.map((r) => ({
+  features: fields.map((f) => ({
     type: 'Feature',
-    properties: {},
-    geometry: { type: 'Polygon', coordinates: [[...r, r[0]]] },
+    properties: { id: f.id },
+    geometry: f.boundary.length >= 3
+      ? { type: 'Polygon', coordinates: [[...f.boundary, f.boundary[0]]] }
+      : { type: 'Point', coordinates: f.center },
   })),
 });
 
@@ -49,7 +52,7 @@ const TOOLS: { tool: MapTool; icon: LucideIcon; label: string }[] = [
 ];
 
 export function FieldMap() {
-  const { mapConfig: cfg, draft, setDraft } = useApp();
+  const { mapConfig: cfg, draft, setDraft, fields, currentField } = useApp();
   const navigate = useNavigate();
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -57,6 +60,8 @@ export function FieldMap() {
   const draftRef = useRef<LngLat[]>([]);
   const [ready, setReady] = useState(false);
   const [, repaint] = useState(0);
+  const fieldsRef = useRef<Field[]>([]);
+  fieldsRef.current = fields ?? [];
 
   drawing.current = !!cfg.draw;
   draftRef.current = draft;
@@ -64,8 +69,8 @@ export function FieldMap() {
   useEffect(() => {
     const map = new maplibregl.Map({
       container: container.current!,
-      center: field.center,
-      zoom: field.zoom,
+      center: currentField?.center ?? DEFAULT_CENTER,
+      zoom: currentField?.zoom ?? DEFAULT_ZOOM,
       attributionControl: { compact: true },
       style: {
         version: 8,
@@ -78,12 +83,11 @@ export function FieldMap() {
     });
     mapRef.current = map;
     map.on('style.load', () => {
-      map.addSource('neighbors', { type: 'geojson', data: polygons(neighbors) });
-      map.addSource('field', { type: 'geojson', data: polygons([field.boundary]) });
+      map.addSource('field', { type: 'geojson', data: fieldShapes(fieldsRef.current) });
       map.addSource('draft', { type: 'geojson', data: draftShape([]) });
-      map.addLayer({ id: 'neighbors-line', type: 'line', source: 'neighbors', paint: { 'line-color': '#F6E3D6', 'line-width': 1.2, 'line-opacity': 0.85 } });
-      map.addLayer({ id: 'field-fill', type: 'fill', source: 'field', paint: { 'fill-color': '#E8A531', 'fill-opacity': 0.6 } });
-      map.addLayer({ id: 'field-line', type: 'line', source: 'field', paint: { 'line-color': '#FFFFFF', 'line-width': 2.5, 'line-dasharray': [1.6, 1.6] } });
+      map.addLayer({ id: 'field-fill', type: 'fill', source: 'field', filter: ['==', '$type', 'Polygon'], paint: { 'fill-color': '#E8A531', 'fill-opacity': 0.6 } });
+      map.addLayer({ id: 'field-line', type: 'line', source: 'field', filter: ['==', '$type', 'Polygon'], paint: { 'line-color': '#FFFFFF', 'line-width': 2.5, 'line-dasharray': [1.6, 1.6] } });
+      map.addLayer({ id: 'field-point', type: 'circle', source: 'field', filter: ['==', '$type', 'Point'], paint: { 'circle-radius': 7, 'circle-color': '#E8A531', 'circle-stroke-color': '#FFFFFF', 'circle-stroke-width': 2.5 } });
       map.addLayer({ id: 'draft-line', type: 'line', source: 'draft', filter: ['==', '$type', 'LineString'], paint: { 'line-color': '#FFFFFF', 'line-width': 2.5, 'line-dasharray': [1.6, 1.6] } });
       map.addLayer({ id: 'draft-points', type: 'circle', source: 'draft', filter: ['==', '$type', 'Point'], paint: { 'circle-radius': 4, 'circle-color': '#FFFFFF', 'circle-stroke-color': '#474B4E', 'circle-stroke-width': 1.5 } });
       setReady(true);
@@ -114,18 +118,35 @@ export function FieldMap() {
     }
     const [w, s, e, n] = layer.grid.bbox;
     const coordinates: [[number, number], [number, number], [number, number], [number, number]] = [[w, n], [e, n], [e, s], [w, s]];
-    const url = renderGrid(layer, layer.clipToFields ? paintedFields : undefined);
+    // Clip to the user's field outlines; with no outline drawn yet there is nothing to clip to, so paint the whole layer.
+    const outlines = fieldsRef.current.filter((f) => f.boundary.length >= 3).map((f) => f.boundary);
+    const url = renderGrid(layer, layer.clipToFields && outlines.length ? outlines : undefined);
     const source = map.getSource('heat') as ImageSource | undefined;
     if (source) source.updateImage({ url, coordinates });
     else {
       map.addSource('heat', { type: 'image', url, coordinates });
-      map.addLayer({ id: 'heat', type: 'raster', source: 'heat', paint: { 'raster-fade-duration': 0 } }, 'neighbors-line');
+      map.addLayer({ id: 'heat', type: 'raster', source: 'heat', paint: { 'raster-fade-duration': 0 } }, 'field-fill');
     }
     map.setPaintProperty('heat', 'raster-opacity', layer.clipToFields ? 0.82 : 0.68);
     map.setLayoutProperty('heat', 'visibility', 'visible');
     map.setPaintProperty('field-fill', 'fill-opacity', layer.clipToFields ? 0 : 0.22);
     map.setLayoutProperty('field-line', 'visibility', 'visible');
-  }, [ready, cfg.layer, cfg.draw]);
+  }, [ready, cfg.layer, cfg.draw, fields]);
+
+  // Field shapes from the server + fly to the selected field
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map) return;
+    (map.getSource('field') as GeoJSONSource).setData(fieldShapes(fields ?? []));
+  }, [ready, fields]);
+
+  const currentId = currentField?.id;
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map || !currentField) return;
+    map.flyTo({ center: currentField.center, zoom: currentField.zoom, duration: 800 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, currentId]);
 
   useEffect(() => {
     const map = mapRef.current;

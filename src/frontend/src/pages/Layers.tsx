@@ -1,104 +1,108 @@
-import { useMemo } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import { useApp, useMapConfig } from '../AppContext';
-import { Card, Panel, ReadField } from '../components/ui';
-import { getLayer, humiditySummary as h, layerInfo, sensors, waterBalance, waterPoints } from '../data';
+import { Card, Notice, Panel, ReadField } from '../components/ui';
+import { fetchHumidity, fetchUnavailable, valueAt, type GridLayer } from '../data';
+import { useLayer, useRemote } from '../hooks';
+
+const INFO = {
+  temperature: {
+    title: 'Heat-wave risk',
+    variable: 'Probability of a heat wave in the next 7 days (%)',
+    description: 'Model estimate for the weather-station area (about 50 km), not a measurement taken in your field.',
+  },
+  vulnerability: {
+    title: 'Vulnerability',
+    variable: 'Zone vulnerability index (0–100)',
+    description: 'How fragile each zone is, combining climate, soil and crop history. Only cropland has a value.',
+  },
+} as const;
+
+function layerValue(layer: GridLayer | null, at: [number, number] | undefined): string {
+  if (!layer || !at) return '—';
+  const v = valueAt(layer, at);
+  return v == null ? 'No data at this place' : `${Math.round(v * 10) / 10}${layer.unit ? ` ${layer.unit}` : ''}`;
+}
 
 function VariableLayer({ kind }: { kind: 'temperature' | 'vulnerability' }) {
-  const { scenario } = useApp();
-  const layer = useMemo(() => getLayer(kind, scenario), [kind, scenario]);
-  useMapConfig({ layer, tool: kind, points: sensors }, [layer]);
-  const info = layerInfo[kind];
+  const { currentField } = useApp();
+  const layer = useLayer(kind);
+  useMapConfig({ layer: layer.data, tool: kind, points: [] }, [layer.data]);
+  const info = INFO[kind];
   return (
     <Panel title={info.title}>
+      {layer.error && <Notice kind="error">{layer.error}</Notice>}
+      {layer.loading && !layer.data && <Notice kind="loading">Loading layer…</Notice>}
       <Card>
         <ReadField label="Variable" value={info.variable} />
         <ReadField label="Description" value={info.description} />
-        <ReadField label="Value" value={info.value} small />
+        <ReadField
+          label={currentField ? `Value at ${currentField.name}` : 'Value'}
+          value={currentField ? layerValue(layer.data, currentField.center) : 'Add a field to see its value'}
+          small
+        />
       </Card>
-      <h2 className="section-title">Recommendations</h2>
-      <Card className="recommendations">
-        <ul>{info.recommendations.map((r) => <li key={r}>{r}</li>)}</ul>
-      </Card>
+      {layer.data && (
+        <>
+          <h2 className="section-title">About this layer</h2>
+          <Card className="recommendations">
+            <ul>
+              <li>Source: {layer.data.source}</li>
+              <li>Data up to {layer.data.dataAsOf}</li>
+              {layer.data.notes.map((n) => <li key={n}>{n}</li>)}
+            </ul>
+          </Card>
+        </>
+      )}
     </Panel>
   );
 }
 
 function Humidity() {
-  const { scenario } = useApp();
-  const layer = useMemo(() => getLayer('humidity', scenario), [scenario]);
-  useMapConfig({ layer, tool: 'humidity' }, [layer]);
+  const layer = useLayer('humidity');
+  const summary = useRemote(fetchHumidity, []);
+  const h = summary.data;
+  useMapConfig({ layer: layer.data, tool: 'humidity', points: [] }, [layer.data]);
   return (
     <Panel title="Humidity">
-      <div className="stat-row">
-        <div className="stat"><strong>Root</strong><b>{h.root}%</b></div>
-        <div className="stat"><strong>Surface</strong><b>{h.surface}%</b></div>
-        <div className="stat"><strong>Evaporation</strong><b>{h.evaporation}%</b></div>
-      </div>
-      <Card className="moisture">
-        <div className="moisture-head"><span>Root-zone moisture</span><em className="badge-warn">{h.status}</em></div>
-        <div className="moisture-value"><b>{h.root}</b> % · percentile {h.percentile}</div>
-        <div className="moisture-bar"><i style={{ left: `${h.root}%` }} /></div>
-        <div className="moisture-scale"><span>0%</span><span>100%</span></div>
-        <p>{h.description}</p>
-        <small>{h.source}</small>
-      </Card>
-      <div className="note-box">{h.diagnosis}</div>
-      <h2 className="section-title">Recommendations</h2>
-      <p className="section-sub">Crops for your moisture</p>
-      <div className="crop-list">
-        {h.crops.map((c) => (
-          <div key={c.crop} className="crop">
-            <strong>{c.crop}</strong>
-            <span>{c.reason}</span>
-            <em className={c.verdict}>{c.verdict === 'recommended' ? 'Recommended' : 'Avoid without irrigation'}</em>
+      {(summary.error || layer.error) && <Notice kind="error">{summary.error ?? layer.error}</Notice>}
+      {summary.loading && !h && <Notice kind="loading">Loading…</Notice>}
+      {h && (
+        <>
+          <div className="stat-row">
+            <div className="stat"><strong>Root</strong><b>{h.root}%</b></div>
+            <div className="stat"><strong>Surface</strong><b>{h.surface}%</b></div>
+            <div className="stat"><strong>Evaporation</strong><b>{h.evaporation}</b></div>
           </div>
-        ))}
-      </div>
-      <div className="tip-row">{h.tips.map((t) => <div key={t} className="tip">{t}</div>)}</div>
+          <Card className="moisture">
+            <div className="moisture-head"><span>Root-zone moisture</span><em className="badge-warn">{h.status}</em></div>
+            <div className="moisture-value"><b>{h.root}</b> % · percentile {h.percentile}</div>
+            <div className="moisture-bar"><i style={{ left: `${h.root}%` }} /></div>
+            <div className="moisture-scale"><span>0%</span><span>100%</span></div>
+            <p>Water directly available to the roots, compared with the same days of earlier years.</p>
+            <small>{h.source}</small>
+            <small>Data up to {h.asOf}</small>
+          </Card>
+        </>
+      )}
+      <Notice>Crop advice for your moisture is not available yet: it needs the rules engine, which is not connected to the server.</Notice>
     </Panel>
   );
 }
 
-const LIGHTS = [
-  { status: 'sufficient', label: 'Sufficient availability' },
-  { status: 'limited', label: 'Limited availability' },
-  { status: 'deficit', label: 'Water deficit' },
-] as const;
-
 function Water() {
-  useMapConfig(
-    {
-      tool: 'water',
-      points: waterPoints,
-      pointLegend: {
-        title: 'Water reserves',
-        items: [
-          { kind: 'reservoir', label: 'Dam' },
-          { kind: 'tank', label: 'Water tank' },
-          { kind: 'groundwater', label: 'Groundwater' },
-        ],
-      },
-    },
-    [],
-  );
+  const unavailable = useRemote(fetchUnavailable, []);
+  useMapConfig({ tool: 'water', points: [] }, []);
   return (
     <Panel title="Water balance">
-      <Card className="grid-2">
-        <ReadField label="Available water" value={waterBalance.available} />
-        <ReadField label="Water demand" value={waterBalance.demand} />
-        <ReadField label="Rainfall contribution" value={waterBalance.rainfall} />
-        <ReadField label="Water deficit" value={waterBalance.deficit} />
-      </Card>
-      <h2 className="section-title">Water traffic light</h2>
-      <Card className="traffic">
-        <div className="traffic-lamp">
-          {LIGHTS.map((l) => <i key={l.status} className={`lamp lamp-${l.status} ${waterBalance.status === l.status ? 'on' : ''}`} />)}
-        </div>
-        <div className="traffic-labels">
-          {LIGHTS.map((l) => <span key={l.status} className={waterBalance.status === l.status ? 'on' : ''}>{l.label}</span>)}
-        </div>
-      </Card>
+      <Notice>
+        Water balance and water reserves are not available: there is no model or data for them yet, so nothing is shown rather than made-up numbers.
+      </Notice>
+      {unavailable.error && <Notice kind="error">{unavailable.error}</Notice>}
+      {unavailable.data && unavailable.data.length > 0 && (
+        <Card title="What the server does not have yet">
+          <ul className="note-list">{unavailable.data.map((x) => <li key={x}>{x}</li>)}</ul>
+        </Card>
+      )}
     </Panel>
   );
 }

@@ -1,10 +1,16 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useApp, useMapConfig } from '../AppContext';
-import { Card, Chips, Panel, PriorityBar, ReadField } from '../components/ui';
+import { Card, Chips, Notice, Panel, PriorityBar, ReadField } from '../components/ui';
 import {
-  climatePrediction, cropOptions, getLayer, marketPrices, plotHistory, sensors, statistics, type LngLat,
+  createField, errorMessage, fetchClimate, fetchCrops, fetchSeries, saveHistory, type Crop, type Field, type LngLat,
+  type NewField, type PlotRecord, type Series,
 } from '../data';
+import { useLayer, useRemote } from '../hooks';
+
+const cropName = (crops: Crop[] | null, code: string) => crops?.find((c) => c.code === code)?.name ?? code;
+const num = (v: number | null, unit: string, digits = 1) => (v == null ? 'No data' : `${Number(v.toFixed(digits))}${unit}`);
 
 /* ---------- Add field ---------- */
 
@@ -14,7 +20,7 @@ const SOIL = ['Clay', 'Sandy', 'Loam', 'Use satellite data'] as const;
 const EQUIPMENT = ['Seed drill', 'Row crop planter', 'No-till drill'] as const;
 const PRIORITIES = ['Save water / drought tolerance', 'Improve fertility and soil', 'Stop soil erosion', 'Generate extra income'];
 
-/** Polygon area in hectares (shoelace on a local flat projection). */
+/** Polygon area in hectares (shoelace on a local flat projection). Preview only: the server computes the saved area. */
 function areaHa(points: LngLat[]): number {
   if (points.length < 3) return 0;
   const lat0 = (points[0][1] * Math.PI) / 180;
@@ -27,28 +33,70 @@ function areaHa(points: LngLat[]): number {
 }
 
 export function AddField() {
-  const { draft, setDraft } = useApp();
+  const { draft, setDraft, refreshFields, selectField } = useApp();
+  const navigate = useNavigate();
+  const crops = useRemote(fetchCrops, []);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [crop, setCrop] = useState('');
+  const [monthFrom, setMonthFrom] = useState('');
+  const [monthTo, setMonthTo] = useState('');
   const [irrigation, setIrrigation] = useState<(typeof IRRIGATION)[number]>('Sprinkler');
   const [soil, setSoil] = useState<(typeof SOIL)[number]>('Use satellite data');
   const [equipment, setEquipment] = useState<string[]>([]);
-  const [priorities, setPriorities] = useState([40, 80, 25, 90]);
+  const [priorities, setPriorities] = useState<[number, number, number, number]>([40, 80, 25, 90]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // One key per form: if the request is repeated (double click, bad connection) the server does not create a second field.
+  const retryKey = useRef(crypto.randomUUID());
   useMapConfig({ draw: true }, []);
 
   const toggle = (e: string) => setEquipment(equipment.includes(e) ? equipment.filter((x) => x !== e) : [...equipment, e]);
+  const monthsIncomplete = (monthFrom === '') !== (monthTo === '');
+  const canSave = draft.length >= 3 && !monthsIncomplete && !saving;
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    const payload: NewField = {
+      name, description, crop,
+      monthsEmptyFrom: monthFrom ? Number(monthFrom) : null,
+      monthsEmptyTo: monthTo ? Number(monthTo) : null,
+      irrigation, soil, equipment, priorities, polygon: draft,
+    };
+    try {
+      const created: Field = await createField(payload, retryKey.current);
+      retryKey.current = crypto.randomUUID();
+      await refreshFields();
+      selectField(created.id);
+      setDraft([]);
+      navigate('/');
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <Panel title="Add a field">
       <Card className="form">
         <h3>General characteristics</h3>
-        <label>Field name<input placeholder="Chili field" /></label>
-        <label>Description<input placeholder="Description" /></label>
+        <label>Field name<input placeholder="Chili field" value={name} maxLength={120} onChange={(e) => setName(e.target.value)} /></label>
+        <label>Description<input placeholder="Description" value={description} maxLength={500} onChange={(e) => setDescription(e.target.value)} /></label>
         <label>Crop type
-          <select defaultValue=""><option value="" disabled>Crop type</option>{cropOptions.map((c) => <option key={c}>{c}</option>)}</select>
+          <select value={crop} onChange={(e) => setCrop(e.target.value)}>
+            <option value="">Crop type</option>
+            {(crops.data ?? []).map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+          </select>
         </label>
+        {crops.error && <Notice kind="error">{crops.error}</Notice>}
         <div className="label">Months the field stays empty</div>
         <div className="months">
-          From <select defaultValue=""><option value="" disabled>month</option>{MONTHS.map((m) => <option key={m}>{m}</option>)}</select>
-          To <select defaultValue=""><option value="" disabled>month</option>{MONTHS.map((m) => <option key={m}>{m}</option>)}</select>
+          From <select value={monthFrom} onChange={(e) => setMonthFrom(e.target.value)}><option value="">month</option>{MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select>
+          To <select value={monthTo} onChange={(e) => setMonthTo(e.target.value)}><option value="">month</option>{MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select>
         </div>
+        {monthsIncomplete && <small>Choose both months, or leave both empty.</small>}
         <div className="label">Irrigation system</div>
         <Chips options={IRRIGATION} value={irrigation} onChange={setIrrigation} />
         <h3>Perceived soil type <small>satellite data recommended*</small></h3>
@@ -68,80 +116,183 @@ export function AddField() {
         <h3>Farmer priorities</h3>
         <div className="priority-row">
           {PRIORITIES.map((p, i) => (
-            <PriorityBar key={p} label={p} value={priorities[i]} onChange={(v) => setPriorities(priorities.map((x, j) => (j === i ? v : x)))} />
+            <PriorityBar
+              key={p} label={p} value={priorities[i]}
+              onChange={(v) => setPriorities(priorities.map((x, j) => (j === i ? v : x)) as [number, number, number, number])}
+            />
           ))}
         </div>
       </Card>
+      {error && <Notice kind="error">{error}</Notice>}
+      <div className="form-actions">
+        <button type="button" className="primary" disabled={!canSave} onClick={save}>{saving ? 'Saving…' : 'Save field'}</button>
+        {draft.length < 3 && <small>Draw the field on the map first.</small>}
+      </div>
     </Panel>
   );
 }
 
 /* ---------- Plot history ---------- */
 
+const dateLabel = (iso: string | null) =>
+  iso ? new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }).toUpperCase() : 'Not recorded';
+
+function DescriptionEditor({ field, year, record, crops }: { field: Field; year: number; record: PlotRecord | undefined; crops: Crop[] | null }) {
+  const { refreshFields } = useApp();
+  const [text, setText] = useState(record?.description ?? '');
+  const [crop, setCrop] = useState('');
+  const [planted, setPlanted] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<{ kind: 'error' | 'info'; text: string } | null>(null);
+  const needsCrop = !record;
+  async function save() {
+    setSaving(true);
+    setMessage(null);
+    try {
+      await saveHistory(field.id, {
+        year,
+        crop: record?.crop ?? crop,
+        plantedOn: record ? record.plantedOn : planted || null,
+        description: text,
+      });
+      await refreshFields();
+      setMessage({ kind: 'info', text: 'Saved.' });
+    } catch (e) {
+      setMessage({ kind: 'error', text: errorMessage(e) });
+    } finally {
+      setSaving(false);
+    }
+  }
+  return (
+    <Card title={needsCrop ? `Add the ${year} record` : 'Add description'}>
+      {needsCrop && (
+        <>
+          <label className="label">What was planted
+            <select value={crop} onChange={(e) => setCrop(e.target.value)}>
+              <option value="">Crop type</option>
+              {(crops ?? []).map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+            </select>
+          </label>
+          <label className="label">Planting date<input type="date" value={planted} onChange={(e) => setPlanted(e.target.value)} /></label>
+        </>
+      )}
+      <textarea placeholder="Write..." rows={3} value={text} maxLength={500} onChange={(e) => setText(e.target.value)} />
+      {message && <Notice kind={message.kind}>{message.text}</Notice>}
+      <div className="form-actions">
+        <button type="button" className="primary" disabled={saving || (needsCrop && !crop)} onClick={save}>{saving ? 'Saving…' : 'Save'}</button>
+      </div>
+    </Card>
+  );
+}
+
 export function History() {
-  const [year, setYear] = useState(2023);
-  useMapConfig({ points: sensors, year: { value: year, onChange: setYear } }, [year]);
-  const record = plotHistory.find((r) => r.year === year);
+  const { currentField, fields, fieldsError } = useApp();
+  const crops = useRemote(fetchCrops, []);
+  const [picked, setPicked] = useState<number | null>(null);
+  const year = picked ?? currentField?.history[0]?.year ?? new Date().getFullYear();
+  useMapConfig({ points: [], year: { value: year, onChange: setPicked } }, [year]);
+  const record = currentField?.history.find((r) => r.year === year);
   return (
     <Panel title="HOME" brand>
-      <Card title="Plot history">
-        {record ? (
-          <>
-            <ReadField label="It was planted" value={record.crop} />
-            <ReadField label="Planting date" value={record.plantedOn} />
-            <ReadField label="Description" value={record.description || 'No description yet.'} />
-          </>
-        ) : <p className="empty">No record for {year}.</p>}
-      </Card>
-      <Card title="Add description">
-        <textarea placeholder="Write..." rows={3} />
-      </Card>
+      {fieldsError && <Notice kind="error">{fieldsError}</Notice>}
+      {fields && !currentField && !fieldsError && <Notice>Add a field first to keep its history.</Notice>}
+      {currentField && (
+        <>
+          <Card title={`Plot history · ${currentField.name}`}>
+            {record ? (
+              <>
+                <ReadField label="It was planted" value={cropName(crops.data, record.crop)} />
+                <ReadField label="Planting date" value={dateLabel(record.plantedOn)} />
+                <ReadField label="Description" value={record.description || 'No description yet.'} />
+              </>
+            ) : <p className="empty">No record for {year}.</p>}
+          </Card>
+          <DescriptionEditor key={`${currentField.id}-${year}-${record?.description ?? ''}`} field={currentField} year={year} record={record} crops={crops.data} />
+        </>
+      )}
     </Panel>
   );
 }
 
-/* ---------- Data: climate prediction + market ---------- */
+/* ---------- Data: climate summary + market ---------- */
+
+const cropLabel = (s: Series) => {
+  const name = s.id.replace('market:', '');
+  return name.charAt(0).toUpperCase() + name.slice(1);
+};
 
 export function Data() {
-  const { scenario } = useApp();
   const [view, setView] = useState<'Temperature' | 'Rain'>('Temperature');
-  const layer = useMemo(() => getLayer(view === 'Rain' ? 'rain' : 'temperature', scenario), [view, scenario]);
-  useMapConfig({ layer, points: view === 'Temperature' ? sensors : [] }, [layer]);
-  const { temperature: t, rain: r } = climatePrediction;
-  const recommendations = view === 'Temperature' ? t.recommendations : r.recommendations;
+  const layer = useLayer(view === 'Rain' ? 'rain' : 'temperature');
+  const climate = useRemote(fetchClimate, []);
+  const market = useRemote(() => fetchSeries('market:'), []);
+  const [picked, setPicked] = useState<string | null>(null);
+  useMapConfig({ layer: layer.data, points: [] }, [layer.data]);
+  const c = climate.data;
+
+  const series = market.data?.find((s) => s.id === picked) ?? market.data?.[0] ?? null;
+  const chart = useMemo(() => {
+    if (!series) return [];
+    const lastActual = series.points.map((p) => p.forecast).lastIndexOf(false);
+    return series.points.map((p, i) => ({
+      label: p.label,
+      actual: p.forecast ? null : p.a,
+      forecast: p.forecast || i === lastActual ? p.a : null, // joins the dashed forecast to the last real price
+    }));
+  }, [series]);
+
   return (
-    <Panel title={`Climate prediction: ${view}`}>
+    <Panel title={`Climate summary: ${view}`}>
       <Chips options={['Temperature', 'Rain'] as const} value={view} onChange={setView} />
-      <Card className="grid-2">
-        {view === 'Temperature' ? (
-          <>
-            <ReadField label="Highest temperature" value={t.highest} small />
-            <ReadField label="Lowest temperature" value={t.lowest} small />
-            <ReadField label="Average temperature" value={t.average} small />
-          </>
-        ) : (
-          <>
-            <ReadField label="Precipitation" value={r.precipitation} small />
-            <ReadField label="Humidity" value={r.humidity} small />
-            <ReadField label="Rain odds" value={r.odds} small />
-            <ReadField label="Precipitation intensity" value={r.intensity} small />
-          </>
-        )}
-      </Card>
-      <h2 className="section-title">Recommendations</h2>
-      <Card className="recommendations"><ul>{recommendations.map((x) => <li key={x}>{x}</li>)}</ul></Card>
+      {(climate.error || layer.error) && <Notice kind="error">{climate.error ?? layer.error}</Notice>}
+      {climate.loading && !c && <Notice kind="loading">Loading…</Notice>}
+      {c && (
+        <Card className="grid-2">
+          {view === 'Temperature' ? (
+            <>
+              <ReadField label="Typical highest temperature (next month)" value={num(c.tempMax, ' °C')} small />
+              <ReadField label="Typical lowest temperature (next month)" value={num(c.tempMin, ' °C')} small />
+              <ReadField label="Typical average temperature (next month)" value={num(c.tempMean, ' °C')} small />
+            </>
+          ) : (
+            <>
+              <ReadField label="Typical rain, next month" value={num(c.rainNextMonthMm, ' mm')} small />
+              <ReadField label="Chance of rain tomorrow" value={num(c.rainNextDayPct, ' %')} small />
+            </>
+          )}
+        </Card>
+      )}
+      {c && (
+        <>
+          <h2 className="section-title">Notes</h2>
+          <Card className="recommendations"><ul>{[`Data up to ${c.asOf}.`, ...c.notes].map((x) => <li key={x}>{x}</li>)}</ul></Card>
+        </>
+      )}
       <Card className="chart-card">
         <h3>Price trend</h3>
-        <small>January – December · Sample data</small>
-        <ResponsiveContainer width="100%" height={190}>
-          <LineChart data={marketPrices} margin={{ top: 12, right: 12, left: -14, bottom: 0 }}>
-            <CartesianGrid stroke="#E6E9EE" vertical={false} />
-            <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#697386' }} tickLine={false} axisLine={{ stroke: '#C9CBCD' }} />
-            <YAxis tick={{ fontSize: 10, fill: '#697386' }} tickLine={false} axisLine={{ stroke: '#C9CBCD' }} />
-            <Tooltip />
-            <Line isAnimationActive={false} dataKey="a" name="Price" stroke="#4464E8" strokeWidth={2} dot={{ r: 2 }} />
-          </LineChart>
-        </ResponsiveContainer>
+        {market.error && <Notice kind="error">{market.error}</Notice>}
+        {market.loading && !series && <Notice kind="loading">Loading prices…</Notice>}
+        {series && (
+          <>
+            <div className="chips">
+              {(market.data ?? []).map((s) => (
+                <button key={s.id} type="button" className="chip" aria-pressed={s.id === series.id} onClick={() => setPicked(s.id)}>{cropLabel(s)}</button>
+              ))}
+            </div>
+            <small>{series.unit} · dashed = forecast, exploratory only · {series.source}</small>
+            <ResponsiveContainer width="100%" height={190}>
+              <LineChart data={chart} margin={{ top: 12, right: 12, left: -14, bottom: 0 }}>
+                <CartesianGrid stroke="#E6E9EE" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#697386' }} tickLine={false} axisLine={{ stroke: '#C9CBCD' }} minTickGap={24} />
+                <YAxis tick={{ fontSize: 10, fill: '#697386' }} tickLine={false} axisLine={{ stroke: '#C9CBCD' }} domain={['auto', 'auto']} />
+                <Tooltip />
+                <Line isAnimationActive={false} dataKey="actual" name="Price" stroke="#4464E8" strokeWidth={2} dot={{ r: 2 }} connectNulls={false} />
+                <Line isAnimationActive={false} dataKey="forecast" name="Forecast" stroke="#4464E8" strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls={false} />
+              </LineChart>
+            </ResponsiveContainer>
+            <ul className="note-list">{series.notes.map((n) => <li key={n}>{n}</li>)}</ul>
+          </>
+        )}
       </Card>
     </Panel>
   );
@@ -151,8 +302,10 @@ export function Data() {
 
 export function Statistics() {
   const [tab, setTab] = useState<'temperature' | 'humidity'>('temperature');
+  const stats = useRemote(() => fetchSeries('statistics:'), []);
   useMapConfig({ hidden: true }, []);
-  const unit = tab === 'temperature' ? '°' : '%';
+  const series = stats.data?.find((s) => s.id === `statistics:${tab}`) ?? null;
+  const unit = series?.unit === '%' ? '%' : '°';
   return (
     <Panel title="Statistics" wide>
       <div className="tabs">
@@ -160,18 +313,28 @@ export function Statistics() {
         <button aria-pressed={tab === 'humidity'} onClick={() => setTab('humidity')}>Humidity</button>
       </div>
       <Card className="stats-card">
-        <h2>Temperature and humidity over time</h2>
-        <div className="series-legend"><span><i style={{ background: '#34B3F1' }} />This field</span><span><i style={{ background: '#292D30' }} />Region</span></div>
-        <ResponsiveContainer width="100%" height={380}>
-          <LineChart data={statistics[tab]} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-            <CartesianGrid stroke="#C9CBCD" strokeDasharray="4 4" vertical={false} />
-            <XAxis dataKey="label" tick={{ fontSize: 14, fill: '#474B4E', fontFamily: 'Poppins' }} tickLine={false} axisLine={false} />
-            <YAxis tickFormatter={(v) => `${v}${unit}`} tick={{ fontSize: 14, fill: '#474B4E', fontFamily: 'Poppins' }} tickLine={false} axisLine={false} />
-            <Tooltip formatter={(v) => `${v}${unit}`} />
-            <Line isAnimationActive={false} type="monotone" dataKey="a" name="This field" stroke="#34B3F1" strokeWidth={5} dot={false} />
-            <Line isAnimationActive={false} type="monotone" dataKey="b" name="Region" stroke="#292D30" strokeWidth={5} dot={false} />
-          </LineChart>
-        </ResponsiveContainer>
+        <h2>{series?.title ?? 'Temperature and humidity over time'}</h2>
+        {stats.error && <Notice kind="error">{stats.error}</Notice>}
+        {stats.loading && !series && <Notice kind="loading">Loading…</Notice>}
+        {series && (
+          <>
+            <div className="series-legend">
+              <span><i style={{ background: '#34B3F1' }} />{series.labelA ?? 'A'}</span>
+              <span><i style={{ background: '#292D30' }} />{series.labelB ?? 'B'}</span>
+            </div>
+            <ResponsiveContainer width="100%" height={380}>
+              <LineChart data={series.points} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <CartesianGrid stroke="#C9CBCD" strokeDasharray="4 4" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 14, fill: '#474B4E', fontFamily: 'Poppins' }} tickLine={false} axisLine={false} />
+                <YAxis tickFormatter={(v) => `${v}${unit}`} tick={{ fontSize: 14, fill: '#474B4E', fontFamily: 'Poppins' }} tickLine={false} axisLine={false} domain={['auto', 'auto']} />
+                <Tooltip formatter={(v) => `${v}${unit}`} />
+                <Line isAnimationActive={false} type="monotone" dataKey="a" name={series.labelA ?? 'A'} stroke="#34B3F1" strokeWidth={5} dot={false} />
+                <Line isAnimationActive={false} type="monotone" dataKey="b" name={series.labelB ?? 'B'} stroke="#292D30" strokeWidth={5} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+            <ul className="note-list">{[series.source, ...series.notes].map((n) => <li key={n}>{n}</li>)}</ul>
+          </>
+        )}
       </Card>
     </Panel>
   );
