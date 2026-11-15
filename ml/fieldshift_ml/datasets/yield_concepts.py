@@ -58,8 +58,11 @@ def _season_climate() -> pl.DataFrame:
     ).filter(pl.col("_months") == 12).drop("_months")
 
 
-def build_yield() -> Dataset:
-    """c01 — rendimiento (t/ha) por condado, año y cultivo."""
+def build_yield(window_years: int | None = None) -> Dataset:
+    """c01 — rendimiento (t/ha) por condado, año y cultivo.
+
+    `window_years` (solo para el estudio de ventanas): `hist_yield` usa únicamente los últimos N años de entrenamiento.
+    """
     yields = quickstats.county_yields().filter(pl.col("series").is_in(list(YIELD_SERIES)))
     mapping = pl.DataFrame(
         {"series": list(YIELD_SERIES), "crop": [v[0] for v in YIELD_SERIES.values()],
@@ -71,11 +74,13 @@ def build_yield() -> Dataset:
     )
     limit = _train_limit(frame.get_column("year"))
     # reference a farmer already has: the county's own average for that crop (training years only)
+    first_year = limit - window_years if window_years else -1  # exclusive lower bound of the reference years
+    in_window = (pl.col("year") <= limit) & (pl.col("year") > first_year)
     history = (
-        frame.filter(pl.col("year") <= limit).group_by("fips", "crop")
+        frame.filter(in_window).group_by("fips", "crop")
         .agg(pl.col("yield_t_ha").mean().alias("hist_yield"), pl.len().alias("hist_years"))
     )
-    crop_mean = frame.filter(pl.col("year") <= limit).group_by("crop").agg(
+    crop_mean = frame.filter(in_window).group_by("crop").agg(
         pl.col("yield_t_ha").mean().alias("_crop_mean"))
     frame = (
         frame.join(history, on=["fips", "crop"], how="left").join(crop_mean, on="crop", how="left")
@@ -152,8 +157,11 @@ def _days_to_reach(temps: dict, state: str, start: date, base: float, needed: fl
     return None
 
 
-def build_cycle_length() -> Dataset:
-    """c07 — días de siembra a cosecha (50 % sembrado -> 50 % cosechado) por estado, año y cultivo."""
+def build_cycle_length(window_years: int | None = None) -> Dataset:
+    """c07 — días de siembra a cosecha (50 % sembrado -> 50 % cosechado) por estado, año y cultivo.
+
+    `window_years` (solo para el estudio de ventanas): los GDD de referencia usan solo los últimos N años de train.
+    """
     try:
         temps = _state_monthly_temperature()
     except FileNotFoundError as exc:
@@ -186,8 +194,10 @@ def build_cycle_length() -> Dataset:
         raise DataNotReady("c07", ["avance de cultivos (PROGRESS) de QuickStats"])
     frame = pl.DataFrame(rows)
     limit = _train_limit(frame.get_column("year"))
+    first_year = limit - window_years if window_years else -1
     needed = (
-        frame.filter(pl.col("year") <= limit).group_by("crop").agg(pl.col("_gdd").median().alias("gdd_needed"))
+        frame.filter((pl.col("year") <= limit) & (pl.col("year") > first_year))
+        .group_by("crop").agg(pl.col("_gdd").median().alias("gdd_needed"))
     )
     frame = frame.join(needed, on="crop", how="inner")
     formula = [

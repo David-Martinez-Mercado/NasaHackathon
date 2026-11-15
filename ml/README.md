@@ -121,3 +121,26 @@ uv run fieldshift-ml deploy schema                     # regenera deploy/export.
 - CDL es una clasificación de satélite; sus errores entran como ruido en c02 y c06.
 - c06 no tiene etiqueta real: necesita revisión agronómica.
 - Todo está entrenado en Colorado; para Durango hay que revalidar con datos locales.
+
+## ¿Cuántos años de historia hacen falta? (estudio de ventanas)
+```powershell
+uv run fieldshift-ml windows --concept c05b --modes recent,old,random --reps 8   # un concepto
+uv run fieldshift-ml windows --all --modes recent                                 # todos los medibles
+uv run fieldshift-ml windows-report                                               # ml/reports/ventanas.md + gráficas
+```
+Entrena de nuevo el modelo desplegado y las bases con los **últimos N años** (`recent`), N años de **hace 10+ años** (`old`) o N años
+**al azar** (`random`), y lo mide siempre en la **misma prueba reciente** (el último 20 %), con intervalo de confianza y una diferencia
+pareada contra «toda la historia». Medibles: c01, c04, c05a, c05b, c07, c08a, c08b y c10 (c02, c03, c06, c09 y c11 no tienen historia suficiente).
+Resultados y lectura: [`reports/ventanas.md`](reports/ventanas.md). Código: `fieldshift_ml/evaluation/windows.py` y `windows_report.py`.
+
+## Servicio de predicciones en vivo
+```powershell
+$env:ML_SERVICE_TOKEN = "un-secreto-largo"      # obligatorio si ML_SERVICE_ENV=production
+uv run fieldshift-ml serve                       # http://127.0.0.1:8001  (interno: solo lo llama el backend)
+```
+`POST /predict {lat, lon, scenario?}` consulta **NASA POWER** (sin llave) para la celda del punto, arma las mismas tablas que el entrenamiento y predice con los
+modelos desplegados: c05b (olas de calor, mayo–septiembre), c08a (lluvia mañana), c08b (lluvia mensual) y c04 (humedad a 4 semanas). Cada resultado trae su
+fecha de datos y, si no se puede calcular, el motivo. La primera consulta de una celda baja toda la historia (≈ 4 s); las siguientes usan caché en disco y
+piden solo los últimos días (≈ 50 ms). Si POWER falla se sirve la última copia marcada `stale`. `GET /health` y `GET /fuentes`.
+Variables: `ML_SERVICE_TOKEN`, `ML_SERVICE_ENV` (development | production), `ML_SERVICE_MAX_CONCURRENCY`, `ML_SERVICE_CACHE_TTL_HOURS`, `ML_SERVICE_POWER_URL`.
+Lo que llega por cola (ERA5, ECOSTRESS, SMAP) o una vez al año (NASS, CDL) sigue por lotes (`deploy export`).

@@ -681,6 +681,7 @@ source = { editable = "." }
 dependencies = [
     { name = "catboost" },
     { name = "duckdb" },
+    { name = "fastapi" },
     { name = "geopandas" },
     { name = "h5netcdf" },
     { name = "h5py" },
@@ -705,6 +706,7 @@ dependencies = [
     { name = "pymannkendall" },
     { name = "pyogrio" },
     { name = "rasterio" },
+    { name = "requests" },
     { name = "rioxarray" },
     { name = "scikit-learn" },
     { name = "scipy" },
@@ -712,6 +714,7 @@ dependencies = [
     { name = "statsforecast" },
     { name = "statsmodels" },
     { name = "typer" },
+    { name = "uvicorn" },
     { name = "xarray" },
     { name = "xgboost" },
 ]
@@ -728,6 +731,7 @@ rl = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "httpx" },
     { name = "mypy" },
     { name = "pre-commit" },
     { name = "pytest" },
@@ -738,6 +742,7 @@ dev = [
 requires-dist = [
     { name = "catboost", specifier = ">=1.2.7" },
     { name = "duckdb", specifier = ">=1.1" },
+    { name = "fastapi", specifier = ">=0.115" },
     { name = "geopandas", specifier = ">=1.0" },
     { name = "gymnasium", marker = "extra == 'rl'", specifier = ">=1.0" },
     { name = "h5netcdf", specifier = ">=1.4" },
@@ -764,6 +769,7 @@ requires-dist = [
     { name = "pymannkendall", specifier = ">=1.4" },
     { name = "pyogrio", specifier = ">=0.10" },
     { name = "rasterio", specifier = ">=1.4" },
+    { name = "requests", specifier = ">=2.31" },
     { name = "rioxarray", specifier = ">=0.18" },
     { name = "scikit-learn", specifier = ">=1.6" },
     { name = "scipy", specifier = ">=1.13" },
@@ -773,6 +779,7 @@ requires-dist = [
     { name = "statsmodels", specifier = ">=0.14" },
     { name = "torch", marker = "extra == 'dl'", specifier = ">=2.5", index = "https://download.pytorch.org/whl/cu124" },
     { name = "typer", specifier = ">=0.15" },
+    { name = "uvicorn", specifier = ">=0.30" },
     { name = "xarray", specifier = ">=2024.10" },
     { name = "xgboost", specifier = ">=2.1" },
 ]
@@ -780,6 +787,7 @@ provides-extras = ["dl", "rl"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "httpx", specifier = ">=0.27" },
     { name = "mypy", specifier = ">=1.13" },
     { name = "pre-commit", specifier = ">=4.0" },
     { name = "pytest", specifier = ">=8.3" },
@@ -1088,6 +1096,34 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/4d/9f/f1d09d41497315baa7adf0a43f1990def8c8267cb24da2fc8aa49b2ed731/holidays-0.86.tar.gz", hash = "sha256:a566041e9ff81554661a7be282d6ec37d0d328a0e01a2e3da587421aaf630a07", size = 811000, upload-time = "2025-12-01T21:28:28.495Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/bc/7a/249c08ca6b7d5aa6b6ade324115ffe96d33ace0964a544f4307a421ce9f8/holidays-0.86-py3-none-any.whl", hash = "sha256:c6bc9476da5eb93ba6d7b498b9824e42cdd9a32e14002dd2bbd4cb5256c9ddcf", size = 1326429, upload-time = "2025-12-01T21:28:26.525Z" },
+]
+
+[[package]]
+name = "httpcore"
+version = "1.0.9"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "certifi" },
+    { name = "h11" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/06/94/82699a10bca87a5556c9c59b5963f2d039dbd239f25bc2a63907a05a14cb/httpcore-1.0.9.tar.gz", hash = "sha256:6e34463af53fd2ab5d807f399a9b45ea31c3dfa2276f15a2c3f00afff6e176e8", size = 85484, upload-time = "2025-04-24T22:06:22.219Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7e/f5/f66802a942d491edb555dd61e3a9961140fd64c90bce1eafd741609d334d/httpcore-1.0.9-py3-none-any.whl", hash = "sha256:2d400746a40668fc9dec9810239072b40b4484b640a8c38fd654a024c7a1bf55", size = 78784, upload-time = "2025-04-24T22:06:20.566Z" },
+]
+
+[[package]]
+name = "httpx"
+version = "0.28.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "certifi" },
+    { name = "httpcore" },
+    { name = "idna" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b1/df/48c586a5fe32a0f01324ee087459e112ebb7224f646c0b5023f5e79e9956/httpx-0.28.1.tar.gz", hash = "sha256:75e98c5f16b0f35b567856f597f06ff2270a374470a5c2392242528e3e3e42fc", size = 141406, upload-time = "2024-12-06T15:37:23.222Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl", hash = "sha256:d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad", size = 73517, upload-time = "2024-12-06T15:37:21.509Z" },
 ]
 
 [[package]]

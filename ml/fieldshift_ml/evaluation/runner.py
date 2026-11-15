@@ -6,6 +6,7 @@ import json
 import logging
 import time
 import warnings
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 
@@ -77,10 +78,22 @@ def _add_ci(result: Result, metric, blocks: np.ndarray | None, n_boot: int, seed
     result.metrics[f"{result.primary}_hi"] = high
 
 
+# `train_keep(times) -> bool mask` restricts the TRAINING rows by their time (used by the history-window study);
+# the test rows never change, so every window is scored on exactly the same test set.
+TrainKeep = Callable[[np.ndarray], np.ndarray]
+
+
 def _run_tabular(dataset: Dataset, split: str, fast: bool, only: set[str] | None, tune: int,
-                 seed: int, test_fraction: float, n_boot: int = 0) -> tuple[list[Result], pl.DataFrame, dict]:
+                 seed: int, test_fraction: float, n_boot: int = 0,
+                 train_keep: TrainKeep | None = None) -> tuple[list[Result], pl.DataFrame, dict]:
     frame = dataset.frame
     train_idx, test_idx = split_dataset(dataset, split, test_fraction, seed)
+    if train_keep is not None:
+        if dataset.time_col is None:
+            raise ValueError(f"{dataset.concept}: la ventana de entrenamiento necesita time_col")
+        train_idx = train_idx[train_keep(frame.get_column(dataset.time_col).to_numpy()[train_idx])]
+        if train_idx.size == 0:
+            raise ValueError("La ventana de entrenamiento no deja ninguna fila")
     columns = dataset.features
     numeric = [c for c in columns if c not in dataset.categorical]
     X = frame.select(columns).to_pandas()
@@ -195,7 +208,8 @@ def _seasonal_scale(train: pd.DataFrame, season: int) -> dict[str, float]:
 
 
 def _run_forecast(dataset: Dataset, fast: bool, only: set[str] | None, seed: int,
-                  test_fraction: float, n_boot: int = 0) -> tuple[list[Result], pl.DataFrame, dict]:
+                  test_fraction: float, n_boot: int = 0, train_keep: TrainKeep | None = None,
+                  history_years: int | None = None) -> tuple[list[Result], pl.DataFrame, dict]:
     frame = dataset.frame.select(ID, DS, Y, *dataset.exog_cols).to_pandas()
     frame[DS] = pd.to_datetime(frame[DS])
     dates = np.sort(frame[DS].unique())
@@ -206,7 +220,11 @@ def _run_forecast(dataset: Dataset, fast: bool, only: set[str] | None, seed: int
     if fast and len(starts) > 6:
         starts = [starts[i] for i in np.linspace(0, len(starts) - 1, 6).astype(int)]
     train = frame[frame[DS] < dates[first]]
-    scale = _seasonal_scale(train, season)
+    scale = _seasonal_scale(train, season)  # always from the full history: MASE stays comparable across windows
+    if train_keep is not None:
+        train = train[train_keep(train[DS].to_numpy())]
+        if train.empty:
+            raise ValueError("La ventana de entrenamiento no deja ninguna fila")
 
     models: list[Forecaster] = forecast_models(dataset.freq, season, h, fast, seed, dataset.exog_cols)
     models = [m for m in models if not (fast and m.slow)]
@@ -226,6 +244,8 @@ def _run_forecast(dataset: Dataset, fast: bool, only: set[str] | None, seed: int
                 parts = []
                 for origin in starts:
                     history = frame[frame[DS] < dates[origin]]
+                    if history_years is not None:  # the model only sees the last `history_years` before each origin
+                        history = history[history[DS] >= dates[origin] - pd.DateOffset(years=history_years)]
                     forecast = model.predict(history, h)
                     forecast["cutoff"] = dates[origin - 1]
                     parts.append(forecast)

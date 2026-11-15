@@ -161,5 +161,60 @@ def deploy_schema() -> None:
     print(f"Esquema escrito en {out}")
 
 
+
+
+@app.command("windows")
+def windows_cmd(
+    concept: Annotated[str | None, typer.Option(help="Id del concepto, p. ej. c05b")] = None,
+    all_: Annotated[bool, typer.Option("--all", help="Todos los conceptos con historia larga")] = False,
+    windows: Annotated[str, typer.Option(help="Años de historia, separados por comas; 'all' = toda")] = (
+        "1,3,5,10,15,20,all"),
+    modes: Annotated[str, typer.Option(help="recent | old | random, separados por comas")] = "recent",
+    models: Annotated[str | None, typer.Option(help="Modelos (por defecto, el desplegado y las bases)")] = None,
+    n_boot: Annotated[int, typer.Option(help="Remuestreos del intervalo de confianza")] = 200,
+    reps: Annotated[int, typer.Option(help="Repeticiones del modo random")] = 5,
+    fast: Annotated[bool, typer.Option(help="Menos árboles, sin modelos lentos")] = False,
+) -> None:
+    """¿Cuántos años de historia hacen falta? Entrena con ventanas del pasado y mide en la MISMA prueba reciente."""
+    from fieldshift_ml.evaluation import windows as W
+
+    _setup_logging()
+    if not concept and not all_:
+        raise typer.BadParameter("Indica --concept o --all")
+    years = tuple(None if w.strip() == "all" else int(w) for w in windows.split(","))
+    kinds = tuple(m.strip() for m in modes.split(","))
+    for concept_id in (list(W.MEASURABLE) if all_ else [concept]):
+        try:
+            table = W.run_windows(concept_id, years, kinds, models.split(",") if models else None, n_boot, reps, fast)
+        except (DataNotReady, ValueError) as exc:
+            print(f"[omitido] {concept_id}: {exc}")
+            continue
+        best, note = W.shortest_equivalent(table, W.focus_models(concept_id)[0], "recent")
+        print(f"{concept_id}: ventana más corta equivalente = {best} años {note}")
+
+
+@app.command("windows-report")
+def windows_report_cmd() -> None:
+    """Arma ml/reports/ventanas.md y las gráficas con lo que dejó el estudio de ventanas."""
+    from fieldshift_ml.evaluation.windows_report import build_report
+
+    _setup_logging()
+    print(build_report())
+
+
+@app.command("serve")
+def serve(
+    host: Annotated[str, typer.Option(help="Dirección (por defecto solo local: el servicio es interno)")] = "127.0.0.1",
+    port: Annotated[int, typer.Option(help="Puerto")] = 8001,
+) -> None:
+    """Servicio de predicciones en vivo (FastAPI): consulta NASA POWER y predice con los modelos desplegados."""
+    import uvicorn
+
+    from fieldshift_ml.service.app import create_app
+
+    _setup_logging()
+    uvicorn.run(create_app(), host=host, port=port, log_level="info")
+
+
 if __name__ == "__main__":
     app()
