@@ -1,6 +1,6 @@
 {
   // Despliegue estático del frontend en Cloudflare Workers (assets).
-  "name": "fieldshift",
+  "name": "nasahackathon",
   "compatibility_date": "2026-11-01",
   "assets": {
     "directory": "./dist",
