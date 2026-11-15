@@ -1,17 +1,16 @@
-import { useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useApp, useMapConfig } from '../AppContext';
 import { EMPTY_VALUES, FieldForm, monthsIncomplete } from '../components/FieldForm';
-import { Btn, Card, Chips, Notice, Panel, ReadField } from '../components/ui';
+import { Btn, Card, Notice, Panel, ReadField } from '../components/ui';
 import {
-  createField, errorMessage, fetchClimate, fetchCrops, fetchSeries, saveHistory, type Crop, type Field, type FieldValues,
-  type LngLat, type PlotRecord, type Series,
+  createField, errorMessage, fetchCrops, fetchSeries, saveHistory, type Crop, type Field, type FieldValues,
+  type LngLat, type PlotRecord,
 } from '../data';
-import { useLayer, useRemote } from '../hooks';
+import { useRemote } from '../hooks';
 
 const cropName = (crops: Crop[] | null, code: string) => crops?.find((c) => c.code === code)?.name ?? code;
-const num = (v: number | null, unit: string, digits = 1) => (v == null ? 'No data' : `${Number(v.toFixed(digits))}${unit}`);
 
 /* ---------- Add field ---------- */
 
@@ -157,90 +156,6 @@ export function History() {
           <DescriptionEditor key={`${currentField.id}-${year}-${record?.description ?? ''}`} field={currentField} year={year} record={record} crops={crops.data} />
         </>
       )}
-    </Panel>
-  );
-}
-
-/* ---------- Data: climate summary + market ---------- */
-
-const cropLabel = (s: Series) => {
-  const name = s.id.replace('market:', '');
-  return name.charAt(0).toUpperCase() + name.slice(1);
-};
-
-export function Data() {
-  const [view, setView] = useState<'Temperature' | 'Rain'>('Temperature');
-  const layer = useLayer(view === 'Rain' ? 'rain' : 'temperature');
-  const climate = useRemote(fetchClimate, []);
-  const market = useRemote(() => fetchSeries('market:'), []);
-  const [picked, setPicked] = useState<string | null>(null);
-  useMapConfig({ layer: layer.data, points: [] }, [layer.data]);
-  const c = climate.data;
-
-  const series = market.data?.find((s) => s.id === picked) ?? market.data?.[0] ?? null;
-  const chart = useMemo(() => {
-    if (!series) return [];
-    const lastActual = series.points.map((p) => p.forecast).lastIndexOf(false);
-    return series.points.map((p, i) => ({
-      label: p.label,
-      actual: p.forecast ? null : p.a,
-      forecast: p.forecast || i === lastActual ? p.a : null, // joins the dashed forecast to the last real price
-    }));
-  }, [series]);
-
-  return (
-    <Panel title={`Climate summary: ${view}`}>
-      <Chips options={['Temperature', 'Rain'] as const} value={view} onChange={setView} />
-      {(climate.error || layer.error) && <Notice kind="error">{climate.error ?? layer.error}</Notice>}
-      {climate.loading && !c && <Notice kind="loading">Loading…</Notice>}
-      {c && (
-        <Card className="grid-2">
-          {view === 'Temperature' ? (
-            <>
-              <ReadField label="Typical highest temperature (next month)" value={num(c.tempMax, ' °C')} small />
-              <ReadField label="Typical lowest temperature (next month)" value={num(c.tempMin, ' °C')} small />
-              <ReadField label="Typical average temperature (next month)" value={num(c.tempMean, ' °C')} small />
-            </>
-          ) : (
-            <>
-              <ReadField label="Typical rain, next month" value={num(c.rainNextMonthMm, ' mm')} small />
-              <ReadField label="Chance of rain tomorrow" value={num(c.rainNextDayPct, ' %')} small />
-            </>
-          )}
-        </Card>
-      )}
-      {c && (
-        <>
-          <h2 className="section-title">Notes</h2>
-          <Card className="recommendations"><ul>{[`Data up to ${c.asOf}.`, ...c.notes].map((x) => <li key={x}>{x}</li>)}</ul></Card>
-        </>
-      )}
-      <Card className="chart-card">
-        <h3>Price trend</h3>
-        {market.error && <Notice kind="error">{market.error}</Notice>}
-        {market.loading && !series && <Notice kind="loading">Loading prices…</Notice>}
-        {series && (
-          <>
-            <div className="chips">
-              {(market.data ?? []).map((s) => (
-                <button key={s.id} type="button" className="chip" aria-pressed={s.id === series.id} onClick={() => setPicked(s.id)}>{cropLabel(s)}</button>
-              ))}
-            </div>
-            <small>{series.unit} · dashed = forecast, exploratory only · {series.source}</small>
-            <ResponsiveContainer width="100%" height={190}>
-              <LineChart data={chart} margin={{ top: 12, right: 12, left: -14, bottom: 0 }}>
-                <CartesianGrid stroke="#E6E9EE" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#697386' }} tickLine={false} axisLine={{ stroke: '#C9CBCD' }} minTickGap={24} />
-                <YAxis tick={{ fontSize: 10, fill: '#697386' }} tickLine={false} axisLine={{ stroke: '#C9CBCD' }} domain={['auto', 'auto']} />
-                <Tooltip />
-                <Line isAnimationActive={false} dataKey="actual" name="Price" stroke="#4464E8" strokeWidth={2} dot={{ r: 2 }} connectNulls={false} />
-                <Line isAnimationActive={false} dataKey="forecast" name="Forecast" stroke="#4464E8" strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls={false} />
-              </LineChart>
-            </ResponsiveContainer>
-            <ul className="note-list">{series.notes.map((n) => <li key={n}>{n}</li>)}</ul>
-          </>
-        )}
-      </Card>
     </Panel>
   );
 }

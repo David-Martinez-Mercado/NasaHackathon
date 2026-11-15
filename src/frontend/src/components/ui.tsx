@@ -1,9 +1,11 @@
-import { ArrowLeft, Calendar, ChartNoAxesColumn, Database, House, Map, Plus, Sprout, User } from 'lucide-react';
+import { ArrowLeft, Calendar, ChartNoAxesColumn, Database, House, Map, Plus, ShieldAlert, Sprout, User, Wheat } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 
 const NAV = [
   { to: '/fields', label: 'My fields', icon: <Sprout size={28} strokeWidth={2.2} />, end: true },
+  { to: '/risks', label: 'Risks', icon: <ShieldAlert size={28} strokeWidth={2.2} /> },
+  { to: '/crops', label: 'Crops', icon: <Wheat size={28} strokeWidth={2.2} /> },
   { to: '/history', label: 'Plot history', icon: <Calendar size={30} strokeWidth={2.2} /> },
   { to: '/statistics', label: 'Statistics', icon: <ChartNoAxesColumn size={30} strokeWidth={2.6} /> },
   { to: '/data', label: 'Data', icon: <Database size={24} strokeWidth={2.2} /> },

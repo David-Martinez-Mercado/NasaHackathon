@@ -16,6 +16,16 @@ const INFO = {
     variable: 'Zone vulnerability index (0–100)',
     description: 'How fragile each zone is, combining climate, soil and crop history. Only cropland has a value.',
   },
+  rain: {
+    title: 'Rain probability',
+    variable: 'Chance of rain on a given day (%)',
+    description: 'Model estimate for the weather-station area (about 50 km). It rises or falls with the "What if?" rain slider.',
+  },
+  drought: {
+    title: 'Drought risk',
+    variable: 'Chance of drought over the next 3 months (%)',
+    description: 'Based on a drought index in cells of about 25 km. It does not change with the sliders.',
+  },
 } as const;
 
 function layerValue(layer: GridLayer | null, at: [number, number] | undefined): string {
@@ -24,7 +34,7 @@ function layerValue(layer: GridLayer | null, at: [number, number] | undefined): 
   return v == null ? 'No data at this place' : `${Math.round(v * 10) / 10}${layer.unit ? ` ${layer.unit}` : ''}`;
 }
 
-function VariableLayer({ kind }: { kind: 'temperature' | 'vulnerability' }) {
+function VariableLayer({ kind }: { kind: 'temperature' | 'vulnerability' | 'rain' | 'drought' }) {
   const { currentField } = useApp();
   const layer = useLayer(kind);
   useMapConfig({ layer: layer.data, tool: kind, points: [] }, [layer.data]);
@@ -111,7 +121,7 @@ function Water() {
 
 export function LayerPage() {
   const { tool } = useParams();
-  if (tool === 'temperature' || tool === 'vulnerability') return <VariableLayer key={tool} kind={tool} />;
+  if (tool === 'temperature' || tool === 'vulnerability' || tool === 'rain' || tool === 'drought') return <VariableLayer key={tool} kind={tool} />;
   if (tool === 'humidity') return <Humidity />;
   if (tool === 'water') return <Water />;
   return <Navigate to="/" replace />;

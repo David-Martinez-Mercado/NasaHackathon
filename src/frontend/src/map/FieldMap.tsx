@@ -1,5 +1,5 @@
 import {
-  Archive, ChevronLeft, ChevronRight, CirclePlus, Cpu, Cylinder, Droplet, Droplets, Info, Mountain, Sun,
+  Archive, ChevronLeft, ChevronRight, CirclePlus, CloudRain, Cpu, Cylinder, Droplet, Droplets, Info, Mountain, Sun,
   Thermometer, ThermometerSun, TriangleAlert, ZoomIn, ZoomOut, type LucideIcon,
 } from 'lucide-react';
 import maplibregl, { type GeoJSONSource, type ImageSource } from 'maplibre-gl';
@@ -49,6 +49,8 @@ const TOOLS: { tool: MapTool; icon: LucideIcon; label: string }[] = [
   { tool: 'humidity', icon: Droplet, label: 'Humidity layer' },
   { tool: 'water', icon: Archive, label: 'Water reserves layer' },
   { tool: 'vulnerability', icon: TriangleAlert, label: 'Vulnerability layer' },
+  { tool: 'rain', icon: CloudRain, label: 'Rain layer' },
+  { tool: 'drought', icon: Sun, label: 'Drought layer' },
 ];
 
 export function FieldMap() {

@@ -152,3 +152,17 @@ Aplicada a c02, c03, c04, c05a, c05b y c08b (`ml/`). Para el motor de reglas y q
   de la parcela ya no tiñe la capa; la de lluvia usa una rampa azul clara; los sliders de lluvia y temperatura tienen escala con sentido
   (seco→mojado, frío→calor). Con datos de ~50 km la capa se ve casi uniforme a escala de parcela: es la resolución real, no un error.
 
+## 2026-11-15 — Evaluación con todos los modelos, riesgos de zona y prioridades del agricultor
+- **`sugerenciasCultivo`** ahora puntúa cada cultivo con 5 criterios: ingreso (precio c10 + rendimiento c01), suelo (nitrógeno + cambio de familia),
+  agua, erosión y práctica local (c02). Los pesos son las 4 prioridades del agricultor, **ajustadas por los riesgos de la zona**: más peso al agua si hay
+  sequía o suelo seco, menos si hay riego; más peso a la erosión si la vulnerabilidad es alta. Un criterio sin dato cuenta como neutro (50) y se marca
+  `sinDato`: omitirlo inflaba a los cultivos de los que se sabe menos. Se pueden probar prioridades sin guardarlas (`prioridades` opcional).
+- **`riesgosParcela`:** 6 riesgos en el punto de la parcela. Umbrales provisionales ([POR VERIFICAR] con el agrónomo): calor 20/40 %, sequía 25/50 %,
+  vulnerabilidad 33/66, humedad por percentil (≤25 alto), estrés = puntos críticos de c03 en 10 km.
+- **`rasgos-cultivo.json`:** clasificación general (demanda de agua, nitrógeno, cobertura del suelo) de 13 cultivos, en datos y no en código, marcada
+  `verificado:false`. Es conocimiento agronómico general, no un dato medido: `agronomo-reglas` debe sustituirla por valores con fuente (INIFAP/FAO).
+- **Frontend:** nuevas pantallas Risks (semáforos con ícono y palabra) y Crops (prioridades con presets, comparación contra el cultivo actual,
+  desglose por criterio y "Why?"); Data ahora tiene Economy (precios y rendimiento), Climate, Models (cada modelo con su métrica, intervalo y límites)
+  y Local practice (rotación c02 y ciclo c07); capas de lluvia y sequía en la barra del mapa; resumen de riesgos en Home.
+- **Sigue pendiente:** agua disponible y maquinaria por cultivo, ciclo de 3 años, erosión y reservas de agua (sin dato).
+

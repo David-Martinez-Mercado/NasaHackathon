@@ -38,7 +38,7 @@ h1, h2, h3, p { margin: 0; }
 .nav-home { color: #757575; height: 32px; }
 .nav-home.active { color: var(--brand-strong); }
 .nav-items { margin-top: 164px; display: flex; flex-direction: column; gap: 6px; width: 100%; }
-.nav-item { height: 80px; border-radius: var(--radius); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-decoration: none; font-size: 10px; line-height: 12px; color: var(--text-muted); }
+.nav-item { height: 66px; border-radius: var(--radius); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-decoration: none; font-size: 10px; line-height: 12px; color: var(--text-muted); }
 .nav-item svg { color: rgba(88, 100, 94, 0.5); }
 .nav-item.active { background: var(--bg); color: var(--brand-strong); font-weight: 700; }
 .nav-item.active svg { color: var(--brand-strong); }
@@ -268,3 +268,44 @@ h1, h2, h3, p { margin: 0; }
 
 .slider-rain { --scale: linear-gradient(90deg, #d9534f 0%, #f2c94c 40%, #4aa3df 100%); }
 .slider-heat { --scale: linear-gradient(90deg, #2e86de 0%, #f2c94c 45%, #e74c3c 100%); }
+
+/* ---------- risks ---------- */
+.level { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 2px 9px; font-size: 11px; font-weight: 700; line-height: 15px; white-space: nowrap; }
+.level-low { background: #dff3dc; color: #1e6433; }
+.level-medium { background: #fbe9c8; color: #8a4b00; }
+.level-high { background: #fbdcd8; color: #9b1c12; }
+.level-none { background: #e6e9ee; color: #5a6068; font-weight: 500; }
+.risk-list { display: grid; gap: 10px; }
+.risk { color: var(--text); text-align: left; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); padding: 12px 14px; display: grid; gap: 6px; cursor: pointer; font: inherit; }
+.risk[aria-pressed='true'] { border-color: var(--brand-strong); box-shadow: inset 0 0 0 1px var(--brand-strong); }
+.risk-head { display: flex; align-items: center; gap: 8px; }
+.risk-head strong { flex: 1; font-size: 14px; }
+.risk-text { font-size: 12px; line-height: 16px; }
+.risk-source { font-size: 10px; line-height: 13px; color: var(--text-muted); }
+.risk-strip { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.risk-chip { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; background: #f4f6f8; border-radius: 999px; padding: 3px 4px 3px 10px; }
+.see-all { display: inline-block; margin: 6px 0; font-size: 12px; color: var(--brand-strong); font-weight: 600; }
+
+/* ---------- crop scoring ---------- */
+.tag { font-style: normal; font-size: 10px; font-weight: 600; margin-left: 8px; padding: 1px 7px; border-radius: 999px; background: #e6e9ee; color: #474b4e; }
+.suggest-current { background: #f7f9fb; }
+.suggest-score { font-weight: 700; }
+.score-good { color: #1e6433; } .score-fair { color: #8a4b00; } .score-poor { color: #9b1c12; }
+.factors { display: grid; gap: 4px; width: 100%; }
+.factor { display: grid; grid-template-columns: 96px 1fr 72px; align-items: center; gap: 8px; font-size: 11px; }
+.factor-name { color: var(--text-soft); }
+.factor-bar { display: block; height: 7px; border-radius: 4px; background: #e6e9ee; overflow: hidden; }
+.factor-bar > i { display: block; height: 100%; }
+.factor-good > i { background: #1e6433; } .factor-fair > i { background: #d98a00; } .factor-poor > i { background: #c4382b; }
+.factor-score { text-align: right; color: var(--text-soft); }
+.why summary { cursor: pointer; font-size: 12px; font-weight: 600; color: var(--brand-strong); }
+
+/* ---------- data tables and model cards ---------- */
+.data-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 8px; }
+.data-table th { text-align: left; font-weight: 600; color: var(--text-soft); border-bottom: 1px solid var(--border); padding: 6px 4px; }
+.data-table td { padding: 6px 4px; border-bottom: 1px solid #eef0f3; }
+.model-card h3 small { font-weight: 400; }
+.model-role, .model-metric { font-size: 12px; line-height: 16px; margin-bottom: 4px; }
+.model-role { color: var(--text-muted); }
+
+.factor-none > i { background: #b8bec6; }

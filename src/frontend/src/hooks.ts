@@ -40,9 +40,9 @@ export function useDebounced<T>(value: T, ms: number): T {
 }
 
 /** A map layer for the current "What if?" sliders. Slider drags are debounced so the server is not hit on every pixel. */
-export function useLayer(kind: LayerKind): Remote<GridLayer> {
+export function useLayer(kind: LayerKind, enabled = true): Remote<GridLayer> {
   const { scenario } = useApp();
   const wanted = useDebounced(scenario, 300);
   const effective = SCENARIO_LAYERS.includes(kind) ? wanted : DEFAULT_SCENARIO;
-  return useRemote(() => fetchLayer(kind, effective), [kind, effective.rainPct, effective.tempDelta]);
+  return useRemote(() => fetchLayer(kind, effective), [kind, effective.rainPct, effective.tempDelta], enabled);
 }

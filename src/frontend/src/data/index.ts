@@ -6,7 +6,8 @@
 import { ApiError, gql } from './api';
 import type {
   AlertSummary, ClimateSummary, ColorStop, Crop, Field, GridLayer, HumiditySummary, LayerKind, LngLat, MapPoint,
-  CropSuggestions, FieldValues, Irrigation, NewField, PlotRecord, Ring, Scenario, Series, ServerStatus, Severity, Soil,
+  CropSuggestion, CropSuggestions, FactorKey, FieldValues, Irrigation, ModelTable, NewField, PlotRecord, PredictionStatus, Priorities, Ring,
+  Risk, RiskKey, RiskLevel, Scenario, Series, ServerStatus, Severity, Soil,
 } from './types';
 
 export * from './types';
@@ -164,30 +165,110 @@ export async function setFieldCrop(field: Field, crop: string): Promise<Field> {
   return toField((await gql<{ actualizarParcela: RawField }>(UPDATE, { id: field.id, input })).actualizarParcela);
 }
 
-export async function fetchSuggestions(fieldId: string): Promise<CropSuggestions> {
+const RISK_KEY: Record<string, RiskKey> = {
+  calor: 'heat', sequia: 'drought', humedad: 'moisture', estres: 'stress', vulnerabilidad: 'vulnerability', lluvia: 'rain',
+};
+const LEVEL: Record<string, RiskLevel> = { BAJO: 'low', MEDIO: 'medium', ALTO: 'high' };
+const FACTOR: Record<string, FactorKey> = { ingreso: 'income', suelo: 'soil', agua: 'water', erosion: 'erosion', local: 'local' };
+const TRAIT: Record<string, 'low' | 'medium' | 'high'> = { baja: 'low', media: 'medium', alta: 'high' };
+
+interface RawRisk {
+  clave: string; nivel: string | null; valor: number | null; unidad: string; modelo: string; datosAl: string | null;
+  resolucionM: number | null; interpolada: boolean | null; puntosCercanos: number | null; puntosCriticos: number | null; radioKm: number | null;
+}
+const RISK_FIELDS = 'clave nivel valor unidad modelo datosAl resolucionM interpolada puntosCercanos puntosCriticos radioKm';
+const toRisk = (r: RawRisk): Risk | null => {
+  const key = RISK_KEY[r.clave];
+  if (!key) return null;
+  return {
+    key, level: r.nivel ? LEVEL[r.nivel] ?? null : null, value: r.valor, unit: r.unidad, model: r.modelo, asOf: r.datosAl,
+    resolutionMeters: r.resolucionM, interpolated: r.interpolada, nearbyPoints: r.puntosCercanos, criticalPoints: r.puntosCriticos, radiusKm: r.radioKm,
+  };
+};
+
+export async function fetchRisks(fieldId: string): Promise<Risk[]> {
+  const data = await gql<{ riesgosParcela: { riesgos: RawRisk[] } }>(
+    `query($id: ID!) { riesgosParcela(parcelaId: $id) { riesgos { ${RISK_FIELDS} } } }`, { id: fieldId });
+  return data.riesgosParcela.riesgos.map(toRisk).filter((r): r is Risk => r != null);
+}
+
+interface RawSuggestion {
+  cultivo: string; nombre: string; puntaje: number; aportes: { factor: string; puntaje: number; peso: number; sinDato: boolean }[];
+  probabilidadSiguientePct: number | null; cambioPrecioPct: number | null; unidadPrecio: string | null;
+  rendimientoTHa: number | null; rendimientoHistoricoTHa: number | null; cicloDias: number | null; otraFamilia: boolean | null;
+  fijaNitrogeno: boolean; demandaAgua: string; coberturaSuelo: string; preferido: boolean;
+}
+const SUGGESTION_FIELDS = `cultivo nombre puntaje aportes { factor puntaje peso sinDato } probabilidadSiguientePct cambioPrecioPct unidadPrecio
+  rendimientoTHa rendimientoHistoricoTHa cicloDias otraFamilia fijaNitrogeno demandaAgua coberturaSuelo preferido`;
+const toSuggestion = (x: RawSuggestion): CropSuggestion => ({
+  code: x.cultivo, name: x.nombre, score: x.puntaje,
+  factors: x.aportes.map((a) => ({ key: FACTOR[a.factor], score: a.puntaje, weight: a.peso, noData: a.sinDato })).filter((f) => f.key),
+  rotationPct: x.probabilidadSiguientePct, priceChangePct: x.cambioPrecioPct, priceUnit: x.unidadPrecio, otherFamily: x.otraFamilia,
+  yieldTHa: x.rendimientoTHa, historicalYieldTHa: x.rendimientoHistoricoTHa, cycleDays: x.cicloDias, fixesNitrogen: x.fijaNitrogeno,
+  waterDemand: TRAIT[x.demandaAgua] ?? 'medium', soilCover: TRAIT[x.coberturaSuelo] ?? 'medium', preferred: x.preferido,
+});
+
+/** Crops ranked for a field. `tryPriorities` previews other priorities without saving them. */
+export async function fetchSuggestions(fieldId: string, tryPriorities?: Priorities): Promise<CropSuggestions> {
   const data = await gql<{
     sugerenciasCultivo: {
-      cultivoBase: string | null;
-      origenBase: string | null;
-      sugerencias: {
-        cultivo: string; nombre: string; puntaje: number; probabilidadSiguientePct: number | null;
-        cambioPrecioPct: number | null; unidadPrecio: string | null; otraFamilia: boolean | null;
-      }[];
+      cultivoBase: string | null; origenBase: string | null; actual: RawSuggestion | null; sugerencias: RawSuggestion[];
+      prioridades: { agua: number; suelo: number; erosion: number; ingreso: number };
+      pesos: { agua: number; suelo: number; erosion: number; ingreso: number; local: number };
+      ajustes: string[]; riesgos: RawRisk[]; rasgosVerificados: boolean;
     };
   }>(
-    `query($id: ID!) { sugerenciasCultivo(parcelaId: $id) { cultivoBase origenBase
-        sugerencias { cultivo nombre puntaje probabilidadSiguientePct cambioPrecioPct unidadPrecio otraFamilia } } }`,
-    { id: fieldId },
+    `query($id: ID!, $p: PrioridadesInput) { sugerenciasCultivo(parcelaId: $id, prioridades: $p) {
+        cultivoBase origenBase actual { ${SUGGESTION_FIELDS} } sugerencias { ${SUGGESTION_FIELDS} }
+        prioridades { agua suelo erosion ingreso } pesos { agua suelo erosion ingreso local } ajustes rasgosVerificados
+        riesgos { ${RISK_FIELDS} } } }`,
+    {
+      id: fieldId,
+      p: tryPriorities ? { agua: tryPriorities.water, suelo: tryPriorities.soil, erosion: tryPriorities.erosion, ingreso: tryPriorities.income } : null,
+    },
   );
   const s = data.sugerenciasCultivo;
   return {
     baseCrop: s.cultivoBase,
     baseFrom: s.origenBase === 'actual' ? 'current' : s.origenBase === 'historial' ? 'history' : null,
-    items: s.sugerencias.map((x) => ({
-      code: x.cultivo, name: x.nombre, score: x.puntaje, rotationPct: x.probabilidadSiguientePct,
-      priceChangePct: x.cambioPrecioPct, priceUnit: x.unidadPrecio, otherFamily: x.otraFamilia,
+    current: s.actual ? toSuggestion(s.actual) : null,
+    items: s.sugerencias.map(toSuggestion),
+    priorities: { water: s.prioridades.agua, soil: s.prioridades.suelo, erosion: s.prioridades.erosion, income: s.prioridades.ingreso },
+    weights: { water: s.pesos.agua, soil: s.pesos.suelo, erosion: s.pesos.erosion, income: s.pesos.ingreso, local: s.pesos.local } as Record<FactorKey, number>,
+    adjustments: s.ajustes.map((a) => ({ agua_riesgo: 'water_risk', agua_riego: 'water_irrigation', erosion_vulnerabilidad: 'erosion_vulnerability' }[a] ?? a)),
+    risks: s.riesgos.map(toRisk).filter((r): r is Risk => r != null),
+    traitsVerified: s.rasgosVerificados,
+  };
+}
+
+/** The models behind every number: what each one is, how well it did on held-out data, and its limits. */
+export async function fetchPredictionStatus(): Promise<PredictionStatus | null> {
+  const data = await gql<{
+    estadoPredicciones: {
+      version: string; datosAl: string; limitaciones: string[];
+      modelos: {
+        concepto: string; nombre: string; rol: string; algoritmo: string; filasEntrenamiento: number; metrica: string; valor: number | null;
+        intervaloInf: number | null; intervaloSup: number | null; base: string | null; valorBase: number | null; skill: number | null; notas: string[];
+      }[];
+    } | null;
+  }>(`query { estadoPredicciones { version datosAl limitaciones
+      modelos { concepto nombre rol algoritmo filasEntrenamiento metrica valor intervaloInf intervaloSup base valorBase skill notas } } }`);
+  const e = data.estadoPredicciones;
+  if (!e) return null;
+  return {
+    version: e.version, asOf: e.datosAl, limitations: e.limitaciones,
+    models: e.modelos.map((m) => ({
+      concept: m.concepto, name: m.nombre, role: m.rol, algorithm: m.algoritmo, metric: m.metrica, value: m.valor, ciLow: m.intervaloInf,
+      ciHigh: m.intervaloSup, baseline: m.base, baselineValue: m.valorBase, skill: m.skill, trainedRows: m.filasEntrenamiento, notes: m.notas,
     })),
   };
+}
+
+export async function fetchTable(key: 'rotacion' | 'rendimiento' | 'ciclo'): Promise<ModelTable | null> {
+  const data = await gql<{ tablaModelo: { titulo: string; unidad: string | null; datosAl: string | null; notas: string[]; filas: Record<string, string | number | null>[] } | null }>(
+    `query($k: String!) { tablaModelo(clave: $k) { titulo unidad datosAl notas filas } }`, { k: key });
+  const t = data.tablaModelo;
+  return t ? { title: t.titulo, unit: t.unidad, asOf: t.datosAl, notes: t.notas, rows: t.filas } : null;
 }
 
 export async function saveHistory(fieldId: string, record: { year: number; crop: string; plantedOn: string | null; description: string }) {

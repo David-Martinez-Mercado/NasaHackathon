@@ -4,7 +4,7 @@ export type LngLat = [number, number];
 export type Ring = LngLat[];
 
 export type LayerKind = 'temperature' | 'humidity' | 'rain' | 'drought' | 'vulnerability';
-export type MapTool = 'temperature' | 'humidity' | 'water' | 'vulnerability';
+export type MapTool = 'temperature' | 'humidity' | 'water' | 'vulnerability' | 'rain' | 'drought';
 export type AlertKind = 'erosion' | 'drought' | 'stress';
 export type Severity = 'low' | 'medium' | 'high';
 
@@ -173,9 +173,48 @@ export interface NewField extends FieldValues {
   polygon: Ring;
 }
 
+export type RiskKey = 'heat' | 'drought' | 'moisture' | 'stress' | 'vulnerability' | 'rain';
+export type RiskLevel = 'low' | 'medium' | 'high';
+
+/** One risk of the field's zone, computed by a model at the field's location. */
+export interface Risk {
+  key: RiskKey;
+  /** null = no data here, or informational only (rain) */
+  level: RiskLevel | null;
+  value: number | null;
+  unit: string;
+  /** Model concept id, e.g. c05b */
+  model: string;
+  asOf: string | null;
+  resolutionMeters: number | null;
+  interpolated: boolean | null;
+  nearbyPoints: number | null;
+  criticalPoints: number | null;
+  radiusKm: number | null;
+}
+
+export type FactorKey = 'income' | 'soil' | 'water' | 'erosion' | 'local';
+export interface Factor {
+  key: FactorKey;
+  /** 0–100: how well the crop does on this criterion */
+  score: number;
+  /** effective weight after the farmer's priorities and the zone's risks */
+  weight: number;
+  /** True when there is no data for this criterion: it counts as neutral (50) instead of being invented. */
+  noData: boolean;
+}
+
 export interface CropSuggestion {
   code: string;
   name: string;
+  factors: Factor[];
+  yieldTHa: number | null;
+  historicalYieldTHa: number | null;
+  cycleDays: number | null;
+  fixesNitrogen: boolean;
+  waterDemand: 'low' | 'medium' | 'high';
+  soilCover: 'low' | 'medium' | 'high';
+  preferred: boolean;
   /** 0–100, relative order between the options (not a chance of success). */
   score: number;
   /** % of Weld cropland that grew the base crop one year and this crop the next. */
@@ -187,8 +226,54 @@ export interface CropSuggestion {
   otherFamily: boolean | null;
 }
 
+export interface Priorities {
+  water: number;
+  soil: number;
+  erosion: number;
+  income: number;
+}
+
 export interface CropSuggestions {
   baseCrop: string | null;
   baseFrom: 'current' | 'history' | null;
+  /** The base crop scored with the same criteria, to compare against. */
+  current: CropSuggestion | null;
   items: CropSuggestion[];
+  priorities: Priorities;
+  weights: Record<FactorKey, number>;
+  /** water_risk | water_irrigation | erosion_vulnerability */
+  adjustments: string[];
+  risks: Risk[];
+  traitsVerified: boolean;
+}
+
+export interface ModelInfo {
+  concept: string;
+  name: string;
+  role: string;
+  algorithm: string;
+  metric: string;
+  value: number | null;
+  ciLow: number | null;
+  ciHigh: number | null;
+  baseline: string | null;
+  baselineValue: number | null;
+  skill: number | null;
+  trainedRows: number;
+  notes: string[];
+}
+
+export interface PredictionStatus {
+  version: string;
+  asOf: string;
+  limitations: string[];
+  models: ModelInfo[];
+}
+
+export interface ModelTable {
+  title: string;
+  unit: string | null;
+  asOf: string | null;
+  notes: string[];
+  rows: Record<string, string | number | null>[];
 }

@@ -14,7 +14,8 @@ En desarrollo: `http://localhost:3000/graphql` abre el Sandbox de Apollo. En pro
 | `parcela`, `parcelas` | listo | Con preferencias e historial (sin una consulta por parcela) |
 | `guardarPreferencias`, `guardarHistorial`, `eliminarHistorial`, `historial` | listo | Reemplazan atómicamente; validan cultivos y reglas entre campos |
 | `capa`, `puntos`, `series`, `tablaModelo`, `alertas`, `resumenHumedad`, `resumenClima`, `estadoPredicciones` | listo | Salen de las predicciones de `ml/` ya importadas a PostgreSQL |
-| `sugerenciasCultivo` | listo | Otros cultivos ordenados con la rotación observada (c02), el precio esperado (c10) y el cambio de familia botánica. **No** usa agua, suelo ni maquinaria (faltan parámetros agronómicos) y no es el motor de reglas |
+| `sugerenciasCultivo(parcelaId, prioridades?)` | listo | Cultivos evaluados con los modelos de ml/ (rotación c02, precio c10, rendimiento c01, ciclo c07), los riesgos de la zona y las 4 prioridades del agricultor (las guardadas o las que se pasen para probar sin guardar). Devuelve el puntaje desglosado por criterio. Las clasificaciones de agua, nitrógeno y cobertura (`rasgos-cultivo.json`) son generales y `rasgosVerificados=false` |
+| `riesgosParcela(parcelaId)` | listo | Calor (c05b), sequía (c05a), humedad (c04), estrés cercano (c03), vulnerabilidad (c06) y lluvia (c08b) en el punto de la parcela, con nivel BAJO/MEDIO/ALTO por umbrales provisionales |
 | `datosNoDisponibles` | listo | Lo que el frontend pide pero no hay modelo ni dato (erosión, reservas de agua, elevación) |
 | `recomendaciones`, `simularEscenario` | listo, esperan al motor | `NO_IMPLEMENTADO` / `FUENTE_NO_DISPONIBLE` hasta conectar `motor/` y `datos/` |
 | `guardarEscenario`, `escenarios` | listo, esperan al motor | El resultado lo calcula el servidor; el cliente no manda resultados |

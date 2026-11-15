@@ -44,6 +44,23 @@ type AlertaResumen {
   valor: Float!
 }
 
+"""Cuánto aporta un criterio al puntaje de un cultivo."""
+type AporteCultivo {
+  """ingreso | suelo | agua | erosion | local"""
+  factor: String!
+
+  """Peso efectivo del criterio (ya con prioridades y riesgos de la zona)."""
+  peso: Float!
+
+  """0–100: qué tan bien le va al cultivo en este criterio."""
+  puntaje: Int!
+
+  """
+  true = no hay dato de este criterio para el cultivo: cuenta como neutro (50), no se inventa.
+  """
+  sinDato: Boolean!
+}
+
 input CajaInput {
   """oeste, sur, este, norte (grados)"""
   bbox: [Float!]!
@@ -317,6 +334,19 @@ type Parcela {
   version: Int!
 }
 
+"""
+Peso efectivo de cada criterio tras aplicar prioridades y riesgos de la zona.
+"""
+type PesosEvaluacion {
+  agua: Float!
+  erosion: Float!
+  ingreso: Float!
+
+  """Práctica local observada (c02); peso fijo y bajo."""
+  local: Float!
+  suelo: Float!
+}
+
 type Preferencias {
   actualizadaEn: DateTime!
 
@@ -453,6 +483,11 @@ type Query {
   resumenClima: ResumenClima
   resumenHumedad: ResumenHumedad
 
+  """
+  Riesgos de la zona de la parcela (calor, sequía, humedad del suelo, estrés, vulnerabilidad) con los modelos de ml/.
+  """
+  riesgosParcela(parcelaId: ID!): RiesgosParcela!
+
   """Estado del servidor y de cada pieza de la que depende."""
   salud: EstadoServicio!
 
@@ -465,9 +500,9 @@ type Query {
   simularEscenario(input: SimulacionInput!): [RotacionEvaluada!]!
 
   """
-  Otros cultivos que se podrían sembrar en la parcela, ordenados con datos de ml/ (rotación observada, precio esperado) y una regla general de rotación. No es el motor de reglas agronómicas: no usa agua, suelo ni maquinaria.
+  Otros cultivos que se podrían sembrar en la parcela, evaluados con los modelos de ml/ (rotación, precio, rendimiento, ciclo), los riesgos de la zona y las prioridades del agricultor (las guardadas, o las que se pasen en `prioridades` para probar sin guardar). No es el motor de reglas agronómicas: las clasificaciones de agua, nitrógeno y cobertura son generales.
   """
-  sugerenciasCultivo(parcelaId: ID!): SugerenciasCultivo!
+  sugerenciasCultivo(parcelaId: ID!, prioridades: PrioridadesInput): SugerenciasCultivo!
 
   """Salidas de modelos sin capa: "rendimiento", "rotacion", "ciclo"."""
   tablaModelo(clave: String!): TablaModelo
@@ -544,6 +579,44 @@ type ResumenHumedad {
   superficie: Float!
 }
 
+"""
+Un riesgo de la zona de la parcela, calculado con un modelo de ml/ en el punto de la parcela. Los niveles usan umbrales provisionales ([POR VERIFICAR] con el agrónomo): sirven para comparar, no para decidir.
+"""
+type RiesgoZona {
+  """calor | sequia | humedad | estres | vulnerabilidad | lluvia"""
+  clave: String!
+  datosAl: String
+
+  """true = el detalle dentro de la parcela es interpolación."""
+  interpolada: Boolean
+
+  """Modelo de ml/ del que sale, p. ej. c05b"""
+  modelo: String!
+
+  """BAJO | MEDIO | ALTO. null = sin dato o solo informativo (lluvia)."""
+  nivel: String
+
+  """Solo estres: puntos evaluados dentro del radio."""
+  puntosCercanos: Int
+
+  """Solo estres: cuántos de ellos son críticos."""
+  puntosCriticos: Int
+
+  """Solo estres: radio de búsqueda en km."""
+  radioKm: Int
+
+  """Tamaño de celda del dato, en metros."""
+  resolucionM: Int
+  unidad: String!
+  valor: Float
+}
+
+type RiesgosParcela {
+  """Límites que hay que mostrar junto a los riesgos."""
+  advertencias: [String!]!
+  riesgos: [RiesgoZona!]!
+}
+
 type RotacionEvaluada {
   """Cultivo de cada uno de los 3 años (códigos)"""
   anios: [String!]!
@@ -606,27 +679,49 @@ enum SistemaRiego {
 }
 
 """
-Un cultivo que se podría sembrar en lugar del actual, con los datos que lo respaldan (nada se inventa: lo que falta viene null).
+Un cultivo evaluado con los modelos de ml/, los riesgos de la zona y las prioridades del agricultor.
 """
 type SugerenciaCultivo {
+  """El puntaje desglosado por criterio."""
+  aportes: [AporteCultivo!]!
+
   """
   Cambio % del precio entre el último dato y el último mes pronosticado (c10, exploratorio).
   """
   cambioPrecioPct: Float
 
   """
+  Días de siembra a cosecha, mediana de 10 años (c07). Pocos cultivos tienen dato.
+  """
+  cicloDias: Int
+
+  """
+  baja | media | alta (cobertura del suelo contra la erosión). Clasificación general [POR VERIFICAR].
+  """
+  coberturaSuelo: String!
+
+  """
   Código del catálogo (query cultivos); se puede guardar como cultivoActual.
   """
   cultivo: String!
+
+  """baja | media | alta. Clasificación general [POR VERIFICAR]."""
+  demandaAgua: String!
+
+  """Fija nitrógeno (leguminosa). Clasificación general [POR VERIFICAR]."""
+  fijaNitrogeno: Boolean!
   nombre: String!
 
   """
-  true = otra familia botánica que el cultivo base (regla general de rotación). null si no se conoce alguna de las dos.
+  true = otra familia botánica que el cultivo base. null si no se conoce.
   """
   otraFamilia: Boolean
 
+  """El agricultor lo marcó como preferido."""
+  preferido: Boolean!
+
   """
-  % de los píxeles de cultivo de Weld que tenían el cultivo base el año anterior y sembraron este (modelo c02, CDL).
+  % de los píxeles de cultivo de Weld que tenían el cultivo base el año anterior y sembraron este (c02, CDL).
   """
   probabilidadSiguientePct: Float
 
@@ -635,24 +730,46 @@ type SugerenciaCultivo {
   """
   puntaje: Int!
 
-  """Unidad del precio, p. ej. "$ / BU"."""
+  """
+  Rendimiento histórico del condado en t/ha, para comparar con el estimado.
+  """
+  rendimientoHistoricoTHa: Float
+
+  """
+  Rendimiento estimado del condado en t/ha (c01). Solo maíz y trigo de invierno.
+  """
+  rendimientoTHa: Float
   unidadPrecio: String
 }
 
 type SugerenciasCultivo {
-  """Límites que hay que mostrar junto a las sugerencias."""
+  """El cultivo base evaluado con los mismos criterios, para comparar."""
+  actual: SugerenciaCultivo
   advertencias: [String!]!
+
+  """
+  Códigos de los ajustes por riesgos: agua_riesgo | agua_riego | erosion_vulnerabilidad.
+  """
+  ajustes: [String!]!
 
   """Cultivo desde el que se calcula (el actual o el último del historial)."""
   cultivoBase: String
-
-  """Cómo se calculó el puntaje, en una frase."""
   metodo: String!
 
-  """
-  "actual" o "historial": de dónde salió el cultivo base. null si no hay.
-  """
+  """"actual" o "historial". null si no hay."""
   origenBase: String
+  pesos: PesosEvaluacion!
+
+  """
+  Las prioridades con las que se calculó (las guardadas o las que se probaron).
+  """
+  prioridades: Prioridades!
+
+  """
+  false = las clasificaciones de agua, nitrógeno y cobertura son generales y aún no están verificadas.
+  """
+  rasgosVerificados: Boolean!
+  riesgos: [RiesgoZona!]!
   sugerencias: [SugerenciaCultivo!]!
 }
 

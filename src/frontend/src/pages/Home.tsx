@@ -1,9 +1,10 @@
 import { CloudDrizzle, Sun, TrendingUp, Triangle } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useApp, useMapConfig } from '../AppContext';
 import { CropSuggestions } from '../components/CropSuggestions';
 import { Card, Notice, Panel, Slider } from '../components/ui';
-import { fetchAlerts, fetchStressPoints, type AlertKind } from '../data';
+import { LevelPill, RISK_INFO } from '../components/risk';
+import { fetchAlerts, fetchRisks, fetchStressPoints, type AlertKind } from '../data';
 import { useLayer, useRemote } from '../hooks';
 
 const signed = (v: number, unit: string) => `${v > 0 ? '+' : ''}${v}${unit}`;
@@ -18,6 +19,7 @@ export function Home() {
   const setAlert = (kind: AlertKind | null) => setParams(kind ? { alert: kind } : {}, { replace: true });
 
   const drought = useLayer('drought');
+  const risks = useRemote(() => fetchRisks(currentField!.id), [currentField?.id], !!currentField);
   const stress = useRemote(fetchStressPoints, [], alert === 'stress');
 
   useMapConfig(
@@ -57,6 +59,17 @@ export function Home() {
         <small className="note-list">
           The sliders repaint the heat-wave and rain layers. They show how the model reacts to a change; they are not a climate projection.
         </small>
+      </Card>
+
+      <Card title="Risks in your zone" className="risk-summary">
+        {risks.error && <Notice kind="error">{risks.error}</Notice>}
+        {!currentField && <p className="empty">Add a field to see the risks of its zone.</p>}
+        <div className="risk-strip">
+          {(risks.data ?? []).filter((r) => r.level).map((r) => (
+            <span key={r.key} className="risk-chip">{RISK_INFO[r.key].title}<LevelPill level={r.level} /></span>
+          ))}
+        </div>
+        {currentField && <Link className="see-all" to="/risks">See details and the map →</Link>}
       </Card>
 
       <CropSuggestions field={currentField} title="Crop suggestions" />

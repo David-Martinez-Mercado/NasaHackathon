@@ -1,0 +1,24 @@
+{
+  "fuente": "Clasificación agronómica general (FAO, extensión universitaria): categorías gruesas, no valores medidos. [POR VERIFICAR] contra INIFAP / extensión local por el agrónomo antes de presentarla como definitiva.",
+  "verificado": false,
+  "escalas": {
+    "demandaAgua": { "baja": 1, "media": 0.6, "alta": 0.2 },
+    "nitrogeno": { "fija": 1, "neutro": 0.5, "extrae": 0.2 },
+    "coberturaSuelo": { "alta": 1, "media": 0.6, "baja": 0.25 }
+  },
+  "cultivos": {
+    "maiz":      { "demandaAgua": "alta",  "nitrogeno": "extrae", "coberturaSuelo": "baja" },
+    "sorgo":     { "demandaAgua": "baja",  "nitrogeno": "extrae", "coberturaSuelo": "media" },
+    "trigo":     { "demandaAgua": "media", "nitrogeno": "extrae", "coberturaSuelo": "media" },
+    "avena":     { "demandaAgua": "media", "nitrogeno": "neutro", "coberturaSuelo": "alta" },
+    "cebada":    { "demandaAgua": "media", "nitrogeno": "neutro", "coberturaSuelo": "media" },
+    "alfalfa":   { "demandaAgua": "alta",  "nitrogeno": "fija",   "coberturaSuelo": "alta" },
+    "soya":      { "demandaAgua": "media", "nitrogeno": "fija",   "coberturaSuelo": "baja" },
+    "frijol":    { "demandaAgua": "media", "nitrogeno": "fija",   "coberturaSuelo": "baja" },
+    "girasol":   { "demandaAgua": "baja",  "nitrogeno": "neutro", "coberturaSuelo": "baja" },
+    "remolacha": { "demandaAgua": "alta",  "nitrogeno": "neutro", "coberturaSuelo": "baja" },
+    "papa":      { "demandaAgua": "alta",  "nitrogeno": "extrae", "coberturaSuelo": "baja" },
+    "chile":     { "demandaAgua": "alta",  "nitrogeno": "extrae", "coberturaSuelo": "baja" },
+    "veza":      { "demandaAgua": "baja",  "nitrogeno": "fija",   "coberturaSuelo": "alta" }
+  }
+}

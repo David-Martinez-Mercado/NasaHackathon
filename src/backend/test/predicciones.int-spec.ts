@@ -273,6 +273,61 @@ describe('Predicciones de ml/ (export real, PostgreSQL/PostGIS real)', () => {
       expect(s.advertencias.join(' ')).toMatch(/no sustituye/);
     });
 
+    it('riesgosParcela: evalúa la zona con los modelos de ml/ y declara de dónde sale cada dato', async () => {
+      const id = (await gql(app, `mutation { crearParcela(input: { punto: { latitud: 40.42, longitud: -104.71 } }) { id } }`)).body.data.crearParcela.id;
+      const res = await gql(app, `query($id: ID!) { riesgosParcela(parcelaId: $id) { advertencias
+        riesgos { clave nivel valor unidad modelo datosAl resolucionM interpolada puntosCercanos puntosCriticos radioKm } } }`, { id });
+      expect(res.body.errors).toBeUndefined();
+      const r = Object.fromEntries(res.body.data.riesgosParcela.riesgos.map((x: any) => [x.clave, x]));
+      expect(Object.keys(r).sort()).toEqual(['calor', 'estres', 'humedad', 'lluvia', 'sequia', 'vulnerabilidad']);
+      expect(r.calor).toMatchObject({ modelo: 'c05b', unidad: '%', interpolada: true });
+      expect(['BAJO', 'MEDIO', 'ALTO']).toContain(r.calor.nivel);
+      expect(r.sequia.modelo).toBe('c05a');
+      expect(r.estres.puntosCercanos).toBeGreaterThanOrEqual(r.estres.puntosCriticos);
+      expect(r.estres.radioKm).toBe(10);
+      expect(r.lluvia.nivel).toBeNull(); // la lluvia es informativa, no un riesgo con semáforo
+      expect(codigo(await gql(app, `{ riesgosParcela(parcelaId: "99999999-9999-4999-8999-999999999999") { riesgos { clave } } }`))).toBe('NO_ENCONTRADO');
+    });
+
+    it('sugerenciasCultivo: las prioridades cambian el orden (ingreso vs suelo) y se pueden probar sin guardar', async () => {
+      await prisma.cultivo.createMany({ data: [
+        { codigo: 'maiz', nombre: 'Maíz', familiaBotanica: 'Poaceae' }, { codigo: 'soya', nombre: 'Soya', familiaBotanica: 'Fabaceae' },
+        { codigo: 'sorgo', nombre: 'Sorgo', familiaBotanica: 'Poaceae' }, { codigo: 'avena', nombre: 'Avena', familiaBotanica: 'Poaceae' },
+        { codigo: 'alfalfa', nombre: 'Alfalfa', familiaBotanica: 'Fabaceae' }, { codigo: 'trigo', nombre: 'Trigo', familiaBotanica: 'Poaceae' },
+      ], skipDuplicates: true });
+      const id = (await gql(app, `mutation { crearParcela(input: { punto: { latitud: 40.42, longitud: -104.71 }, cultivoActual: "maiz",
+        preferencias: { sistemaRiego: TEMPORAL } }) { id } }`)).body.data.crearParcela.id;
+      const consulta = `query($id: ID!, $p: PrioridadesInput) { sugerenciasCultivo(parcelaId: $id, prioridades: $p) {
+        prioridades { agua suelo erosion ingreso } pesos { agua suelo erosion ingreso local } ajustes rasgosVerificados
+        actual { cultivo puntaje } sugerencias { cultivo puntaje aportes { factor puntaje peso } fijaNitrogeno demandaAgua } } }`;
+      const dinero = (await gql(app, consulta, { id, p: { agua: 0, suelo: 0, erosion: 0, ingreso: 100 } })).body.data.sugerenciasCultivo;
+      const tierra = (await gql(app, consulta, { id, p: { agua: 0, suelo: 100, erosion: 0, ingreso: 0 } })).body.data.sugerenciasCultivo;
+      expect(dinero.prioridades).toEqual({ agua: 0, suelo: 0, erosion: 0, ingreso: 100 });
+      expect(dinero.pesos).toMatchObject({ agua: 0, suelo: 0, erosion: 0, ingreso: 1, local: 0.15 });
+      expect(dinero.rasgosVerificados).toBe(false); // las clasificaciones generales se declaran sin verificar
+      expect(dinero.actual.cultivo).toBe('maiz');
+      // cuidando el suelo, las leguminosas (fijan nitrógeno) suben al primer lugar
+      expect(tierra.sugerencias[0].fijaNitrogeno).toBe(true);
+      expect(dinero.sugerencias.map((x: any) => x.cultivo)).not.toEqual(tierra.sugerencias.map((x: any) => x.cultivo));
+      for (const s of dinero.sugerencias) expect(s.aportes.find((a: any) => a.factor === 'suelo')?.peso).toBe(0);
+      // las prioridades guardadas se usan cuando no se pasan otras
+      const guardadas = (await gql(app, consulta, { id })).body.data.sugerenciasCultivo;
+      expect(guardadas.prioridades).toEqual({ agua: 50, suelo: 50, erosion: 50, ingreso: 50 });
+      expect(guardadas.ajustes.length).toBeGreaterThanOrEqual(0);
+    });
+
+    it('sugerenciasCultivo: respeta los cultivos excluidos y marca los preferidos', async () => {
+      await prisma.cultivo.createMany({ data: [
+        { codigo: 'maiz', nombre: 'Maíz', familiaBotanica: 'Poaceae' }, { codigo: 'soya', nombre: 'Soya', familiaBotanica: 'Fabaceae' },
+        { codigo: 'sorgo', nombre: 'Sorgo', familiaBotanica: 'Poaceae' }, { codigo: 'avena', nombre: 'Avena', familiaBotanica: 'Poaceae' },
+      ], skipDuplicates: true });
+      const id = (await gql(app, `mutation { crearParcela(input: { punto: { latitud: 40.42, longitud: -104.71 }, cultivoActual: "maiz",
+        preferencias: { sistemaRiego: TEMPORAL, cultivosExcluidos: ["soya"], cultivosPreferidos: ["avena"] } }) { id } }`)).body.data.crearParcela.id;
+      const s = (await gql(app, `query($id: ID!) { sugerenciasCultivo(parcelaId: $id) { sugerencias { cultivo preferido } } }`, { id })).body.data.sugerenciasCultivo;
+      expect(s.sugerencias.map((x: any) => x.cultivo)).not.toContain('soya');
+      expect(s.sugerencias.find((x: any) => x.cultivo === 'avena')?.preferido).toBe(true);
+    });
+
     it('sugerenciasCultivo: sin cultivo ni historial lo avisa, y una parcela inexistente da NO_ENCONTRADO', async () => {
       const id = (await gql(app, `mutation { crearParcela(input: { punto: { latitud: 40.4, longitud: -104.7 } }) { id } }`)).body.data.crearParcela.id;
       const res = await gql(app, `query($id: ID!) { sugerenciasCultivo(parcelaId: $id) { cultivoBase advertencias } }`, { id });
