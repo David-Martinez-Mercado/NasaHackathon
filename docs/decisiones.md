@@ -21,3 +21,17 @@
 - Detalle de versiones y estado de cada recurso: `F:\FieldShift-Recursos\enlaces.md`.
 - Afecta a: ingeniero-datos (fuentes y coordenadas), agronomo-reglas (cultivos de Weld), frontend (mapa inicial),
   pitch (caso de uso). Pendiente que el equipo decida si el caso de uso del pitch sigue siendo Durango.
+
+## 2026-11-14 — Pipeline de evaluación de modelos de IA (`ml/`)
+- Se añade el paquete Python `ml/` (separado del backend) para comparar algoritmos en los 11 conceptos de IA
+  con 80 % entrenamiento / 20 % prueba. Ver `ml/README.md`.
+- El ML **entrega insumos** al motor de reglas (rendimiento esperado, riesgo de sequía y calor, humedad, estrés);
+  la recomendación la sigue dando y explicando el motor. "Sin ML en el núcleo" se mantiene.
+- La prueba es siempre el 20 % **final** en el tiempo. La partición aleatoria infla los resultados y solo queda
+  como opción para comparar. Todo modelo se reporta contra un modelo base ingenuo.
+- Herramientas: uv, Polars + Parquet, DuckDB (QuickStats), scikit-learn, XGBoost, LightGBM, CatBoost, statsforecast,
+  Prophet, mlforecast, neuralforecast (PyTorch CUDA), Optuna, MLflow, pandera, SHAP.
+- Recurso nuevo: `Externos\24-Census-Condados` (límites de condado, dominio público) para promediar PRISM por condado.
+- Sin datos todavía: SMAP, MODIS NDVI, SRTM, IMERG, GLDAS/NLDAS y OpenET. Por eso el concepto 4 usa `GWETROOT` de
+  NASA POWER, la pendiente del concepto 6 sale de SSURGO, y los conceptos 9 y 11 quedan pendientes.
+- Afecta a: ingeniero-ia e ingeniero-datos (insumos disponibles), agronomo-reglas (qué pronósticos puede usar el motor).

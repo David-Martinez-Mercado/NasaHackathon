@@ -1,0 +1,88 @@
+[project]
+name = "fieldshift-ml"
+version = "0.1.0"
+description = "Model evaluation pipeline for Field Shift (NASA Space Apps 2026)"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    # tables
+    "polars>=1.20",
+    "pyarrow>=18",
+    "duckdb>=1.1",
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "scipy>=1.13",
+    # geospatial
+    "xarray>=2024.10",
+    "netcdf4>=1.7",
+    "h5netcdf>=1.4",
+    "rasterio>=1.4",
+    "rioxarray>=0.18",
+    "geopandas>=1.0",
+    "pyogrio>=0.10",
+    # models
+    "scikit-learn>=1.6",
+    "xgboost>=2.1",
+    "lightgbm>=4.5",
+    "catboost>=1.2.7",
+    "statsforecast>=2.0",
+    "statsmodels>=0.14",
+    "prophet>=1.1.6",
+    "pymannkendall>=1.4",
+    # experiment tooling
+    "optuna>=4.1",
+    "mlflow>=2.19",
+    "pandera[polars]>=0.22",
+    "shap>=0.46",
+    # app
+    "typer>=0.15",
+    "pydantic-settings>=2.7",
+    "matplotlib>=3.9",
+    "openpyxl>=3.1",
+    # notebooks
+    "ipykernel>=6.29",
+    "papermill>=2.6",
+    "nbformat>=5.10",
+    "nbconvert>=7.16",
+    "h5py>=3.16.0",
+    "mlforecast>=1.1.0",
+]
+
+[project.optional-dependencies]
+dl = ["torch>=2.5", "neuralforecast>=3.0"]
+rl = ["stable-baselines3>=2.4", "gymnasium>=1.0"]
+
+[project.scripts]
+fieldshift-ml = "fieldshift_ml.cli:app"
+
+[dependency-groups]
+dev = ["ruff>=0.8", "mypy>=1.13", "pytest>=8.3", "pre-commit>=4.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["fieldshift_ml"]
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu124" }]
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
