@@ -21,3 +21,13 @@
 - Detalle de versiones y estado de cada recurso: `F:\FieldShift-Recursos\enlaces.md`.
 - Afecta a: ingeniero-datos (fuentes y coordenadas), agronomo-reglas (cultivos de Weld), frontend (mapa inicial),
   pitch (caso de uso). Pendiente que el equipo decida si el caso de uso del pitch sigue siendo Durango.
+
+## 2026-11-15 — Frontend en React y diseño tomado de Figma
+- Por decisión del usuario el frontend será **React** (antes Angular/Ionic). Backend sin cambios: NestJS + GraphQL + PostgreSQL.
+- El diseño de referencia es el archivo de Figma `2nS935kN9c36rWRDHqbxt7`; capturas en `docs/diseno/figma/`.
+  El mapa debe verse lo más parecido posible a ese diseño.
+- Las predicciones de `ml/` (repo `NasaHackathon`, rama `validacion-de-datos`) alimentarán los colores de las capas del mapa.
+- Propuesto, pendiente de aprobación (ver `docs/plan.md`): MapLibre GL JS en lugar de Leaflet, y predicciones de ML
+  exportadas por lotes a PostGIS en lugar de un servicio Python en línea.
+- Afecta a: frontend-agricultor (cambia de framework), backend-api (contrato de capas del mapa), ingeniero-datos,
+  devops-despliegue (imagen del frontend). Pendiente actualizar las reglas del proyecto y la definición del agente frontend.
