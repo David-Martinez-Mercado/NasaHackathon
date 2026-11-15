@@ -166,3 +166,15 @@ Aplicada a c02, c03, c04, c05a, c05b y c08b (`ml/`). Para el motor de reglas y q
   y Local practice (rotación c02 y ciclo c07); capas de lluvia y sequía en la barra del mapa; resumen de riesgos en Home.
 - **Sigue pendiente:** agua disponible y maquinaria por cultivo, ciclo de 3 años, erosión y reservas de agua (sin dato).
 
+## 2026-11-16 — Elevación y erosión
+- **Elevación y pendiente:** salen del DEM NASADEM de 30 m ya descargado (carpeta `NASA/05-SRTM` de los recursos), pendiente con el método de Horn;
+  se promedian en la rejilla de 3.4 km del mapa. Son datos fijos (misión SRTM, febrero de 2000). Nuevo módulo `ml/fieldshift_ml/io/dem.py`.
+- **Potencial de erosión (índice relativo, no calibrado):** K (erosionabilidad `kffact` del horizonte superficial de SSURGO, ponderada por componente) ×
+  S (pendiente, ecuaciones de RUSLE) × lluvia (normal anual de PRISM como sustituto de la erosividad R). Se evalúa en ~11,500 píxeles de cultivo (CDL).
+  **No incluye** longitud de pendiente ni cobertura o manejo, y no hay erosión medida para calibrarlo: se rotula como potencial, no como toneladas de suelo.
+  La capa muestra el percentil (0–100); los puntos y la alerta usan umbrales provisionales (3 y 1.8 veces el píxel típico) [POR VERIFICAR].
+- **Export v2** (`ml/deploy/exports/v2`): 8 capas (+ elevación, pendiente, erosión), puntos de estrés y de erosión (106 en total) y la alerta de erosión.
+  `v1` se conserva. El backend (migración `20261116000000_terreno_erosion`) las importa y la erosión sube el peso del criterio de erosión en las sugerencias.
+- **Frontend:** pantalla de terreno en la barra del mapa (elevación, pendiente, erosión), alerta de erosión seleccionable en Home y tres tarjetas nuevas en Risks.
+- **Sigue sin dato:** reservas de agua y balance hídrico; recomendaciones agronómicas por capa.
+
