@@ -167,6 +167,7 @@ export async function setFieldCrop(field: Field, crop: string): Promise<Field> {
 
 const RISK_KEY: Record<string, RiskKey> = {
   calor: 'heat', sequia: 'drought', humedad: 'moisture', estres: 'stress', vulnerabilidad: 'vulnerability', lluvia: 'rain',
+  erosion: 'erosion', pendiente: 'slope', elevacion: 'elevation',
 };
 const LEVEL: Record<string, RiskLevel> = { BAJO: 'low', MEDIO: 'medium', ALTO: 'high' };
 const FACTOR: Record<string, FactorKey> = { ingreso: 'income', suelo: 'soil', agua: 'water', erosion: 'erosion', local: 'local' };
@@ -290,6 +291,7 @@ export async function saveHistory(fieldId: string, record: { year: number; crop:
 
 const LAYER_TYPE: Record<LayerKind, string> = {
   temperature: 'TEMPERATURA', humidity: 'HUMEDAD', rain: 'LLUVIA', drought: 'SEQUIA', vulnerability: 'VULNERABILIDAD',
+  elevation: 'ELEVACION', slope: 'PENDIENTE', erosion: 'EROSION',
 };
 /**
  * Colors must match the legend exactly, so no layer fades its low values to transparent (that made dry soil look olive instead of
@@ -304,6 +306,9 @@ const LAYER_LOOK: Record<LayerKind, { title: string; clipToFields: boolean; fade
   rain: { title: 'Rain probability', clipToFields: false, fadeLow: false, ramp: RAIN_RAMP },
   drought: { title: 'Drought risk', clipToFields: false, fadeLow: false },
   vulnerability: { title: 'Vulnerability', clipToFields: true, fadeLow: false },
+  elevation: { title: 'Elevation', clipToFields: false, fadeLow: false },
+  slope: { title: 'Slope', clipToFields: false, fadeLow: false },
+  erosion: { title: 'Erosion potential', clipToFields: true, fadeLow: false },
 };
 /** Layers the "What if?" sliders change (the model's sensitivity, not a climate projection). */
 export const SCENARIO_LAYERS: readonly LayerKind[] = ['temperature', 'rain'];
@@ -370,32 +375,35 @@ export function valueAt(layer: GridLayer, at: LngLat): number | null {
 
 const SEVERITY: Record<string, Severity> = { ALTA: 'high', MEDIA: 'medium', BAJA: 'low' };
 
-export async function fetchStressPoints(): Promise<MapPoint[]> {
+async function fetchPoints(type: 'ESTRES' | 'EROSION', kind: 'stress' | 'erosion', criticalLabel: string): Promise<MapPoint[]> {
   const data = await gql<{
     puntos: { puntos: { id: string; latitud: number; longitud: number; severidad: string | null; etiqueta: string | null }[] } | null;
-  }>('query { puntos(tipo: ESTRES) { puntos { id latitud longitud severidad etiqueta } } }');
+  }>(`query($t: TipoPunto!) { puntos(tipo: $t) { puntos { id latitud longitud severidad etiqueta } } }`, { t: type });
   return (data.puntos?.puntos ?? []).map((p) => ({
     id: p.id,
     position: [p.longitud, p.latitud],
-    kind: 'stress',
-    label: p.severidad === 'ALTA' ? 'Critical stress point' : undefined,
+    kind,
+    label: p.severidad === 'ALTA' ? criticalLabel : undefined,
     severity: p.severidad ? SEVERITY[p.severidad] : undefined,
   }));
 }
+
+export const fetchStressPoints = () => fetchPoints('ESTRES', 'stress', 'Critical stress point');
+export const fetchErosionPoints = () => fetchPoints('EROSION', 'erosion', 'High erosion potential');
 
 export async function fetchAlerts(): Promise<AlertSummary[]> {
   const data = await gql<{ alertas: { tipo: string; valor: number; unidad: string; detalle: string; definicion: string }[] }>(
     'query { alertas { tipo valor unidad detalle definicion } }',
   );
   const byKind = new Map(data.alertas.map((a) => [a.tipo, a]));
-  const make = (kind: 'drought' | 'stress', title: string): AlertSummary => {
+  const make = (kind: 'drought' | 'stress' | 'erosion', title: string): AlertSummary => {
     const a = byKind.get(kind);
     return a
       ? { kind, title, value: `${a.valor}${a.unidad}`, detail: a.detalle, definition: a.definicion, available: true }
       : { kind, title, value: 'N/A', detail: 'Not loaded on the server yet', definition: '', available: false };
   };
   return [
-    { kind: 'erosion', title: 'Erosion points', value: 'N/A', detail: 'No erosion data or model yet', definition: '', available: false },
+    make('erosion', 'Erosion points'),
     make('drought', 'Droughts'),
     make('stress', 'Stress points'),
   ];

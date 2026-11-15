@@ -3,8 +3,8 @@
 export type LngLat = [number, number];
 export type Ring = LngLat[];
 
-export type LayerKind = 'temperature' | 'humidity' | 'rain' | 'drought' | 'vulnerability';
-export type MapTool = 'temperature' | 'humidity' | 'water' | 'vulnerability' | 'rain' | 'drought';
+export type LayerKind = 'temperature' | 'humidity' | 'rain' | 'drought' | 'vulnerability' | 'elevation' | 'slope' | 'erosion';
+export type MapTool = 'temperature' | 'humidity' | 'water' | 'vulnerability' | 'rain' | 'drought' | 'terrain';
 export type AlertKind = 'erosion' | 'drought' | 'stress';
 export type Severity = 'low' | 'medium' | 'high';
 
@@ -173,7 +173,7 @@ export interface NewField extends FieldValues {
   polygon: Ring;
 }
 
-export type RiskKey = 'heat' | 'drought' | 'moisture' | 'stress' | 'vulnerability' | 'rain';
+export type RiskKey = 'heat' | 'drought' | 'moisture' | 'stress' | 'vulnerability' | 'erosion' | 'slope' | 'elevation' | 'rain';
 export type RiskLevel = 'low' | 'medium' | 'high';
 
 /** One risk of the field's zone, computed by a model at the field's location. */

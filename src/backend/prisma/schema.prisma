@@ -147,10 +147,14 @@ enum TipoCapa {
   LLUVIA
   SEQUIA
   VULNERABILIDAD
+  ELEVACION
+  PENDIENTE
+  EROSION
 }
 
 enum TipoPunto {
   ESTRES
+  EROSION
 }
 
 enum Severidad {

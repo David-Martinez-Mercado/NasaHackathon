@@ -62,9 +62,7 @@ WHATIF_NOTE = ("Los escenarios de lluvia y temperatura mueven las variables de c
 TWO_POINTS_NOTE = ("El clima viene de 2 puntos de reanálisis (~50 km): dentro de una parcela el valor es uno solo y el "
                    "degradado entre puntos es interpolación, no variación medida.")
 UNAVAILABLE = [
-    "Puntos de erosión (no hay modelo ni dato)",
     "Reservas de agua y balance hídrico (no hay fuente con licencia verificada)",
-    "Elevación (SRTM aún no se descarga)",
     "Recomendaciones agronómicas por capa (las entrega el motor de reglas, no el ML)",
 ]
 LIMITATIONS = [
@@ -236,8 +234,55 @@ def _vulnerability_layer(run: _Run) -> Layer:
                   "SSURGO + PRISM normales 1991–2020 + CDL", 3_400, False, date.today(),
                   ["Índice relativo (percentil entre los píxeles de cultivo muestreados), no una medida física.",
                    "Cada celda promedia píxeles de 30 m muestreados; las celdas vacías no tienen cultivo muestreado.",
-                   "La pendiente sale de SSURGO porque SRTM aún no está descargado.",
+                   "El modelo usa la pendiente de SSURGO; el DEM de 30 m alimenta las capas de elevación, pendiente y erosión.",
                    "Sin etiqueta real de vulnerabilidad: necesita revisión agronómica."])
+
+
+def _elevation_layer(run: _Run) -> Layer:
+    from fieldshift_ml.io import dem
+
+    elevation = dem.read_dem()
+    values = dem.to_display_grid(elevation.heights, elevation, grid.GRID_COLS, grid.GRID_ROWS)
+    found = [v for v in values if v is not None]
+    lo, hi = math.floor(min(found) / 50) * 50, math.ceil(max(found) / 50) * 50
+    run.extras["elevation_range"] = (min(found), max(found))
+    return _layer("elevation", "dem", "Elevación", "Altura sobre el nivel del mar: promedio de celdas de 30 m en cada celda del mapa",
+                  " m", lo, hi, [ScenarioGrid(rain_pct=0, temp_delta=0, values=values)], False,
+                  "NASADEM (SRTM reprocesado) 30 m", 3_400, False, date(2000, 2, 11),
+                  ["Es un dato fijo: el relieve se midió en la misión SRTM de febrero de 2000.",
+                   "Cada celda del mapa (~3.4 km) promedia las celdas de 30 m que contiene."])
+
+
+def _slope_layer(run: _Run) -> Layer:
+    from fieldshift_ml.io import dem
+
+    elevation = dem.read_dem()
+    slope = dem.slope_percent(elevation)
+    values = dem.to_display_grid(slope, elevation, grid.GRID_COLS, grid.GRID_ROWS)
+    return _layer("slope", "dem", "Pendiente", "Inclinación del terreno (% = metros de subida por cada 100 m): promedio por celda del mapa",
+                  "%", 0, 15, [ScenarioGrid(rain_pct=0, temp_delta=0, values=values)], False,
+                  "NASADEM (SRTM reprocesado) 30 m", 3_400, False, date(2000, 2, 11),
+                  ["Calculada celda a celda a 30 m (método de Horn) y promediada en cada celda del mapa.",
+                   "El promedio suaviza lomas y cárcavas pequeñas: dentro de una parcela la pendiente puede ser mayor."])
+
+
+EROSION_NOTES = [
+    "Índice relativo de potencial de erosión por agua: erosionabilidad del suelo (K de SSURGO) × pendiente (RUSLE) × lluvia "
+    "(normal anual de PRISM como sustituto de la erosividad).",
+    "Mide lo que la tierra tiene de expuesta por sí misma; no incluye la cobertura ni el manejo del cultivo ni la longitud de la pendiente.",
+    "No es pérdida de suelo en toneladas: no hay erosión medida con qué calibrarlo. El valor es el percentil entre los píxeles de cultivo muestreados.",
+]
+
+
+def _erosion_layer(run: _Run) -> Layer:
+    from fieldshift_ml.datasets import erosion
+
+    points = erosion.build_points()
+    values = grid.aggregate_cells(points["lon"].to_numpy(), points["lat"].to_numpy(), points["score"].to_numpy())
+    return _layer("erosion", "erosion", "Potencial de erosión", "Índice relativo de exposición a la erosión por agua, 0–100", "", 0, 100,
+                  [ScenarioGrid(rain_pct=0, temp_delta=0, values=values)], False,
+                  "SSURGO (K) + NASADEM (pendiente) + PRISM normales 1991–2020", 3_400, False, date.today(),
+                  EROSION_NOTES + ["Cada celda promedia píxeles de cultivo de 30 m muestreados; las celdas vacías no tienen cultivo muestreado."])
 
 
 # ------------------------------------------------------------------------------------------------ points
@@ -285,6 +330,34 @@ def _stress_points(run: _Run) -> PointsFile:
                              f"Clima de {_d(last)} (última escena ECOSTRESS disponible).",
                              f"Se evaluaron {len(esi):,} píxeles muestreados de 70 m, no todos los de la zona.",
                              "La prueba del modelo cubre solo ~15 fechas de una temporada."],
+                      points=points)
+
+
+def _erosion_points(run: _Run) -> PointsFile:
+    from fieldshift_ml.datasets import erosion
+
+    data = erosion.build_points().sort("ratio", descending=True)
+    total = data.height
+    n_high = int((data["ratio"] >= erosion.HIGH_RATIO).sum())
+    run.extras["erosion"] = (n_high, total)
+    chosen: list[tuple[float, float, float]] = []
+    points: list[MapPoint] = []
+    for lon, lat, ratio in zip(data["lon"], data["lat"], data["ratio"], strict=True):
+        if ratio < erosion.MEDIUM_RATIO or len(points) >= 60:
+            break
+        # keep the points at least ~2 km apart so the map shows places, not one cluster
+        if any(math.hypot((lon - x) * 0.766, lat - y) * 111.0 < 2.0 for x, y, _ in chosen):
+            continue
+        chosen.append((lon, lat, ratio))
+        high = ratio >= erosion.HIGH_RATIO
+        points.append(MapPoint(id=f"erosion-{len(points)}", lat=round(float(lat), 6), lon=round(float(lon), 6), kind="erosion",
+                               label="Potencial de erosión alto" if high else "Potencial de erosión medio",
+                               severity="high" if high else "medium", value=round(float(ratio), 2)))
+    return PointsFile(kind="erosion", concept="erosion", source="SSURGO (K) + NASADEM (pendiente) + PRISM normales", as_of=date.today(),
+                      unit="veces el potencial de un píxel de cultivo típico (mediana)",
+                      notes=[f"Alto: {erosion.HIGH_RATIO:g} o más veces lo típico; medio: {erosion.MEDIUM_RATIO:g} o más. "
+                             "Los umbrales son provisionales ([POR VERIFICAR] con un agrónomo)."] + EROSION_NOTES[1:] +
+                            [f"Se evaluaron {total:,} píxeles de cultivo muestreados; se muestran los de mayor potencial, separados al menos 2 km."],
                       points=points)
 
 
@@ -498,15 +571,17 @@ def build_export(version: str | None = None) -> Path:
     run = _Run(out)
 
     for kind, make in (("temperature", _heat_layer), ("rain", _rain_layer), ("humidity", _humidity_layer),
-                       ("drought", _drought_layer), ("vulnerability", _vulnerability_layer)):
+                       ("drought", _drought_layer), ("vulnerability", _vulnerability_layer),
+                       ("elevation", _elevation_layer), ("slope", _slope_layer), ("erosion", _erosion_layer)):
         try:
             layer = make(run)
             run.write(f"layers/{kind}.json", layer, "layer")
-            if kind != "vulnerability":  # static layer: its date is when it was built, not the data's date
+            if kind not in {"vulnerability", "elevation", "slope", "erosion"}:  # static layers: their date is not the data's date
                 run.dates.append(layer.as_of)
         except Exception as error:  # noqa: BLE001 - one layer failing must not stop the export
             run.failed(f"la capa {kind}", error)
     for name, make, rel, kind in (("los puntos de estrés", _stress_points, "points/stress.json", "points"),
+                                  ("los puntos de erosión", _erosion_points, "points/erosion.json", "points"),
                                   ("las series de mercado", _market_series, "series/market.json", "series"),
                                   ("las estadísticas", _statistics_series, "series/statistics.json", "series")):
         try:
@@ -537,6 +612,13 @@ def build_export(version: str | None = None) -> Path:
                             detail=f"{n} puntos críticos de {total:,} píxeles evaluados",
                             definition="Porcentaje de píxeles evaluados con ESI previsto en el 10 % más bajo del ESI observado en 2024–2026.",
                             concept="c03", as_of=run.extras["stress_as_of"]))
+    if "erosion" in run.extras:
+        n, total = run.extras["erosion"]
+        alerts.append(Alert(kind="erosion", title="Puntos de erosión", value=round(n / total * 100, 1), unit="%",
+                            detail=f"{n:,} de {total:,} píxeles de cultivo con potencial de erosión alto",
+                            definition="Porcentaje de píxeles de cultivo muestreados cuyo potencial de erosión (suelo × pendiente × lluvia) "
+                                       "es 3 o más veces el de un píxel típico. Es potencial, no erosión medida.",
+                            concept="erosion", as_of=date.today()))
     summaries = {"alerts": alerts, "unavailable": UNAVAILABLE}
     for name, make in (("el resumen de humedad", lambda: _humidity_summary()), ("el resumen de clima", lambda: _climate_summary(run))):
         try:

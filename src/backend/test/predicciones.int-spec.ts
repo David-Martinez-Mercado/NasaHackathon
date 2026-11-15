@@ -26,10 +26,10 @@ describe('Predicciones de ml/ (export real, PostgreSQL/PostGIS real)', () => {
   describe('importación', () => {
     it('importa el export versionado de ml/ y lo deja activo', async () => {
       const r = await importar(EXPORT_V1);
-      expect(r).toMatchObject({ version: 'v1', estado: 'importada', activa: true, capas: 5, series: 9, tablas: 3, alertas: 2 });
+      expect(r).toMatchObject({ version: 'v2', estado: 'importada', activa: true, capas: 8, series: 9, tablas: 3, alertas: 3 });
       expect(r.puntos).toBeGreaterThan(10);
-      expect(await versiones()).toEqual([{ version: 'v1', activa: true }]);
-      expect(await prisma.escenarioCapa.count()).toBe(20 + 20 + 1 + 1 + 1); // temperatura y lluvia: 20 escenarios; las demás, el base
+      expect(await versiones()).toEqual([{ version: 'v2', activa: true }]);
+      expect(await prisma.escenarioCapa.count()).toBe(20 + 20 + 1 + 1 + 1 + 1 + 1 + 1); // temperatura y lluvia: 20 escenarios; las demás, el base
       expect(await prisma.puntoMapa.count()).toBe(r.puntos);
     });
 
@@ -38,12 +38,12 @@ describe('Predicciones de ml/ (export real, PostgreSQL/PostGIS real)', () => {
       const otra = await importar(EXPORT_V1);
       expect(otra.estado).toBe('ya-importada');
       expect(await prisma.versionPrediccion.count()).toBe(1);
-      expect(await prisma.capaMapa.count()).toBe(5);
+      expect(await prisma.capaMapa.count()).toBe(8);
     });
 
     it('la misma versión con otro contenido se rechaza', async () => {
       await importar(EXPORT_V1);
-      const cambiado = copiarExport('v1', (carpeta) => {
+      const cambiado = copiarExport('v2', (carpeta) => {
         const ruta = join(carpeta, 'summaries.json');
         const resumen = JSON.parse(readFileSync(ruta, 'utf8'));
         resumen.unavailable.push('algo nuevo');
@@ -55,10 +55,10 @@ describe('Predicciones de ml/ (export real, PostgreSQL/PostGIS real)', () => {
 
     it('una versión nueva reemplaza a la activa y siempre hay exactamente una', async () => {
       await importar(EXPORT_V1);
-      const v2 = copiarExport('v2');
+      const v2 = copiarExport('v3');
       const r = await importar(v2);
       expect(r.activa).toBe(true);
-      expect(await versiones()).toEqual([{ version: 'v1', activa: false }, { version: 'v2', activa: true }]);
+      expect(await versiones()).toEqual([{ version: 'v2', activa: false }, { version: 'v3', activa: true }]);
       // el índice único parcial impide dos activas aunque se intente a mano
       await expect(prisma.versionPrediccion.updateMany({ data: { activa: true } })).rejects.toThrow();
       expect((await versiones()).filter((v) => v.activa)).toHaveLength(1);
@@ -66,8 +66,8 @@ describe('Predicciones de ml/ (export real, PostgreSQL/PostGIS real)', () => {
 
     it('con activar=false la versión queda guardada pero la activa sigue siendo la anterior', async () => {
       await importar(EXPORT_V1);
-      await importar(copiarExport('v2'), false);
-      expect(await versiones()).toEqual([{ version: 'v1', activa: true }, { version: 'v2', activa: false }]);
+      await importar(copiarExport('v3'), false);
+      expect(await versiones()).toEqual([{ version: 'v2', activa: true }, { version: 'v3', activa: false }]);
     });
   });
 
@@ -115,7 +115,7 @@ describe('Predicciones de ml/ (export real, PostgreSQL/PostGIS real)', () => {
         writeFileSync(ruta, JSON.stringify(serie));
       });
       await expect(importar(duplicada)).rejects.toThrow();
-      expect(await versiones()).toEqual([{ version: 'v1', activa: true }]);
+      expect(await versiones()).toEqual([{ version: 'v2', activa: true }]);
       expect({
         capas: await prisma.capaMapa.count(), puntos: await prisma.puntoMapa.count(),
         series: await prisma.serieDato.count(), escenarios: await prisma.escenarioCapa.count(),
@@ -149,7 +149,7 @@ describe('Predicciones de ml/ (export real, PostgreSQL/PostGIS real)', () => {
         rampa { en color } rejilla { bbox columnas filas valores } escenario { lluviaPct tempDeltaC aplica interpolado recortado } } }`);
       expect(res.body.errors).toBeUndefined();
       const c = res.body.data.capa;
-      expect(c).toMatchObject({ tipo: 'LLUVIA', concepto: 'c08a', unidad: '%', min: 0, max: 100, interpolada: true, version: 'v1' });
+      expect(c).toMatchObject({ tipo: 'LLUVIA', concepto: 'c08a', unidad: '%', min: 0, max: 100, interpolada: true, version: 'v2' });
       expect(c.rejilla.valores).toHaveLength(c.rejilla.columnas * c.rejilla.filas);
       expect(c.rejilla.bbox).toHaveLength(4);
       expect(c.rampa[0]).toEqual({ en: 0, color: expect.stringMatching(/^#[0-9A-F]{6}$/i) });
@@ -235,7 +235,7 @@ describe('Predicciones de ml/ (export real, PostgreSQL/PostGIS real)', () => {
       expect(t.filas[0]).toMatchObject({ prev_crop: expect.any(String), next_crop: expect.any(String), probability_pct: expect.any(Number) });
       expect((await gql(app, `{ tablaModelo(clave: "no-existe") { clave } }`)).body.data.tablaModelo).toBeNull();
       const alertas = (await gql(app, `{ alertas { tipo valor unidad detalle definicion datosAl } }`)).body.data.alertas;
-      expect(alertas.map((a: any) => a.tipo)).toEqual(['drought', 'stress']);
+      expect(alertas.map((a: any) => a.tipo)).toEqual(['drought', 'erosion', 'stress']);
       expect(alertas.every((a: any) => a.definicion.length > 10)).toBe(true);
       const h = (await gql(app, `{ resumenHumedad { raiz superficie evaporacion percentil datosAl } }`)).body.data.resumenHumedad;
       expect(h.percentil).toBeGreaterThanOrEqual(0);
@@ -279,7 +279,10 @@ describe('Predicciones de ml/ (export real, PostgreSQL/PostGIS real)', () => {
         riesgos { clave nivel valor unidad modelo datosAl resolucionM interpolada puntosCercanos puntosCriticos radioKm } } }`, { id });
       expect(res.body.errors).toBeUndefined();
       const r = Object.fromEntries(res.body.data.riesgosParcela.riesgos.map((x: any) => [x.clave, x]));
-      expect(Object.keys(r).sort()).toEqual(['calor', 'estres', 'humedad', 'lluvia', 'sequia', 'vulnerabilidad']);
+      expect(Object.keys(r).sort()).toEqual(['calor', 'elevacion', 'erosion', 'estres', 'humedad', 'lluvia', 'pendiente', 'sequia', 'vulnerabilidad']);
+      expect(r.erosion.modelo).toBe('erosion');
+      expect(r.pendiente.nivel).toBeNull(); // el terreno es informativo
+      expect(r.elevacion.unidad).toBe('m');
       expect(r.calor).toMatchObject({ modelo: 'c05b', unidad: '%', interpolada: true });
       expect(['BAJO', 'MEDIO', 'ALTO']).toContain(r.calor.nivel);
       expect(r.sequia.modelo).toBe('c05a');
@@ -336,15 +339,34 @@ describe('Predicciones de ml/ (export real, PostgreSQL/PostGIS real)', () => {
       expect(codigo(await gql(app, `{ sugerenciasCultivo(parcelaId: "99999999-9999-4999-8999-999999999999") { cultivoBase } }`))).toBe('NO_ENCONTRADO');
     });
 
+    it('terreno y erosión: capas de elevación, pendiente y potencial de erosión, y puntos de erosión', async () => {
+      const res = await gql(app, `{
+        elevacion: capa(tipo: ELEVACION) { unidad min max rejilla { valores } datosAl }
+        pendiente: capa(tipo: PENDIENTE) { unidad rejilla { valores } }
+        erosion: capa(tipo: EROSION) { concepto notas rejilla { valores } }
+        puntos(tipo: EROSION) { notas puntos { severidad valor latitud longitud } } }`);
+      expect(res.body.errors).toBeUndefined();
+      const d = res.body.data;
+      const finitos = (v: (number | null)[]) => v.filter((x): x is number => x != null);
+      expect(Math.min(...finitos(d.elevacion.rejilla.valores))).toBeGreaterThanOrEqual(d.elevacion.min);
+      expect(Math.max(...finitos(d.elevacion.rejilla.valores))).toBeLessThanOrEqual(d.elevacion.max);
+      expect(d.elevacion.min).toBeGreaterThan(1000); // el este de Colorado está a más de 1,000 m
+      expect(finitos(d.pendiente.rejilla.valores).every((x) => x >= 0)).toBe(true);
+      expect(d.erosion.notas.join(' ')).toMatch(/no es pérdida de suelo/i); // se declara que es potencial, no erosión medida
+      expect(d.puntos.puntos.length).toBeGreaterThan(5);
+      expect(d.puntos.puntos.every((p: any) => ['ALTA', 'MEDIA'].includes(p.severidad))).toBe(true);
+      expect(d.puntos.puntos[0].severidad).toBe('ALTA'); // las altas primero
+    });
+
     it('lo que no existe se declara, no se inventa', async () => {
       const res = await gql(app, `{ datosNoDisponibles }`);
-      expect(res.body.data.datosNoDisponibles.join(' ')).toMatch(/erosión/);
+      expect(res.body.data.datosNoDisponibles.join(' ')).toMatch(/motor de reglas/);
       expect(res.body.data.datosNoDisponibles.join(' ')).toMatch(/Reservas de agua/);
     });
 
     it('estadoPredicciones lista los modelos con su evaluación y sus límites', async () => {
       const e = (await gql(app, `{ estadoPredicciones { version datosAl limitaciones modelos { concepto rol algoritmo metrica valor intervaloInf intervaloSup skill base notas } } }`)).body.data.estadoPredicciones;
-      expect(e.version).toBe('v1');
+      expect(e.version).toBe('v2');
       expect(e.modelos).toHaveLength(11);
       const calor = e.modelos.find((m: any) => m.concepto === 'c05b');
       expect(calor).toMatchObject({ rol: 'modelo', metrica: 'roc_auc' });

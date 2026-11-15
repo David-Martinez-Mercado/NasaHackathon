@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
 import { useApp, useMapConfig } from '../AppContext';
 import { CropSuggestions } from '../components/CropSuggestions';
-import { Card, Notice, Panel, ReadField } from '../components/ui';
+import { Card, Chips, Notice, Panel, ReadField } from '../components/ui';
 import { fetchHumidity, fetchUnavailable, valueAt, type GridLayer } from '../data';
 import { useLayer, useRemote } from '../hooks';
 
@@ -119,10 +120,50 @@ function Water() {
   );
 }
 
+const TERRAIN = {
+  Elevation: { kind: 'elevation', variable: 'Height above sea level (m)', description: 'Measured by the SRTM mission in 2000 (NASADEM, 30 m cells). It does not change.' },
+  Slope: { kind: 'slope', variable: 'Ground slope (%)', description: 'Metres of rise per 100 m, from the elevation data. Averaged per map cell, so small ditches and knolls are smoothed out.' },
+  'Erosion potential': { kind: 'erosion', variable: 'Exposure to water erosion (0–100)', description: 'Soil erodibility × slope × rain, compared with the rest of the sampled cropland. Not measured soil loss.' },
+} as const;
+type TerrainName = keyof typeof TERRAIN;
+
+function Terrain() {
+  const { currentField } = useApp();
+  const [view, setView] = useState<TerrainName>('Elevation');
+  const info = TERRAIN[view];
+  const layer = useLayer(info.kind);
+  useMapConfig({ layer: layer.data, tool: 'terrain', points: [] }, [layer.data]);
+  return (
+    <Panel title="Terrain">
+      <Chips options={Object.keys(TERRAIN) as TerrainName[]} value={view} onChange={setView} />
+      {layer.error && <Notice kind="error">{layer.error}</Notice>}
+      {layer.loading && !layer.data && <Notice kind="loading">Loading layer…</Notice>}
+      <Card>
+        <ReadField label="Variable" value={info.variable} />
+        <ReadField label="Description" value={info.description} />
+        <ReadField
+          label={currentField ? `Value at ${currentField.name}` : 'Value'}
+          value={currentField ? layerValue(layer.data, currentField.center) : 'Add a field to see its value'}
+          small
+        />
+      </Card>
+      {layer.data && (
+        <Card className="recommendations">
+          <ul>
+            <li>Source: {layer.data.source}</li>
+            {layer.data.notes.map((n) => <li key={n}>{n}</li>)}
+          </ul>
+        </Card>
+      )}
+    </Panel>
+  );
+}
+
 export function LayerPage() {
   const { tool } = useParams();
   if (tool === 'temperature' || tool === 'vulnerability' || tool === 'rain' || tool === 'drought') return <VariableLayer key={tool} kind={tool} />;
   if (tool === 'humidity') return <Humidity />;
+  if (tool === 'terrain') return <Terrain />;
   if (tool === 'water') return <Water />;
   return <Navigate to="/" replace />;
 }

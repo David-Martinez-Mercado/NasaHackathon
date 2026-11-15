@@ -14,8 +14,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 SCHEMA_VERSION = 1
 
-LayerKind = Literal["temperature", "humidity", "rain", "drought", "vulnerability"]
-PointKind = Literal["stress"]
+LayerKind = Literal["temperature", "humidity", "rain", "drought", "vulnerability", "elevation", "slope", "erosion"]
+PointKind = Literal["stress", "erosion"]
 Severity = Literal["low", "medium", "high"]
 Role = Literal["modelo", "regla-base", "indice"]
 
@@ -103,7 +103,7 @@ class SeriesFile(_Base):
 
 
 class Alert(_Base):
-    kind: Literal["drought", "stress"]
+    kind: Literal["drought", "stress", "erosion"]
     title: str
     value: float
     unit: str

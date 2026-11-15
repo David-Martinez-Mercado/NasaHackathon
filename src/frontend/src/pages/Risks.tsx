@@ -2,14 +2,15 @@ import { useState } from 'react';
 import { useApp, useMapConfig } from '../AppContext';
 import { Card, Notice, Panel } from '../components/ui';
 import { LevelPill, RISK_INFO } from '../components/risk';
-import { fetchRisks, fetchStressPoints, type LayerKind, type RiskKey } from '../data';
+import { fetchErosionPoints, fetchRisks, fetchStressPoints, type LayerKind, type RiskKey } from '../data';
 import { useLayer, useRemote } from '../hooks';
 
 /** Risk → what the map shows when the card is selected. */
 const MAP_FOR: Record<RiskKey, LayerKind | 'points'> = {
   heat: 'temperature', drought: 'drought', moisture: 'humidity', stress: 'points', vulnerability: 'vulnerability', rain: 'rain',
+  erosion: 'erosion', slope: 'slope', elevation: 'elevation',
 };
-const ORDER: RiskKey[] = ['heat', 'drought', 'moisture', 'stress', 'vulnerability', 'rain'];
+const ORDER: RiskKey[] = ['heat', 'drought', 'moisture', 'stress', 'vulnerability', 'erosion', 'slope', 'elevation', 'rain'];
 
 /** Risks of the zone around the selected field, one card per model, in plain words. */
 export function Risks() {
@@ -19,9 +20,10 @@ export function Risks() {
   const target = MAP_FOR[selected];
   const layer = useLayer(target === 'points' ? 'temperature' : target, target !== 'points');
   const points = useRemote(fetchStressPoints, [], target === 'points');
+  const erosionPoints = useRemote(fetchErosionPoints, [], selected === 'erosion');
   useMapConfig(
-    { layer: target === 'points' ? null : layer.data, points: target === 'points' ? points.data ?? [] : [] },
-    [target, layer.data, points.data],
+    { layer: target === 'points' ? null : layer.data, points: target === 'points' ? points.data ?? [] : selected === 'erosion' ? erosionPoints.data ?? [] : [] },
+    [target, selected, layer.data, points.data, erosionPoints.data],
   );
 
   const byKey = new Map((risks.data ?? []).map((r) => [r.key, r]));
@@ -57,7 +59,7 @@ export function Risks() {
             <ul>
               <li>Levels use provisional thresholds: they compare zones, they do not decide for you.</li>
               <li>The climate data comes from 2 weather points about 50 km apart; stress points are a sample of 2,499 pixels in Weld County.</li>
-              <li>Erosion and water reserves have no model or data yet, so they are not shown.</li>
+              <li>Erosion is a relative potential (soil, slope and rain), not measured soil loss. Water reserves have no data yet, so they are not shown.</li>
             </ul>
           </Card>
         </>

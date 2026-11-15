@@ -20,13 +20,23 @@ async function main() {
   const carpeta = resolve(process.cwd(), '.pglite');
 
   const db = await PGlite.create(carpeta, { extensions: { postgis } });
+  // Migraciones aplicadas a esta base (para que una base ya creada reciba las nuevas sin borrarse).
+  await db.exec('CREATE TABLE IF NOT EXISTS "_dev_migraciones" (nombre text PRIMARY KEY)');
+  const migraciones = join(process.cwd(), 'prisma/migrations');
+  const todas = readdirSync(migraciones).filter((n) => /^\d+_/.test(n) && existsSync(join(migraciones, n, 'migration.sql'))).sort();
+  const hechas = new Set((await db.query('SELECT nombre FROM "_dev_migraciones"')).rows.map((r: { nombre: string }) => r.nombre));
   const existe = await db.query(`SELECT to_regclass('public."Parcela"') AS t`);
-  if (!existe.rows[0].t) {
-    const migraciones = join(process.cwd(), 'prisma/migrations');
-    for (const nombre of readdirSync(migraciones).filter((n) => /^\d+_/.test(n) && existsSync(join(migraciones, n, 'migration.sql'))).sort()) {
-      await db.exec(readFileSync(join(migraciones, nombre, 'migration.sql'), 'utf8'));
-      console.log(`migración aplicada: ${nombre}`);
+  if (existe.rows[0].t && hechas.size === 0) {
+    // Base creada antes de este registro: ya tiene las dos primeras migraciones.
+    for (const nombre of todas.slice(0, 2)) {
+      await db.query('INSERT INTO "_dev_migraciones" VALUES ($1) ON CONFLICT DO NOTHING', [nombre]);
+      hechas.add(nombre);
     }
+  }
+  for (const nombre of todas.filter((n) => !hechas.has(n))) {
+    await db.exec(readFileSync(join(migraciones, nombre, 'migration.sql'), 'utf8'));
+    await db.query('INSERT INTO "_dev_migraciones" VALUES ($1)', [nombre]);
+    console.log(`migración aplicada: ${nombre}`);
   }
   // maxConnections > 1: Prisma recicla su única conexión y la nueva llega antes de que se libere la vieja; Prisma sigue usando solo una a la vez.
   const servidor = new PGLiteSocketServer({ db, port: puerto, host: '127.0.0.1', maxConnections: 4 });

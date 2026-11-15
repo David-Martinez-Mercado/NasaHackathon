@@ -339,7 +339,10 @@
             "humidity",
             "rain",
             "drought",
-            "vulnerability"
+            "vulnerability",
+            "elevation",
+            "slope",
+            "erosion"
           ],
           "title": "Kind",
           "type": "string"
@@ -493,7 +496,10 @@
           "type": "number"
         },
         "kind": {
-          "const": "stress",
+          "enum": [
+            "stress",
+            "erosion"
+          ],
           "title": "Kind",
           "type": "string"
         },
@@ -552,7 +558,10 @@
       "additionalProperties": false,
       "properties": {
         "kind": {
-          "const": "stress",
+          "enum": [
+            "stress",
+            "erosion"
+          ],
           "title": "Kind",
           "type": "string"
         },
@@ -754,7 +763,8 @@
         "kind": {
           "enum": [
             "drought",
-            "stress"
+            "stress",
+            "erosion"
           ],
           "title": "Kind",
           "type": "string"

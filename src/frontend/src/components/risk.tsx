@@ -1,4 +1,4 @@
-import { CircleCheck, CloudRain, Mountain, OctagonAlert, Sun, Thermometer, ThermometerSun, TriangleAlert, Droplet, type LucideIcon } from 'lucide-react';
+import { CircleCheck, CloudRain, Mountain, MountainSnow, OctagonAlert, Ruler, Sun, Thermometer, ThermometerSun, TriangleAlert, Droplet, type LucideIcon } from 'lucide-react';
 import type { Risk, RiskKey, RiskLevel } from '../data';
 
 /** Level = icon + word + color, never color alone (colorblind-safe, readable in the sun). */
@@ -36,6 +36,18 @@ export const RISK_INFO: Record<RiskKey, { title: string; icon: LucideIcon; descr
   vulnerability: {
     title: 'Land vulnerability', icon: Mountain, model: 'Vulnerability index (expert rules)',
     describe: (r) => (r.value == null ? 'No cropland was sampled at this spot.' : `${n(r.value)} out of 100: how fragile the land is here (soil, climate and crop history).`),
+  },
+  erosion: {
+    title: 'Erosion potential', icon: Mountain, model: 'Soil × slope × rain index (RUSLE-style)',
+    describe: (r) => `Higher than ${n(r.value)}% of the sampled cropland. It is the land's own exposure to water erosion, not measured soil loss.`,
+  },
+  slope: {
+    title: 'Slope', icon: Ruler, model: 'NASADEM elevation (30 m)',
+    describe: (r) => (r.value == null ? 'No elevation data here.' : `The ground rises about ${n(r.value, 1)} m for every 100 m around the field.`),
+  },
+  elevation: {
+    title: 'Elevation', icon: MountainSnow, model: 'NASADEM elevation (30 m)',
+    describe: (r) => (r.value == null ? 'No elevation data here.' : `About ${n(r.value)} m above sea level.`),
   },
   rain: {
     title: 'Rain outlook', icon: CloudRain, model: 'Monthly rain climatology',

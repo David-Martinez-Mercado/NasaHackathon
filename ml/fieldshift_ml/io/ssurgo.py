@@ -58,3 +58,40 @@ def read_map_units() -> gpd.GeoDataFrame:
                                  "wtdepannmin": "water_table_cm", "niccdcd": "capability_class"})[
         ["mukey", "muname", "slope_pct", "available_water_cm", "water_table_cm", "capability_class",
          "drainage", "flooding", "hydro_group", "geometry"]]
+
+
+# Column positions in the headerless SSURGO tables (SSURGO 2.x). Checked against the data: kffact is in 0.02–0.55,
+# cokey/mukey are the last numeric columns.
+CHORIZON_HZDEPT_R, CHORIZON_KFFACT, CHORIZON_COKEY = 6, 112, -2
+COMP_COMPPCT_R, COMP_MUKEY, COMP_COKEY = 1, -2, -1
+
+
+def read_erodibility() -> pd.DataFrame:
+    """Soil erodibility K (kffact, surface horizon) per map unit, averaged over its components by their share.
+
+    K is how easily the soil particles detach and wash away (about 0.02 = resistant, 0.5+ = very erodible).
+    """
+    parts = []
+    for path in _archives():
+        with zipfile.ZipFile(path) as archive:
+            def table(name: str, archive: zipfile.ZipFile = archive) -> pd.DataFrame:
+                member = next(n for n in archive.namelist() if n.endswith(f"tabular/{name}"))
+                data = io.BytesIO(archive.read(member))
+                return pd.read_csv(data, sep="|", header=None, dtype=str, encoding="latin-1")
+
+            horizons, components = table("chorizon.txt"), table("comp.txt")
+        surface = pd.DataFrame({
+            "cokey": horizons[horizons.columns[CHORIZON_COKEY]],
+            "depth_top_cm": pd.to_numeric(horizons[CHORIZON_HZDEPT_R], errors="coerce"),
+            "k": pd.to_numeric(horizons[CHORIZON_KFFACT], errors="coerce"),
+        })
+        is_surface = (surface["depth_top_cm"] == 0) & surface["k"].notna()
+        surface = surface[is_surface].groupby("cokey", as_index=False)["k"].mean()
+        comps = pd.DataFrame({
+            "mukey": components[components.columns[COMP_MUKEY]], "cokey": components[components.columns[COMP_COKEY]],
+            "share": pd.to_numeric(components[COMP_COMPPCT_R], errors="coerce"),
+        }).merge(surface, on="cokey", how="inner")
+        comps = comps.assign(kw=comps["k"] * comps["share"])
+        weighted = comps.groupby("mukey").agg(kw=("kw", "sum"), share=("share", "sum"))
+        parts.append((weighted["kw"] / weighted["share"]).rename("k_factor").reset_index())
+    return pd.concat(parts, ignore_index=True).drop_duplicates("mukey")

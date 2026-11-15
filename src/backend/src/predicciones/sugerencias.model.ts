@@ -7,7 +7,7 @@ import { Prioridades } from '../preferencias/preferencias.model';
     'provisionales ([POR VERIFICAR] con el agrónomo): sirven para comparar, no para decidir.',
 })
 export class RiesgoZonaTipo {
-  @Field(() => String, { description: 'calor | sequia | humedad | estres | vulnerabilidad | lluvia' })
+  @Field(() => String, { description: 'calor | sequia | humedad | estres | vulnerabilidad | erosion | pendiente | elevacion | lluvia' })
   clave: string;
 
   @Field(() => String, { nullable: true, description: 'BAJO | MEDIO | ALTO. null = sin dato o solo informativo (lluvia).' })

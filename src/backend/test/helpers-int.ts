@@ -50,7 +50,7 @@ export const POLIGONO = {
 };
 
 /** Carpeta del export real de ml/ que se versiona en el repo (la misma que importará el servidor). */
-export const EXPORT_V1 = resolve(__dirname, '../../../ml/deploy/exports/v1');
+export const EXPORT_V1 = resolve(__dirname, '../../../ml/deploy/exports/v2');
 export const ESQUEMA_EXPORT = resolve(__dirname, '../../../ml/deploy/export.schema.json');
 
 const sha = (datos: Buffer | string) => createHash('sha256').update(datos).digest('hex');

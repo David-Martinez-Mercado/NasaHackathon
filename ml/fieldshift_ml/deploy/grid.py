@@ -17,6 +17,10 @@ RAMPS: dict[str, list[ColorStop]] = {
     "rain": [ColorStop(at=0, color="#FDFEFE"), ColorStop(at=1, color="#1F618D")],
     "drought": [ColorStop(at=0, color="#FCF3CF"), ColorStop(at=0.5, color="#F5B041"), ColorStop(at=1, color="#B03A2E")],
     "vulnerability": [ColorStop(at=0, color="#27AE60"), ColorStop(at=0.5, color="#F4D03F"), ColorStop(at=1, color="#C0392B")],
+    "elevation": [ColorStop(at=0, color="#2E7D32"), ColorStop(at=0.4, color="#D4E157"), ColorStop(at=0.75, color="#A1887F"),
+                  ColorStop(at=1, color="#FAFAFA")],
+    "slope": [ColorStop(at=0, color="#FCF3CF"), ColorStop(at=0.5, color="#E59866"), ColorStop(at=1, color="#7B241C")],
+    "erosion": [ColorStop(at=0, color="#FAE5D3"), ColorStop(at=0.5, color="#DC7633"), ColorStop(at=1, color="#5D2E0C")],
 }
 
 

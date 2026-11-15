@@ -21,7 +21,11 @@ const TIPO_CAPA: Record<ExportLayer['kind'], TipoCapa> = {
   rain: TipoCapa.LLUVIA,
   drought: TipoCapa.SEQUIA,
   vulnerability: TipoCapa.VULNERABILIDAD,
+  elevation: TipoCapa.ELEVACION,
+  slope: TipoCapa.PENDIENTE,
+  erosion: TipoCapa.EROSION,
 };
+const TIPO_PUNTO: Record<ExportPointsFile['kind'], TipoPunto> = { stress: TipoPunto.ESTRES, erosion: TipoPunto.EROSION };
 const SEVERIDAD: Record<'low' | 'medium' | 'high', Severidad> = { low: Severidad.BAJA, medium: Severidad.MEDIA, high: Severidad.ALTA };
 
 const fecha = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
@@ -203,7 +207,7 @@ export class ImportacionService {
     for (const conjunto of leido.conjuntos) {
       await tx.conjuntoPuntos.create({
         data: {
-          versionId: version.id, tipo: TipoPunto.ESTRES, concepto: conjunto.concept, fuente: conjunto.source,
+          versionId: version.id, tipo: TIPO_PUNTO[conjunto.kind], concepto: conjunto.concept, fuente: conjunto.source,
           datosAl: fecha(conjunto.as_of), unidad: conjunto.unit ?? null, notas: conjunto.notes,
         },
       });
@@ -273,7 +277,7 @@ export class ImportacionService {
       }));
       await tx.$executeRaw`
         INSERT INTO "PuntoMapa" ("id", "versionId", "clave", "tipo", "geom", "etiqueta", "severidad", "valor")
-        SELECT gen_random_uuid(), ${versionId}::uuid, p.clave, 'ESTRES'::"TipoPunto",
+        SELECT gen_random_uuid(), ${versionId}::uuid, p.clave, ${TIPO_PUNTO[conjunto.kind]}::"TipoPunto",
                ST_SetSRID(ST_MakePoint(p.lon, p.lat), 4326), p.etiqueta, p.severidad::"Severidad", p.valor
         FROM jsonb_to_recordset(${JSON.stringify(filas)}::jsonb)
              AS p(clave text, lon float8, lat float8, etiqueta text, severidad text, valor float8)

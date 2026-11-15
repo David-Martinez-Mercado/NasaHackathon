@@ -4,7 +4,7 @@ import { useApp, useMapConfig } from '../AppContext';
 import { CropSuggestions } from '../components/CropSuggestions';
 import { Card, Notice, Panel, Slider } from '../components/ui';
 import { LevelPill, RISK_INFO } from '../components/risk';
-import { fetchAlerts, fetchRisks, fetchStressPoints, type AlertKind } from '../data';
+import { fetchAlerts, fetchErosionPoints, fetchRisks, fetchStressPoints, type AlertKind } from '../data';
 import { useLayer, useRemote } from '../hooks';
 
 const signed = (v: number, unit: string) => `${v > 0 ? '+' : ''}${v}${unit}`;
@@ -21,17 +21,19 @@ export function Home() {
   const drought = useLayer('drought');
   const risks = useRemote(() => fetchRisks(currentField!.id), [currentField?.id], !!currentField);
   const stress = useRemote(fetchStressPoints, [], alert === 'stress');
+  const erosion = useRemote(fetchErosionPoints, [], alert === 'erosion');
+  const erosionLayer = useLayer('erosion', alert === 'erosion');
 
   useMapConfig(
     {
-      layer: alert === 'drought' ? drought.data : null,
-      points: alert === 'stress' ? stress.data ?? [] : [],
+      layer: alert === 'drought' ? drought.data : alert === 'erosion' ? erosionLayer.data : null,
+      points: alert === 'stress' ? stress.data ?? [] : alert === 'erosion' ? erosion.data ?? [] : [],
     },
-    [alert, drought.data, stress.data],
+    [alert, drought.data, stress.data, erosion.data, erosionLayer.data],
   );
 
   const icon = <CloudDrizzle size={20} />;
-  const mapError = alert === 'drought' ? drought.error : alert === 'stress' ? stress.error : null;
+  const mapError = alert === 'drought' ? drought.error : alert === 'stress' ? stress.error : alert === 'erosion' ? erosion.error ?? erosionLayer.error : null;
   return (
     <Panel title="HOME" brand>
       {fieldsError && <Notice kind="error">{fieldsError}</Notice>}

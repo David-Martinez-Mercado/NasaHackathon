@@ -51,6 +51,7 @@ const TOOLS: { tool: MapTool; icon: LucideIcon; label: string }[] = [
   { tool: 'vulnerability', icon: TriangleAlert, label: 'Vulnerability layer' },
   { tool: 'rain', icon: CloudRain, label: 'Rain layer' },
   { tool: 'drought', icon: Sun, label: 'Drought layer' },
+  { tool: 'terrain', icon: Mountain, label: 'Elevation, slope and erosion layers' },
 ];
 
 export function FieldMap() {

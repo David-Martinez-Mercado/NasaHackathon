@@ -1,7 +1,7 @@
 /** Forma del export de ml/ tal como se lee del disco (espejo de ml/fieldshift_ml/deploy/schema.py). */
 
 export interface ExportLayer {
-  kind: 'temperature' | 'humidity' | 'rain' | 'drought' | 'vulnerability';
+  kind: 'temperature' | 'humidity' | 'rain' | 'drought' | 'vulnerability' | 'elevation' | 'slope' | 'erosion';
   concept: string;
   title: string;
   variable: string;
@@ -26,14 +26,14 @@ export interface ExportPoint {
   id: string;
   lat: number;
   lon: number;
-  kind: 'stress';
+  kind: 'stress' | 'erosion';
   label?: string | null;
   severity?: 'low' | 'medium' | 'high' | null;
   value?: number | null;
 }
 
 export interface ExportPointsFile {
-  kind: 'stress';
+  kind: 'stress' | 'erosion';
   concept: string;
   source: string;
   as_of: string;
@@ -55,7 +55,7 @@ export interface ExportSeries {
 }
 
 export interface ExportAlert {
-  kind: 'drought' | 'stress';
+  kind: 'drought' | 'stress' | 'erosion';
   title: string;
   value: number;
   unit: string;

@@ -1,0 +1,5 @@
+-- Capas de elevación, pendiente y erosión, y puntos de erosión (NASADEM + SSURGO + PRISM, ml/)
+ALTER TYPE "TipoCapa" ADD VALUE IF NOT EXISTS 'ELEVACION';
+ALTER TYPE "TipoCapa" ADD VALUE IF NOT EXISTS 'PENDIENTE';
+ALTER TYPE "TipoCapa" ADD VALUE IF NOT EXISTS 'EROSION';
+ALTER TYPE "TipoPunto" ADD VALUE IF NOT EXISTS 'EROSION';

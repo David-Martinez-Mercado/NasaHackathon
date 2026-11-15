@@ -14,6 +14,7 @@ const UMBRALES = {
   calor: { bajo: 20, medio: 40 }, // % de probabilidad de ola de calor (exposición media de verano)
   sequia: { bajo: 25, medio: 50 }, // % de riesgo de sequía a 3 meses
   vulnerabilidad: { bajo: 33, medio: 66 }, // índice relativo 0–100
+  erosion: { bajo: 33, medio: 66 }, // percentil del potencial de erosión entre los píxeles de cultivo
 } as const;
 const RADIO_ESTRES_KM = 10;
 
@@ -46,10 +47,13 @@ export class RiesgosService {
   async enPunto(lat: number, lon: number): Promise<RiesgosParcelaTipo> {
     const version = await this.predicciones.versionActiva();
     if (!version) await this.predicciones.capa(TipoCapa.TEMPERATURA); // lanza SIN_PREDICCIONES con su mensaje
-    const [calor, sequia, vulnerabilidad, humedad, clima, estres] = await Promise.all([
+    const [calor, sequia, vulnerabilidad, erosion, elevacion, pendiente, humedad, clima, estres] = await Promise.all([
       this.predicciones.capa(TipoCapa.TEMPERATURA),
       this.predicciones.capa(TipoCapa.SEQUIA),
       this.predicciones.capa(TipoCapa.VULNERABILIDAD),
+      this.predicciones.capa(TipoCapa.EROSION),
+      this.predicciones.capa(TipoCapa.ELEVACION),
+      this.predicciones.capa(TipoCapa.PENDIENTE),
       this.predicciones.resumenHumedad(),
       this.predicciones.resumenClima(),
       this.estresCerca(version?.id, lat, lon),
@@ -78,6 +82,9 @@ export class RiesgosService {
         puntosCercanos: estres.total, puntosCriticos: estres.criticos, radioKm: RADIO_ESTRES_KM, resolucionM: 70, interpolada: false,
       },
       deCapa('vulnerabilidad', vulnerabilidad, 'c06', UMBRALES.vulnerabilidad),
+      deCapa('erosion', erosion, 'erosion', UMBRALES.erosion),
+      { ...deCapa('pendiente', pendiente, 'dem', UMBRALES.vulnerabilidad), nivel: null },
+      { ...deCapa('elevacion', elevacion, 'dem', UMBRALES.vulnerabilidad), nivel: null, unidad: 'm' },
       {
         clave: 'lluvia', valor: clima?.lluviaMensualMm?.[0] ?? null, unidad: 'mm (próximo mes, climatología)', modelo: 'c08b',
         datosAl: clima?.datosAl ?? null, nivel: null, resolucionM: 50_000, interpolada: true,
@@ -88,6 +95,7 @@ export class RiesgosService {
       advertencias: [
         'Los niveles usan umbrales provisionales y datos de reanálisis de ~25–50 km: sirven para comparar zonas, no para decidir.',
         'Los puntos de estrés son una muestra de 2,499 píxeles de Weld, CO, no un recorrido de tu parcela.',
+        'La erosión es un potencial relativo (suelo × pendiente × lluvia), no erosión medida ni toneladas de suelo.',
       ],
     };
   }

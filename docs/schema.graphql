@@ -583,7 +583,9 @@ type ResumenHumedad {
 Un riesgo de la zona de la parcela, calculado con un modelo de ml/ en el punto de la parcela. Los niveles usan umbrales provisionales ([POR VERIFICAR] con el agrónomo): sirven para comparar, no para decidir.
 """
 type RiesgoZona {
-  """calor | sequia | humedad | estres | vulnerabilidad | lluvia"""
+  """
+  calor | sequia | humedad | estres | vulnerabilidad | erosion | pendiente | elevacion | lluvia
+  """
   clave: String!
   datosAl: String
 
@@ -792,14 +794,18 @@ type TablaModelo {
 
 """Capas del mapa (las de la barra inferior de la app)."""
 enum TipoCapa {
+  ELEVACION
+  EROSION
   HUMEDAD
   LLUVIA
+  PENDIENTE
   SEQUIA
   TEMPERATURA
   VULNERABILIDAD
 }
 
 enum TipoPunto {
+  EROSION
   ESTRES
 }
 

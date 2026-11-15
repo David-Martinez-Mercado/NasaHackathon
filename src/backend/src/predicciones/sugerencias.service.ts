@@ -85,7 +85,7 @@ export class SugerenciasService {
     // ---- pesos: prioridades del agricultor × riesgos de la zona
     const nivel = (clave: string) => NIVEL_NUM[(zona.riesgos.find((r) => r.clave === clave)?.nivel as Nivel | null) ?? 'BAJO'];
     const riesgoAgua = Math.max(nivel('sequia'), nivel('humedad'));
-    const vulnerabilidad = nivel('vulnerabilidad');
+    const vulnerabilidad = Math.max(nivel('vulnerabilidad'), nivel('erosion')); // tierra frágil o con alto potencial de erosión
     const conRiego = !!prefs && prefs.sistemaRiego !== SistemaRiego.TEMPORAL;
     const ajustes: string[] = [];
     if (riesgoAgua > 0) ajustes.push('agua_riesgo');
