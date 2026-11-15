@@ -22,6 +22,11 @@ export class AppConfig {
       THROTTLE_TTL_MS: config.get('THROTTLE_TTL_MS'),
       THROTTLE_LIMIT: config.get('THROTTLE_LIMIT'),
       THROTTLE_LIMIT_COSTOSO: config.get('THROTTLE_LIMIT_COSTOSO'),
+      ML_SERVICE_URL: config.get('ML_SERVICE_URL'),
+      ML_SERVICE_TOKEN: config.get('ML_SERVICE_TOKEN'),
+      ML_SERVICE_TIMEOUT_MS: config.get('ML_SERVICE_TIMEOUT_MS'),
+      ML_SERVICE_BREAKER_FAILURES: config.get('ML_SERVICE_BREAKER_FAILURES'),
+      ML_SERVICE_BREAKER_RESET_MS: config.get('ML_SERVICE_BREAKER_RESET_MS'),
     });
   }
 }

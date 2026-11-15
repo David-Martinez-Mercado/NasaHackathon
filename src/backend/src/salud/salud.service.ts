@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { AppConfig } from '../config/config.service';
 import { DATOS, DatosPort } from '../datos/datos.port';
 import { MOTOR, MotorPort } from '../motor/motor.port';
+import { MlVivoCliente } from '../ml-vivo/ml-vivo.cliente';
 import { PrediccionesService } from '../predicciones/predicciones.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EstadoFuente, EstadoServicio, NivelEstado } from './salud.model';
@@ -24,6 +25,7 @@ export class SaludService {
     private readonly prisma: PrismaService,
     private readonly config: AppConfig,
     private readonly predicciones: PrediccionesService,
+    private readonly mlVivo: MlVivoCliente,
     @Inject(MOTOR) private readonly motor: MotorPort,
     @Inject(DATOS) private readonly datos: DatosPort,
   ) {}
@@ -44,6 +46,13 @@ export class SaludService {
     } catch {
       return [{ nombre: 'base de datos', estado: NivelEstado.NO_DISPONIBLE, detalle: 'no responde' }];
     }
+  }
+
+  /** El servicio de predicciones en vivo es opcional: si no responde, la API sigue con el último lote. */
+  private async estadoMlVivo(): Promise<EstadoFuente> {
+    const nombre = 'predicciones en vivo (servicio de ml/)';
+    const s = await this.mlVivo.salud();
+    return { nombre, estado: s.ok ? NivelEstado.OK : NivelEstado.NO_DISPONIBLE, detalle: s.detalle };
   }
 
   /** ¿Hay una versión de predicciones de ml/ cargada? Sin base de datos no se puede saber: se omite la consulta. */
@@ -67,6 +76,7 @@ export class SaludService {
     const fuentes: EstadoFuente[] = [
       ...base,
       await this.estadoPredicciones(base),
+      await this.estadoMlVivo(),
       {
         nombre: 'motor de reglas',
         estado: this.motor.disponible ? NivelEstado.OK : NivelEstado.NO_DISPONIBLE,

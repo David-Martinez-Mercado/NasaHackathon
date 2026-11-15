@@ -66,3 +66,8 @@ cd src/frontend && npm install && npm run dev            # http://localhost:5173
 ```
 La base embebida atiende una sola conexión: detén el backend antes de importar o sembrar. Es solo para desarrollo;
 el servidor usa PostgreSQL 16 con `docker compose`.
+
+## Predicciones en vivo (servicio de ml/)
+`prediccionesEnVivo(parcelaId, escenario?)` llama al servicio de ml/ (`fieldshift-ml serve`) con `ML_SERVICE_URL` y `ML_SERVICE_TOKEN` (cabecera `X-ML-Token`; el
+token nunca viaja al navegador). Tiempo límite `ML_SERVICE_TIMEOUT_MS`, circuit breaker (`ML_SERVICE_BREAKER_FAILURES` fallos seguidos abren `ML_SERVICE_BREAKER_RESET_MS`)
+y **respaldo al último lote** marcado `LOTE` y `obsoleto`. Sin `ML_SERVICE_URL` se usa siempre el lote. `/health` informa si el servicio responde.

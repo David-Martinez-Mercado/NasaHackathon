@@ -1,5 +1,5 @@
 import { plainToInstance, Transform } from 'class-transformer';
-import { IsBoolean, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Max, Min, validateSync } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, IsUrl, Max, Min, ValidateIf, validateSync } from 'class-validator';
 
 const toBool = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? ['true', '1', 'yes', 'si', 'sí'].includes(value.toLowerCase()) : value;
@@ -64,6 +64,32 @@ export class Env {
   @IsInt()
   @Min(1)
   THROTTLE_LIMIT_COSTOSO: number = 20;
+
+  /** Servicio de predicciones en vivo de ml/ (FastAPI). Sin URL, `prediccionesEnVivo` usa siempre el último lote. */
+  @Transform(({ value }) => (value === '' ? undefined : value))
+  @ValidateIf((o: Env) => o.ML_SERVICE_URL !== undefined)
+  @IsUrl({ require_tld: false, protocols: ['http', 'https'] }, { message: 'ML_SERVICE_URL debe ser una URL http(s)' })
+  ML_SERVICE_URL?: string;
+
+  /** Secreto compartido con el servicio (cabecera X-ML-Token). Nunca viaja al navegador. */
+  @IsOptional()
+  @IsString()
+  ML_SERVICE_TOKEN?: string;
+
+  @Transform(({ value }) => (value === undefined || value === '' ? 20000 : Number(value)))
+  @IsInt()
+  @Min(500)
+  ML_SERVICE_TIMEOUT_MS: number = 20000;
+
+  @Transform(({ value }) => (value === undefined || value === '' ? 3 : Number(value)))
+  @IsInt()
+  @Min(1)
+  ML_SERVICE_BREAKER_FAILURES: number = 3;
+
+  @Transform(({ value }) => (value === undefined || value === '' ? 30000 : Number(value)))
+  @IsInt()
+  @Min(100)
+  ML_SERVICE_BREAKER_RESET_MS: number = 30000;
 
   get isProduction(): boolean {
     return this.NODE_ENV === 'production';
