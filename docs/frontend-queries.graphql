@@ -89,3 +89,11 @@ query SugerenciasCultivo($parcelaId: ID!) {
     sugerencias { cultivo nombre puntaje probabilidadSiguientePct cambioPrecioPct unidadPrecio otraFamilia }
   }
 }
+
+# ---- Predicciones con datos frescos (olas de calor, lluvia, humedad); con escenario mueve c05b y c08a ----
+query PrediccionesEnVivo($parcelaId: ID!, $escenario: EscenarioInput) {
+  prediccionesEnVivo(parcelaId: $parcelaId, escenario: $escenario) {
+    fuente datosAl antiguedadDias obsoleto sitio distanciaKm latenciaMs generadoEn advertencias
+    resultados { concepto titulo unidad horizonte disponible valor serie datosAl rol algoritmo escenarioAplicado notas motivo fuente }
+  }
+}

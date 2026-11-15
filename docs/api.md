@@ -107,3 +107,10 @@ En producción un error interno nunca devuelve detalles ni trazas.
 Cada mutación que toca más de una tabla corre en **una sola transacción** (`TransaccionService.ejecutar`: transacción
 interactiva de Prisma con tiempo límite y reintento ante interbloqueos o conflictos de serialización). O se guarda todo o no se guarda nada.
 `crearParcela` es además idempotente (`claveIdempotencia`) y las ediciones usan bloqueo optimista (`version`).
+
+## Predicciones en vivo
+`prediccionesEnVivo(parcelaId, escenario?)` devuelve, para el punto de la parcela, los resultados de c05b (olas de calor), c08a (lluvia mañana), c08b (lluvia mensual) y c04
+(humedad del suelo) calculados con datos recién consultados a NASA POWER. Cada resultado trae `fuente` (`VIVO`, `LOTE` o `NO_DISPONIBLE`), `datosAl`, `motivo` cuando no hay valor
+(p. ej. olas de calor fuera de mayo–septiembre: **no se inventa un número**) y `escenarioAplicado` (los sliders mueven c05b y c08a). Si el servicio de ml/ no responde (o se abrió el
+circuit breaker) se devuelve el último lote con `fuente: LOTE` y `obsoleto: true`. Un punto fuera de Weld y sus alrededores devuelve `NO_DISPONIBLE`. Es una operación cara (límite `THROTTLE_LIMIT_COSTOSO`).
+Los sliders se ajustan a lo que calculan los modelos (lluvia −50…+50 %, temperatura −2…+4 °C) y la respuesta lo avisa.

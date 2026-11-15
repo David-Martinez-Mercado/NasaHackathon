@@ -219,6 +219,15 @@ type EstadoServicio {
   version: String!
 }
 
+"""
+VIVO = consultado a las API hace un momento; LOTE = del último export de ml/; NO_DISPONIBLE = no se pudo calcular.
+"""
+enum FuenteDato {
+  LOTE
+  NO_DISPONIBLE
+  VIVO
+}
+
 """Geometría GeoJSON: Point o Polygon en WGS84 (longitud, latitud)."""
 scalar GeoJSON
 
@@ -345,6 +354,29 @@ type PesosEvaluacion {
   """Práctica local observada (c02); peso fijo y bajo."""
   local: Float!
   suelo: Float!
+}
+
+type PrediccionesVivas {
+  advertencias: [String!]!
+
+  """Antigüedad del dato más reciente, en días."""
+  antiguedadDias: Int
+  datosAl: String
+  distanciaKm: Float
+
+  """De dónde salen los resultados de esta respuesta."""
+  fuente: FuenteDato!
+  generadoEn: String!
+  latenciaMs: Float
+
+  """
+  true = el servicio no pudo refrescar: son datos guardados o del último lote.
+  """
+  obsoleto: Boolean!
+  resultados: [ResultadoVivo!]!
+
+  """Punto de entrenamiento de referencia."""
+  sitio: String
 }
 
 type Preferencias {
@@ -474,6 +506,11 @@ type Query {
   parcelas(desplazamiento: Int! = 0, limite: Int! = 50): [Parcela!]!
 
   """
+  Predicciones de los modelos de ml/ con datos recién consultados a NASA POWER para el punto de la parcela (olas de calor, lluvia, humedad del suelo). Si el servicio no responde devuelve el último lote marcado como LOTE y obsoleto. Con `escenario` aplica los sliders.
+  """
+  prediccionesEnVivo(escenario: EscenarioInput, parcelaId: ID!): PrediccionesVivas!
+
+  """
   Puntos de alerta (p. ej. estrés), opcionalmente dentro de una caja del mapa.
   """
   puntos(caja: CajaInput, tipo: TipoPunto!): ConjuntoPuntos
@@ -537,6 +574,35 @@ type RejillaCapa {
   columnas × filas valores, fila por fila desde el NORTE; null = sin dato
   """
   valores: [Float]!
+}
+
+type ResultadoVivo {
+  algoritmo: String!
+
+  """
+  Modelo de ml/: c05b (olas de calor), c08a (lluvia mañana), c08b (lluvia mensual), c04 (humedad)
+  """
+  concepto: String!
+
+  """Fecha del dato más reciente con el que se calculó."""
+  datosAl: String
+  disponible: Boolean!
+  escenarioAplicado: Boolean!
+  fuente: FuenteDato!
+  horizonte: String!
+
+  """
+  Por qué no hay valor (fuera de temporada, modelo no cargado...). Nunca se inventa.
+  """
+  motivo: String
+  notas: [String!]!
+  rol: String!
+
+  """Un valor por periodo (meses o semanas) cuando aplica."""
+  serie: [Float!]
+  titulo: String!
+  unidad: String!
+  valor: Float
 }
 
 type ResumenClima {

@@ -187,3 +187,22 @@ Aplicada a c02, c03, c04, c05a, c05b y c08b (`ml/`). Para el motor de reglas y q
   Los `node_modules` siguen en C: con junctions porque el disco externo es lento.
 - `ml/.env` se regenera con la letra real del disco: ya no hace falta `subst F: D:\`.
 - Tampoco se migran la sesión de el asistente de código, la de GitHub ni el driver NVIDIA. Los `*.sh` quedan con LF (`.gitattributes`).
+
+## 2026-11-15 — ¿Cuántos años de historia hacen falta? y predicciones en vivo
+**Estudio de ventanas** (`ml/reports/ventanas.md`; método en `ml/README.md`): se reentrena el modelo desplegado con ventanas del pasado y se mide en la misma prueba reciente (último 20 %),
+con IC 95 % por bootstrap de bloques y diferencia pareada contra «toda la historia». «Equivalente» = el IC de la diferencia queda por encima de −0.02 (AUC/R²) o −5 % del error.
+- **Ventana más corta equivalente (últimos N años):** c08a lluvia 3 años · c07 ciclo 3 años · c01 rendimiento 5 años (10–20 años rinden ≈ +0.01 R² *más* que toda la historia: lo muy viejo estorba un poco) ·
+  c05a sequía 5 años (regla de persistencia, 1 ventana no concluyente) · c05b olas de calor **15 años** (con 5 años el AUC cae de 0.87 a 0.75; con 10, a 0.84) · c10 precios 20 años.
+  **c04 humedad y c08b lluvia mensual: ninguna ventana corta alcanza a la historia completa** (series estacionales: con 20 años siguen 7 % peor).
+- **Datos de hace 10+ años solos** rinden peor que los recientes con el mismo tamaño (c08a: 5 años recientes 0.760, 5 años lejanos 0.753 y 5 al azar 0.740): importa tanto tener *suficientes* datos como que sean *recientes*; la
+  mezcla al azar iguala a la reciente a partir de ~15–20 años (c05b: 15 años al azar 0.865, recientes 0.869).
+- **Lectura honesta:** lo que más cuenta es el volumen hasta ~10–15 años; después los años extra aportan casi nada (o estorban, c01). No hay evidencia de que 20 años den más congruencia que 3 en c08a/c07, pero sí en olas de calor y en los pronósticos estacionales.
+  Solo vale para Weld y estos modelos; las pruebas cortas (c01: 9 años; c10, c08b: pocos orígenes) dejan intervalos anchos. Los umbrales de etiqueta (ola de calor, SPI) se dejaron fijos; `hist_yield` (c01) y los GDD (c07) se recalcularon por ventana.
+- **Decisión:** reentrenar con **al menos 15 años** (c05b, pronósticos) y con **5–10** donde basta (c01, c05a, c07, c08a). Esto fija la ventana del reentrenamiento periódico con datos nuevos.
+
+**Servicio en vivo** (decisión del usuario: servicio de consumo al instante): `fieldshift-ml serve` (FastAPI, interno) consulta NASA POWER por punto (sin llave) y predice c05b, c08a, c08b y c04 con los modelos desplegados;
+el backend lo llama con token, tiempo límite, circuit breaker y respaldo al lote (`prediccionesEnVivo`, `fuente: VIVO|LOTE`). Latencia medida contra la API real: ≈ 4 s la primera vez por celda (historia 1981→hoy en una llamada) y ≈ 50 ms con caché.
+- **No es instantáneo y por eso sigue por lotes:** c05a (ERA5, cola), c03 (ECOSTRESS), c01/c07 (NASS+PRISM anual), c10 (NASS: falta la llave gratuita de la API de QuickStats), c02/c06/erosión (estáticos).
+- **Límites declarados:** los modelos se entrenaron con 2 puntos de Weld (se usa el más cercano como categoría `site`); otras coordenadas son una extrapolación suave; fuera de Weld ± 0.25° no se predice. El modelo de olas de calor solo corre de mayo a septiembre.
+  Los límites de uso de la API de POWER son [POR VERIFICAR]; el servicio tiene reintentos, caché y respaldo. Las pruebas de CI no usan red: respuestas simuladas y la respuesta real grabada del disco de datos.
+- **Cuidado detectado y corregido:** las pruebas del servicio escribieron datos falsos en la caché real; ahora un origen inyectado nunca toca la caché real y una copia en disco sin todas las variables de POWER se ignora.
