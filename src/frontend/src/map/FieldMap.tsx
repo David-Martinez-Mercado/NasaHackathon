@@ -6,7 +6,7 @@ import maplibregl, { type GeoJSONSource, type ImageSource } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApp } from '../AppContext';
+import { useApp, type GlobalVar } from '../AppContext';
 import { DEFAULT_CENTER, DEFAULT_ZOOM, type Field, type LngLat, type MapPoint, type MapTool } from '../data';
 import { GlobalLayer } from '../components/GlobalLayer';
 import { rampCss, renderGrid } from './gridCanvas';
@@ -45,6 +45,12 @@ const PIN_ICON: Record<MapPoint['kind'], LucideIcon> = {
   reservoir: Droplets, tank: Cylinder, groundwater: Droplet,
 };
 
+const GLOBAL_TOOLS: { id: GlobalVar; icon: LucideIcon; label: string }[] = [
+  { id: 'temperature', icon: Thermometer, label: 'Temperature (observed)' },
+  { id: 'moisture', icon: Droplet, label: 'Soil moisture (observed)' },
+  { id: 'rain', icon: CloudRain, label: 'Rain over 7 days (observed)' },
+];
+
 const TOOLS: { tool: MapTool; icon: LucideIcon; label: string }[] = [
   { tool: 'temperature', icon: Thermometer, label: 'Temperature layer' },
   { tool: 'humidity', icon: Droplet, label: 'Humidity layer' },
@@ -56,7 +62,7 @@ const TOOLS: { tool: MapTool; icon: LucideIcon; label: string }[] = [
 ];
 
 export function FieldMap() {
-  const { mapConfig: cfg, draft, setDraft, fields, currentField, globalMode, setGlobalMode } = useApp();
+  const { mapConfig: cfg, draft, setDraft, fields, currentField, globalMode, setGlobalMode, globalVar, setGlobalVar } = useApp();
   const navigate = useNavigate();
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -230,7 +236,12 @@ export function FieldMap() {
         </div>
       ) : (
         <div className="glass toolbar">
-          {TOOLS.map(({ tool, icon: Icon, label }) => (
+          {globalMode && GLOBAL_TOOLS.map(({ id, icon: Icon, label }) => (
+            <button key={id} aria-label={label} title={label} aria-pressed={globalVar === id} onClick={() => setGlobalVar(id)}>
+              <Icon size={34} strokeWidth={2.2} />
+            </button>
+          ))}
+          {!globalMode && TOOLS.map(({ tool, icon: Icon, label }) => (
             <button
               key={tool}
               aria-label={label}

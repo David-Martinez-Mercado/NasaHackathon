@@ -4,7 +4,7 @@ import { gql } from '../data/api';
 import { ApiError, errorMessage } from '../data';
 import type { GridLayer } from '../data';
 import { renderGrid } from '../map/gridCanvas';
-import { Chips } from './ui';
+import { useApp } from '../AppContext';
 
 interface Cell {
   latitud: number; longitud: number; tempMediaC: number | null; tempMaxC: number | null; lluvia7dMm: number | null;
@@ -17,12 +17,11 @@ const TEMP_RAMP = ['#2E86DE', '#F7DC6F', '#E74C3C'];
 const MOISTURE_RAMP = ['#C0392B', '#F4D03F', '#2471A3'];
 const RAIN_RAMP = ['#BFE3FF', '#4DB3F0', '#1B4FD0', '#0B2A8A'];
 const VARS = {
-  Temperature: { key: 'tempMediaC', unit: '°C', min: -10, max: 40, ramp: TEMP_RAMP },
-  'Rain (7 days)': { key: 'lluvia7dMm', unit: 'mm', min: 0, max: 40, ramp: RAIN_RAMP },
-  'Soil moisture': { key: 'humedadSueloPct', unit: '%', min: 0, max: 80, ramp: MOISTURE_RAMP },
-  Humidity: { key: 'humedadRelativaPct', unit: '%', min: 0, max: 100, ramp: MOISTURE_RAMP },
+  temperature: { key: 'tempMediaC', unit: '°C', min: -10, max: 40, ramp: TEMP_RAMP },
+  rain: { key: 'lluvia7dMm', unit: 'mm', min: 0, max: 40, ramp: RAIN_RAMP },
+  moisture: { key: 'humedadSueloPct', unit: '%', min: 0, max: 80, ramp: MOISTURE_RAMP },
 } as const;
-type VarName = keyof typeof VARS;
+const TITLE = { temperature: 'Temperature', rain: 'Rain over 7 days', moisture: 'Soil moisture' } as const;
 
 const spacing = (values: number[], fallback: number) => {
   const u = [...new Set(values)].sort((a, b) => a - b);
@@ -33,7 +32,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v
 
 /** "Global mode": colours the map cells in view with the latest observed weather. Only what is on screen is requested. */
 export function GlobalLayer({ map, ready }: { map: maplibregl.Map | null; ready: boolean }) {
-  const [name, setName] = useState<VarName>('Temperature');
+  const { globalVar: name } = useApp();
   const [data, setData] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -94,7 +93,7 @@ export function GlobalLayer({ map, ready }: { map: maplibregl.Map | null; ready:
       values[row * cols + col] = c[v.key];
     }
     const layer: GridLayer = {
-      kind: 'temperature', title: name, unit: v.unit, min: v.min, max: v.max,
+      kind: 'temperature', title: TITLE[name], unit: v.unit, min: v.min, max: v.max,
       ramp: v.ramp.map((color, i, all) => ({ at: i / (all.length - 1), color })), legend: [], grid: { bbox: [west, south, east, north], cols, rows, values },
       clipToFields: false, fadeLow: false, source: 'NASA POWER', resolutionMeters: 50_000, interpolated: true, dataAsOf: data?.datosAl ?? '', notes: [], scenarioApplies: false,
     };
@@ -125,8 +124,7 @@ export function GlobalLayer({ map, ready }: { map: maplibregl.Map | null; ready:
         : '';
   return (
     <div className="glass global-panel">
-      <div className="global-title">Global mode · observed weather, last 7 days</div>
-      <Chips options={Object.keys(VARS) as VarName[]} value={name} onChange={setName} />
+      <div className="global-title">Global mode · {TITLE[name]} · observed, last 7 days</div>
       <div className="global-legend">
         <span>{v.min}{v.unit}</span>
         <i style={{ background: `linear-gradient(90deg, ${v.ramp.join(', ')})` }} />

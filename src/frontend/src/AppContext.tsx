@@ -6,6 +6,9 @@ import {
   type Scenario, type ServerStatus,
 } from './data';
 
+/** Variable shown by global mode; chosen with the same bottom buttons as the normal layers. */
+export type GlobalVar = 'temperature' | 'moisture' | 'rain';
+
 export interface LegendItem {
   kind: MapPoint['kind'];
   label: string;
@@ -37,6 +40,8 @@ interface AppState {
   selectField: (id: string) => void;
   status: ServerStatus | null;
   globalMode: boolean;
+  globalVar: GlobalVar;
+  setGlobalVar: (v: GlobalVar) => void;
   setGlobalMode: (on: boolean) => void;
 }
 
@@ -51,6 +56,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [status, setStatus] = useState<ServerStatus | null>(null);
   const [globalMode, setGlobalMode] = useState(false);
+  const [globalVar, setGlobalVar] = useState<GlobalVar>('temperature');
 
   const refreshFields = useCallback(async () => {
     try {
@@ -77,9 +83,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       scenario, setScenario, mapConfig, setMapConfig, draft, setDraft,
-      fields, fieldsError, refreshFields, currentField, selectField: setSelectedId, status, globalMode, setGlobalMode,
+      fields, fieldsError, refreshFields, currentField, selectField: setSelectedId, status, globalMode, setGlobalMode, globalVar, setGlobalVar,
     }),
-    [scenario, mapConfig, draft, fields, fieldsError, refreshFields, currentField, status, globalMode],
+    [scenario, mapConfig, draft, fields, fieldsError, refreshFields, currentField, status, globalMode, globalVar],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
