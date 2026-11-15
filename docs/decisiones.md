@@ -178,3 +178,12 @@ Aplicada a c02, c03, c04, c05a, c05b y c08b (`ml/`). Para el motor de reglas y q
 - **Frontend:** pantalla de terreno en la barra del mapa (elevación, pendiente, erosión), alerta de erosión seleccionable en Home y tres tarjetas nuevas en Risks.
 - **Sigue sin dato:** reservas de agua y balance hídrico; recomendaciones agronómicas por capa.
 
+
+## 2026-11-15 — Migración del entorno entre computadoras
+- **Kit en el disco externo** (`<disco>:\FieldShift-Traslado\kit-migracion`, fuera de git porque lleva credenciales): `respaldar.sh` copia lo que vive en C:
+  (memoria y ajustes de el asistente de código, scripts y estado de descargas, credenciales, resultados del ML, `git bundle`) y `restaurar.sh` lo reinstala e integra
+  en la computadora nueva. Los scripts viven en `scripts/migracion/` (fuente de verdad) y el agente `migracion-entorno`.
+- **No se copian** el entorno de Python (6.5 GB, depende de la máquina) ni `node_modules`: se reconstruyen con `uv sync --frozen` (`ml/uv.lock`) y `npm ci`.
+  Los `node_modules` siguen en C: con junctions porque el disco externo es lento.
+- `ml/.env` se regenera con la letra real del disco: ya no hace falta `subst F: D:\`.
+- Tampoco se migran la sesión de el asistente de código, la de GitHub ni el driver NVIDIA. Los `*.sh` quedan con LF (`.gitattributes`).
