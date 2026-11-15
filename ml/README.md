@@ -80,11 +80,39 @@ fieldshift_ml/
   datasets/        un constructor por concepto + validación (pandera) + catálogo (registry.py)
   models/          tabular.py, forecast.py, deep.py
   evaluation/      splits, metrics, runner, tuning (Optuna), tracking (MLflow), explain (SHAP), plots, report
+  deploy/          modelos para deploy: registry, train, predict, export, schema, validate, grid
   cli.py
+deploy/            manifiestos y fichas de modelos, export.schema.json y exports (los .joblib no se versionan)
 notebooks/  scripts/make_notebooks.py  tests/
 ```
 Para añadir un concepto: escribir su constructor en `datasets/` (devuelve un `Dataset`) y registrarlo en
 `datasets/registry.py`. Para añadir un algoritmo: una línea en `models/tabular.py` o `models/forecast.py`.
+
+## Modelos para deploy
+El backend no ejecuta Python: los modelos corren aquí, por lotes, y el backend importa sus predicciones a PostgreSQL
+(`npm run import:predicciones` en `src/backend/`). Tres pasos:
+```powershell
+uv run fieldshift-ml deploy list                       # qué se despliega por concepto y por qué
+uv run fieldshift-ml deploy train                      # entrena con el 100 % de las filas -> ml/deploy/models/<concepto>/<versión>/
+uv run fieldshift-ml deploy export --version v1        # predice y escribe ml/deploy/exports/v1/ (valida al terminar)
+uv run fieldshift-ml deploy validate deploy/exports/v1 # hashes, esquema y tamaños de rejilla, como los leerá el backend
+uv run fieldshift-ml deploy schema                     # regenera deploy/export.schema.json (el backend valida con él)
+```
+- **Qué se despliega:** el modelo evaluado solo donde le gana con claridad a la mejor base; donde no, se despliega la **regla**
+  base y se rotula como tal (c05a persistencia, c08b climatología; c04 PatchTST con ventaja no concluyente). Entre algoritmos
+  empatados gana el compacto (c03: XGBoost de 2 MB en lugar de Extra Trees de 626 MB). c09 y c11 no se despliegan (sin datos).
+- **Artefactos** por modelo: `model.joblib` (no se versiona; se regenera y su sha256 está en el manifiesto), `manifest.json`
+  (algoritmo, variables, filas, ventana, huella de los datos, **métricas de la evaluación 80/20 con intervalo**, versiones de
+  paquetes, commit) y `model_card.md` (límites). El modelo se reentrena con todas las filas, así que sus métricas son las de la
+  evaluación 80/20, no se recalculan sobre datos que ya vio.
+- **Export** (`deploy/exports/<versión>/`): capas de mapa (5 tipos × escenarios de lluvia −50…+50 % y temperatura −2…+4 °C),
+  puntos de estrés, series (precios, estadísticas), resúmenes (alertas, humedad, clima) y tablas (rendimiento, rotación, ciclo).
+  Todo con `as_of`, fuente, resolución real y bandera `interpolated`. Lo que no existe (erosión, reservas de agua, elevación)
+  va en `unavailable`, no se inventa.
+- **Los escenarios ¿y si?** mueven las variables de clima que entran al modelo (c05b, c08a, c01); es una *sensibilidad del
+  modelo*, no una proyección climática. En c01 la respuesta a la lluvia es inversa en el maíz de riego (asociación, no causa).
+- Los constructores de datos aceptan `inference=True` (c05a, c05b, c08a) para conservar los días más recientes, sin etiqueta,
+  con exactamente las mismas variables que en el entrenamiento.
 
 ## Límites conocidos
 - NASA POWER es reanálisis de ~50 km: dos puntos, no parcelas. ERA5 son 30 celdas muy correlacionadas.

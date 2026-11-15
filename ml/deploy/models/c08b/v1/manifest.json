@@ -1,0 +1,70 @@
+{
+  "concept": "c08b",
+  "version": "v1",
+  "name": "base_climatologia",
+  "role": "regla-base",
+  "algorithm": "Climatología mensual (promedio de cada mes)",
+  "reason": "AutoTheta (0.657) y la climatología (0.686) no se distinguen; se despliega la regla simple",
+  "kind": "forecast",
+  "task": "forecast",
+  "target": "y",
+  "features": [
+    "unique_id",
+    "ds",
+    "y"
+  ],
+  "categorical": [],
+  "classes": null,
+  "hyperparameters": {
+    "freq": "MS",
+    "horizon": 6,
+    "season_length": 12
+  },
+  "trained_rows": 1100,
+  "trained_through": "2026-10-01",
+  "data_sha256": "6007ba428604348835362cfc1184e6dae85881604db4b036e8d1df1d0e8ddd51",
+  "trained_at": "2026-11-15T08:54:39.595295Z",
+  "seconds": 0.0,
+  "git_commit": "03b16fb",
+  "packages": {
+    "scikit-learn": "1.9.1",
+    "xgboost": "3.4.1",
+    "lightgbm": "4.7.0",
+    "catboost": "1.2.10",
+    "statsforecast": "2.0.1",
+    "neuralforecast": "3.1.9",
+    "torch": "2.6.0+cu124",
+    "polars": "2.1.0",
+    "numpy": "2.5.4",
+    "pandas": "2.3.3"
+  },
+  "metrics": {
+    "primary": "mase",
+    "value": 0.6864808942895296,
+    "ci_lo": 0.5572408219891449,
+    "ci_hi": 0.7879483203357289,
+    "skill": 0.0,
+    "baseline": "base_climatologia",
+    "baseline_value": 0.6864808942895296,
+    "split": "time",
+    "evaluated_at": "2026-11-15T01:16:00",
+    "source": "results/c08b.csv"
+  },
+  "artifact": {
+    "path": "model.joblib",
+    "sha256": "067c150b80e009a7d5bd9e7207772ae0c5a9533c9b7df244b92646ed9e0221da",
+    "size_bytes": 1370
+  },
+  "scenario_applies": false,
+  "limitations": [
+    "Entrenado con datos de Weld, Colorado (EE. UU.); no está validado en otras zonas (por ejemplo, Durango).",
+    "Las variables de clima son reanálisis (NASA POWER, ERA5) de ~25–50 km, no mediciones en la parcela.",
+    "Apoya la decisión del agricultor y del técnico; no la reemplaza."
+  ],
+  "notes": [
+    "Fuente: NASA POWER (MERRA-2/CERES), puntos Greeley y Nunn. Es reanálisis de ~50 km, no una estación.",
+    "Lluvia total del mes (mm). Horizonte: 6 meses, origen móvil sobre el 20 % final.",
+    "Pronosticar la lluvia mensual a 6 meses usando solo la propia serie suele no superar a la climatología (el promedio histórico de cada mes): por eso `base_climatologia` es la referencia esperada y un `skill` cercano a 0 o negativo es un resultado normal, no un fallo.",
+    "No hay ningún índice climático (ENSO/ONI, PDO...) en RESOURCES_DIR, así que este concepto no usa exógenas. Si se descargara uno, habría que usarlo con la misma regla sin fuga que c04: solo su valor ya publicado en el origen (desplazado al menos 6 meses, o el último valor conocido), nunca el de los meses que se pronostican."
+  ]
+}

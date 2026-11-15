@@ -1,0 +1,104 @@
+{
+  "concept": "c05b",
+  "version": "v1",
+  "name": "logistica",
+  "role": "modelo",
+  "algorithm": "Regresión logística",
+  "reason": "ROC-AUC 0.871 [0.81–0.92] contra 0.557 de la persistencia",
+  "kind": "tabular",
+  "task": "classification",
+  "target": "heatwave_next",
+  "features": [
+    "T2M_MAX",
+    "T2M_MIN",
+    "T2M",
+    "RH2M",
+    "WS2M",
+    "PS",
+    "ALLSKY_SFC_SW_DWN",
+    "GWETTOP",
+    "GWETROOT",
+    "tmax_minus_threshold",
+    "tmax_mean_3",
+    "tmax_mean_7",
+    "tmax_max_7",
+    "tmin_mean_7",
+    "hot_days_7",
+    "rain_sum_14",
+    "rain_sum_30",
+    "doy_sin",
+    "doy_cos",
+    "site",
+    "heatwave_now"
+  ],
+  "categorical": [
+    "site"
+  ],
+  "classes": [
+    "0",
+    "1"
+  ],
+  "hyperparameters": {
+    "C": 1.0,
+    "class_weight": null,
+    "dual": false,
+    "fit_intercept": true,
+    "intercept_scaling": 1,
+    "l1_ratio": 0.0,
+    "max_iter": 2000,
+    "n_jobs": null,
+    "penalty": "deprecated",
+    "random_state": null,
+    "solver": "lbfgs",
+    "tol": 0.0001,
+    "verbose": 0,
+    "warm_start": false
+  },
+  "trained_rows": 14076,
+  "trained_through": "2026",
+  "data_sha256": "5a69e893f6c16971544d583764322d3388dc499d6648020ddeaef3dc0de8a6f5",
+  "trained_at": "2026-11-15T08:54:34.081136Z",
+  "seconds": 0.07,
+  "git_commit": "03b16fb",
+  "packages": {
+    "scikit-learn": "1.9.1",
+    "xgboost": "3.4.1",
+    "lightgbm": "4.7.0",
+    "catboost": "1.2.10",
+    "statsforecast": "2.0.1",
+    "neuralforecast": "3.1.9",
+    "torch": "2.6.0+cu124",
+    "polars": "2.1.0",
+    "numpy": "2.5.4",
+    "pandas": "2.3.3"
+  },
+  "metrics": {
+    "primary": "roc_auc",
+    "value": 0.8709596567991233,
+    "ci_lo": 0.8076495813383402,
+    "ci_hi": 0.9186248286661765,
+    "skill": 0.2353,
+    "baseline": "base_persistencia",
+    "baseline_value": 0.5567901858227573,
+    "split": "time",
+    "evaluated_at": "2026-11-15T01:14:26",
+    "source": "results/c05b.csv"
+  },
+  "artifact": {
+    "path": "model.joblib",
+    "sha256": "29c6f4416444d97ea71e691eaaaf03daf24dea9faf4711d04c200719f740c0d8",
+    "size_bytes": 3049
+  },
+  "scenario_applies": true,
+  "limitations": [
+    "Entrenado con datos de Weld, Colorado (EE. UU.); no está validado en otras zonas (por ejemplo, Durango).",
+    "Las variables de clima son reanálisis (NASA POWER, ERA5) de ~25–50 km, no mediciones en la parcela.",
+    "Apoya la decisión del agricultor y del técnico; no la reemplaza."
+  ],
+  "notes": [
+    "Fuente: NASA POWER (MERRA-2/CERES), puntos Greeley y Nunn. Es reanálisis de ~50 km, no una estación.",
+    "Ola de calor: 3+ días seguidos con máxima sobre el percentil 90 de junio–agosto (umbral calculado solo con años <= 2017).",
+    "Se predice si ocurre en los próximos 7 días; filas de mayo a septiembre.",
+    "`heatwave_now` = el día actual ya es el 3.º (o posterior) día caluroso seguido; usa solo días pasados. `base_persistencia` = P(ola próxima | ¿ola ahora?), aprendida con los años de entrenamiento, y es la referencia a superar."
+  ]
+}

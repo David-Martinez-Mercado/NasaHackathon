@@ -1,0 +1,77 @@
+{
+  "concept": "c06",
+  "version": "v1",
+  "name": "indice_experto",
+  "role": "indice",
+  "algorithm": "Índice experto (promedio de variables orientadas y estandarizadas)",
+  "reason": "Sin etiqueta real; el índice experto y PCA son igual de estables y el primero se explica en una frase",
+  "kind": "index",
+  "task": "unsupervised",
+  "target": null,
+  "features": [
+    "slope_pct",
+    "available_water_cm",
+    "capability_class",
+    "hydro_group",
+    "ppt_annual_mm",
+    "tmax_july_c",
+    "vpdmax_july_hpa",
+    "max_streak",
+    "distinct_crops",
+    "fallow_share",
+    "row_crop_share",
+    "perennial_share"
+  ],
+  "categorical": [],
+  "classes": null,
+  "hyperparameters": {
+    "n_features": 12
+  },
+  "trained_rows": 11964,
+  "trained_through": null,
+  "data_sha256": "a138ce8c970a19df44d46c1fd1db7e121b1443169fcdad577ea62aaaf386f27f",
+  "trained_at": "2026-11-15T08:54:34.136402Z",
+  "seconds": 0.0,
+  "git_commit": "03b16fb",
+  "packages": {
+    "scikit-learn": "1.9.1",
+    "xgboost": "3.4.1",
+    "lightgbm": "4.7.0",
+    "catboost": "1.2.10",
+    "statsforecast": "2.0.1",
+    "neuralforecast": "3.1.9",
+    "torch": "2.6.0+cu124",
+    "polars": "2.1.0",
+    "numpy": "2.5.4",
+    "pandas": "2.3.3"
+  },
+  "metrics": {
+    "primary": "stability",
+    "value": 1.0,
+    "ci_lo": null,
+    "ci_hi": null,
+    "skill": null,
+    "baseline": "indice_experto",
+    "baseline_value": 1.0,
+    "split": "none",
+    "evaluated_at": "2026-11-14T22:45:08",
+    "source": "results/c06.csv"
+  },
+  "artifact": {
+    "path": "model.joblib",
+    "sha256": "c47e882bce1e90fb299256a221ce8c6cbe5d22ab7ed8f187cfc8701c63d2c97b",
+    "size_bytes": 86315
+  },
+  "scenario_applies": false,
+  "limitations": [
+    "Entrenado con datos de Weld, Colorado (EE. UU.); no está validado en otras zonas (por ejemplo, Durango).",
+    "Las variables de clima son reanálisis (NASA POWER, ERA5) de ~25–50 km, no mediciones en la parcela.",
+    "Apoya la decisión del agricultor y del técnico; no la reemplaza."
+  ],
+  "notes": [
+    "Suelo: SSURGO (pendiente, agua disponible 0–100 cm, clase de capacidad, grupo hidrológico).",
+    "Clima: normales PRISM 1991–2020 a 800 m. Historial: CDL (monocultivo, diversidad, barbecho).",
+    "La pendiente sale de SSURGO porque SRTM todavía no está descargado.",
+    "No hay etiqueta de 'vulnerabilidad real': se mide estabilidad y acuerdo con un índice experto, y hace falta revisión agronómica."
+  ]
+}

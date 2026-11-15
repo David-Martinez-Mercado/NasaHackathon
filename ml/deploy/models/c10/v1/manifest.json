@@ -1,0 +1,70 @@
+{
+  "concept": "c10",
+  "version": "v1",
+  "name": "auto_theta",
+  "role": "modelo",
+  "algorithm": "AutoTheta (pronóstico a 6 meses)",
+  "reason": "MASE 0.711 contra 0.848 de la persistencia",
+  "kind": "forecast",
+  "task": "forecast",
+  "target": "y",
+  "features": [
+    "unique_id",
+    "ds",
+    "y"
+  ],
+  "categorical": [],
+  "classes": null,
+  "hyperparameters": {
+    "freq": "MS",
+    "horizon": 6,
+    "season_length": 12
+  },
+  "trained_rows": 3087,
+  "trained_through": "2026-09-01",
+  "data_sha256": "48d1cf8803f8ec4103d08dbfa22f6403c38603f707142091ce990ea44e471633",
+  "trained_at": "2026-11-15T08:54:40.240596Z",
+  "seconds": 0.51,
+  "git_commit": "03b16fb",
+  "packages": {
+    "scikit-learn": "1.9.1",
+    "xgboost": "3.4.1",
+    "lightgbm": "4.7.0",
+    "catboost": "1.2.10",
+    "statsforecast": "2.0.1",
+    "neuralforecast": "3.1.9",
+    "torch": "2.6.0+cu124",
+    "polars": "2.1.0",
+    "numpy": "2.5.4",
+    "pandas": "2.3.3"
+  },
+  "metrics": {
+    "primary": "mase",
+    "value": 0.7112888640190774,
+    "ci_lo": null,
+    "ci_hi": null,
+    "skill": 0.1586,
+    "baseline": "base_persistencia",
+    "baseline_value": 0.8482660005536069,
+    "split": "time",
+    "evaluated_at": "2026-11-14T22:44:54",
+    "source": "results/c10.csv"
+  },
+  "artifact": {
+    "path": "model.joblib",
+    "sha256": "863556de8b450dc445093f572d6e9b36bc2163462fd5c2675772bdbd66aaf5c9",
+    "size_bytes": 125058
+  },
+  "scenario_applies": false,
+  "limitations": [
+    "Entrenado con datos de Weld, Colorado (EE. UU.); no está validado en otras zonas (por ejemplo, Durango).",
+    "Las variables de clima son reanálisis (NASA POWER, ERA5) de ~25–50 km, no mediciones en la parcela.",
+    "Apoya la decisión del agricultor y del técnico; no la reemplaza."
+  ],
+  "notes": [
+    "Fuente: NASS QuickStats, precio mensual recibido por el productor (nacional, EE. UU.).",
+    "Cada serie va como índice (100 = promedio del periodo de entrenamiento) para poder compararlas.",
+    "Horizonte: 6 meses. Son precios nominales, sin ajustar por inflación.",
+    "El precio entra al proyecto como dato; este pronóstico es solo exploratorio."
+  ]
+}

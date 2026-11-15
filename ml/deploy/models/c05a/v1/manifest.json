@@ -1,0 +1,82 @@
+{
+  "concept": "c05a",
+  "version": "v1",
+  "name": "base_persistencia",
+  "role": "regla-base",
+  "algorithm": "Persistencia: P(sequía en 3 meses | ¿sequía ahora?)",
+  "reason": "Ningún modelo supera a la persistencia (el mejor, k-vecinos, 0.567 contra 0.539, intervalos traslapados)",
+  "kind": "tabular",
+  "task": "classification",
+  "target": "drought_next",
+  "features": [
+    "spi_1",
+    "spi_3",
+    "spi_6",
+    "spi_12",
+    "spi_3_change",
+    "water_balance_3",
+    "temp_anomaly_3",
+    "soil_water_top",
+    "soil_water_root",
+    "month_sin",
+    "month_cos",
+    "lat",
+    "lon",
+    "drought_now"
+  ],
+  "categorical": [],
+  "classes": [
+    "0",
+    "1"
+  ],
+  "hyperparameters": {
+    "column": "drought_now"
+  },
+  "trained_rows": 30840,
+  "trained_through": "2026",
+  "data_sha256": "32e4e44e04d69bdd0d24f34487cd07395e9046c66a231780c744348dc7f79032",
+  "trained_at": "2026-11-15T08:54:33.923622Z",
+  "seconds": 0.02,
+  "git_commit": "03b16fb",
+  "packages": {
+    "scikit-learn": "1.9.1",
+    "xgboost": "3.4.1",
+    "lightgbm": "4.7.0",
+    "catboost": "1.2.10",
+    "statsforecast": "2.0.1",
+    "neuralforecast": "3.1.9",
+    "torch": "2.6.0+cu124",
+    "polars": "2.1.0",
+    "numpy": "2.5.4",
+    "pandas": "2.3.3"
+  },
+  "metrics": {
+    "primary": "roc_auc",
+    "value": 0.5389256971449334,
+    "ci_lo": 0.4708517825363982,
+    "ci_hi": 0.5936894395956308,
+    "skill": 0.0,
+    "baseline": "base_persistencia",
+    "baseline_value": 0.5389256971449334,
+    "split": "time",
+    "evaluated_at": "2026-11-15T01:15:17",
+    "source": "results/c05a.csv"
+  },
+  "artifact": {
+    "path": "model.joblib",
+    "sha256": "72ae0b8dfdd778bd3e79acc747985deb75e70dc9ef8ef678fd2263fe323c019e",
+    "size_bytes": 1470
+  },
+  "scenario_applies": false,
+  "limitations": [
+    "Entrenado con datos de Weld, Colorado (EE. UU.); no está validado en otras zonas (por ejemplo, Durango).",
+    "Las variables de clima son reanálisis (NASA POWER, ERA5) de ~25–50 km, no mediciones en la parcela.",
+    "Apoya la decisión del agricultor y del técnico; no la reemplaza."
+  ],
+  "notes": [
+    "Fuente: ERA5 mensual (ECMWF), 30 celdas de ~25 km sobre Weld, 1940–2026.",
+    "Sequía: SPI de 3 meses <= -1.0 dentro de 3 meses. El SPI se calibra solo con años <= 2009.",
+    "`base_persistencia` = P(sequía futura | ¿hay sequía ahora?), aprendida solo con los años de entrenamiento; es más exigente que la frecuencia histórica y es la referencia a superar.",
+    "Las celdas vecinas están muy correlacionadas: la muestra efectiva es menor al número de filas."
+  ]
+}

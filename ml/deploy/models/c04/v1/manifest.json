@@ -1,0 +1,70 @@
+{
+  "concept": "c04",
+  "version": "v1",
+  "name": "patchtst",
+  "role": "modelo",
+  "algorithm": "PatchTST (pronóstico a 4 semanas)",
+  "reason": "Mejor MASE (0.353), pero su intervalo se traslapa con el de la persistencia (0.396): ventaja no concluyente",
+  "kind": "forecast",
+  "task": "forecast",
+  "target": "y",
+  "features": [
+    "unique_id",
+    "ds",
+    "y"
+  ],
+  "categorical": [],
+  "classes": null,
+  "hyperparameters": {
+    "freq": "W-MON",
+    "horizon": 4,
+    "season_length": 52
+  },
+  "trained_rows": 4784,
+  "trained_through": "2026-11-02",
+  "data_sha256": "e9c75e004f7c9efdd22fdacf6ef57e23d8a91d8763f90d0cbe4a14925c421042",
+  "trained_at": "2026-11-15T08:54:32.702965Z",
+  "seconds": 16.91,
+  "git_commit": "03b16fb",
+  "packages": {
+    "scikit-learn": "1.9.1",
+    "xgboost": "3.4.1",
+    "lightgbm": "4.7.0",
+    "catboost": "1.2.10",
+    "statsforecast": "2.0.1",
+    "neuralforecast": "3.1.9",
+    "torch": "2.6.0+cu124",
+    "polars": "2.1.0",
+    "numpy": "2.5.4",
+    "pandas": "2.3.3"
+  },
+  "metrics": {
+    "primary": "mase",
+    "value": 0.3534115406414166,
+    "ci_lo": 0.30963011819432296,
+    "ci_hi": 0.4087197104811636,
+    "skill": 0.1097,
+    "baseline": "base_persistencia",
+    "baseline_value": 0.39621298453117965,
+    "split": "time",
+    "evaluated_at": "2026-11-15T01:48:16",
+    "source": "results/c04.csv"
+  },
+  "artifact": {
+    "path": "model.joblib",
+    "sha256": "96b7e86c5c8b65d3f2219e91e0df1b5e4f5f6bcb17e7b6eb71002e090bcacf9b",
+    "size_bytes": 3185856
+  },
+  "scenario_applies": false,
+  "limitations": [
+    "Entrenado con datos de Weld, Colorado (EE. UU.); no está validado en otras zonas (por ejemplo, Durango).",
+    "Las variables de clima son reanálisis (NASA POWER, ERA5) de ~25–50 km, no mediciones en la parcela.",
+    "Apoya la decisión del agricultor y del técnico; no la reemplaza."
+  ],
+  "notes": [
+    "Fuente: NASA POWER (MERRA-2/CERES), puntos Greeley y Nunn. Es reanálisis de ~50 km, no una estación.",
+    "Variable GWETROOT (humedad de raíz de MERRA-2) como sustituto mientras llega SMAP.",
+    "Promedio semanal. Horizonte: 4 semanas, origen móvil sobre el 20 % final.",
+    "Exógenas (`lightgbm_exogenas`, `xgboost_exogenas`): lluvia total, Tmax media y ET media de la semana. Sin fuga: el clima de una semana futura no se conoce en el origen, así que para pronosticar la semana t+k se usa el de t+k-4 (siempre ya observado porque k <= 4); el modelo se niega a pronosticar más lejos que ese rezago. Los modelos `*_rezagos` no las ven, para poder medir cuánto aporta el clima."
+  ]
+}

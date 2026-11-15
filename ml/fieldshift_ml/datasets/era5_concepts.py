@@ -11,8 +11,11 @@ from fieldshift_ml.features.climate import cyclical, spi
 from fieldshift_ml.io import era5
 
 
-def build_drought(lead_months: int = 3, spi_threshold: float = -1.0) -> Dataset:
-    """c05a — ¿el SPI de 3 meses caerá bajo `spi_threshold` dentro de `lead_months` meses?"""
+def build_drought(lead_months: int = 3, spi_threshold: float = -1.0, inference: bool = False) -> Dataset:
+    """c05a — ¿el SPI de 3 meses caerá bajo `spi_threshold` dentro de `lead_months` meses?
+
+    With `inference=True` the latest months (whose future SPI is not known yet) are kept with a null label.
+    """
     frame = era5.read_monthly().with_columns(
         pl.col("date").dt.year().alias("year"), pl.col("date").dt.month().alias("month"),
     )
@@ -49,9 +52,9 @@ def build_drought(lead_months: int = 3, spi_threshold: float = -1.0) -> Dataset:
     )
     numeric = ["spi_1", "spi_3", "spi_6", "spi_12", "spi_3_change", "water_balance_3", "temp_anomaly_3",
                "soil_water_top", "soil_water_root", "month_sin", "month_cos", "lat", "lon", "drought_now"]
-    frame = frame.with_columns([pl.col(c).fill_nan(None) for c in numeric[:7]]).filter(
-        pl.col("_spi_future").is_not_null() & pl.col("_spi_future").is_not_nan() & pl.col("spi_12").is_not_null()
-    ).with_columns(
+    keep = pl.col("spi_12").is_not_null() if inference else (
+        pl.col("_spi_future").is_not_null() & pl.col("_spi_future").is_not_nan() & pl.col("spi_12").is_not_null())
+    frame = frame.with_columns([pl.col(c).fill_nan(None) for c in numeric[:7]]).filter(keep).with_columns(
         (pl.col("_spi_future") <= spi_threshold).cast(pl.Int8).alias("drought_next"),
         # estado actual (solo usa información ya conocida): es la base de persistencia
         (pl.col("spi_3") <= spi_threshold).fill_null(False).cast(pl.Int8).alias("drought_now"),

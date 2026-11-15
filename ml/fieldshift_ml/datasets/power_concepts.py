@@ -28,8 +28,12 @@ def _train_year_limit(frame: pl.DataFrame) -> int:
     return int(years[years.len() - n_test - 1])
 
 
-def build_rain_probability(horizon_days: int = 1, threshold_mm: float = 1.0) -> Dataset:
-    """c08a — ¿lloverá (>= threshold) en los próximos `horizon_days` días?"""
+def build_rain_probability(horizon_days: int = 1, threshold_mm: float = 1.0, inference: bool = False) -> Dataset:
+    """c08a — ¿lloverá (>= threshold) en los próximos `horizon_days` días?
+
+    With `inference=True` the most recent days (whose future is not known yet) are kept, with a null label: they
+    are the rows a deployed model predicts. The features are computed by exactly the same code as in training.
+    """
     rain = pl.col("PRECTOTCORR")
     future = [rain.shift(-k).over("site") for k in range(1, horizon_days + 1)]
     frame = _daily().with_columns(
@@ -45,7 +49,9 @@ def build_rain_probability(horizon_days: int = 1, threshold_mm: float = 1.0) -> 
         *cyclical(pl.col("doy"), 365.25, "doy"),
         pl.max_horizontal(future).alias("_future_rain"),
     )
-    frame = frame.filter(pl.col("_future_rain").is_not_null() & pl.col("rain_sum_30").is_not_null())
+    known = pl.col("rain_sum_30").is_not_null() if inference else (
+        pl.col("_future_rain").is_not_null() & pl.col("rain_sum_30").is_not_null())
+    frame = frame.filter(known)
     frame = frame.with_columns((pl.col("_future_rain") >= threshold_mm).cast(pl.Int8).alias("rain_next"))
     features = [
         "T2M", "T2M_MAX", "T2M_MIN", "T2MDEW", "T2MWET", "RH2M", "QV2M", "WS2M", "PS", "TS",
@@ -107,8 +113,12 @@ def build_soil_moisture() -> Dataset:
     )
 
 
-def build_heatwave(lead_days: int = 7, run_days: int = 3) -> Dataset:
-    """c05b — ¿habrá ola de calor (>= run_days días sobre el percentil 90) en los próximos `lead_days` días?"""
+def build_heatwave(lead_days: int = 7, run_days: int = 3, inference: bool = False) -> Dataset:
+    """c05b — ¿habrá ola de calor (>= run_days días sobre el percentil 90) en los próximos `lead_days` días?
+
+    With `inference=True` every day with features is kept (all months, including the last `lead_days` whose label is
+    not known yet); the label column is meaningless there. The caller picks the rows to predict.
+    """
     daily = _daily()
     limit = _train_year_limit(daily)
     thresholds = (
@@ -143,7 +153,10 @@ def build_heatwave(lead_days: int = 7, run_days: int = 3) -> Dataset:
         pl.col("PRECTOTCORR").rolling_sum(30).over("site").alias("rain_sum_30"),
         *cyclical(pl.col("doy"), 365.25, "doy"),
     )
-    frame = frame.filter(pl.col("_valid") & pl.col("month").is_between(5, 9) & pl.col("rain_sum_30").is_not_null())
+    if inference:
+        frame = frame.filter(pl.col("rain_sum_30").is_not_null())
+    else:
+        frame = frame.filter(pl.col("_valid") & pl.col("month").is_between(5, 9) & pl.col("rain_sum_30").is_not_null())
     features = [
         "T2M_MAX", "T2M_MIN", "T2M", "RH2M", "WS2M", "PS", "ALLSKY_SFC_SW_DWN", "GWETTOP", "GWETROOT",
         "tmax_minus_threshold", "tmax_mean_3", "tmax_mean_7", "tmax_max_7", "tmin_mean_7", "hot_days_7",

@@ -1,0 +1,274 @@
+{
+  "schema_version": 1,
+  "version": "v1",
+  "generated_at": "2026-11-15T08:54:51.533806Z",
+  "zone": {
+    "name": "Condado de Weld, Colorado (EE. UU.)",
+    "fips": "08123",
+    "bbox": [
+      -105.06,
+      39.91,
+      -103.7,
+      41.0
+    ]
+  },
+  "data_as_of": "2026-11-10",
+  "models": [
+    {
+      "concept": "c01",
+      "name": "xgboost",
+      "role": "modelo",
+      "algorithm": "XGBoost (regresión)",
+      "trained_rows": 82206,
+      "trained_through": "2025",
+      "metric": "r2",
+      "value": 0.8989513819002568,
+      "ci_lo": 0.8875169308533849,
+      "ci_hi": 0.9095548839132906,
+      "baseline": "base_referencia",
+      "baseline_value": 0.7324377422897232,
+      "skill": 0.3855,
+      "notes": [
+        "R² 0.899 contra 0.900 de Extra Trees (160 MB); el R² de la anomalía respecto al historial del condado es ~0.48"
+      ]
+    },
+    {
+      "concept": "c02",
+      "name": "xgboost",
+      "role": "modelo",
+      "algorithm": "XGBoost (clasificación, 17 clases)",
+      "trained_rows": 156753,
+      "trained_through": "2023",
+      "metric": "f1_macro",
+      "value": 0.3098916017221883,
+      "ci_lo": 0.2727830287005633,
+      "ci_hi": 0.33885818145515245,
+      "baseline": "base_markov2",
+      "baseline_value": 0.22125968197506504,
+      "skill": 0.1814,
+      "notes": [
+        "Gana a la cadena de Markov de 2.º orden (F1 macro 0.31 contra 0.22); versión compacta de 120 árboles"
+      ]
+    },
+    {
+      "concept": "c03",
+      "name": "xgboost",
+      "role": "modelo",
+      "algorithm": "XGBoost (regresión)",
+      "trained_rows": 92658,
+      "trained_through": "2026-10-15",
+      "metric": "r2",
+      "value": 0.25097880845351406,
+      "ci_lo": 0.13921128935852145,
+      "ci_hi": 0.35981323563755685,
+      "baseline": "base_referencia",
+      "baseline_value": 0.0278885653897728,
+      "skill": 0.1222,
+      "notes": [
+        "R² 0.251 contra 0.255 de Extra Trees (626 MB); prueba de solo ~15 fechas de una temporada"
+      ]
+    },
+    {
+      "concept": "c04",
+      "name": "patchtst",
+      "role": "modelo",
+      "algorithm": "PatchTST (pronóstico a 4 semanas)",
+      "trained_rows": 4784,
+      "trained_through": "2026-11-02",
+      "metric": "mase",
+      "value": 0.3534115406414166,
+      "ci_lo": 0.30963011819432296,
+      "ci_hi": 0.4087197104811636,
+      "baseline": "base_persistencia",
+      "baseline_value": 0.39621298453117965,
+      "skill": 0.1097,
+      "notes": [
+        "Mejor MASE (0.353), pero su intervalo se traslapa con el de la persistencia (0.396): ventaja no concluyente"
+      ]
+    },
+    {
+      "concept": "c05a",
+      "name": "base_persistencia",
+      "role": "regla-base",
+      "algorithm": "Persistencia: P(sequía en 3 meses | ¿sequía ahora?)",
+      "trained_rows": 30840,
+      "trained_through": "2026",
+      "metric": "roc_auc",
+      "value": 0.5389256971449334,
+      "ci_lo": 0.4708517825363982,
+      "ci_hi": 0.5936894395956308,
+      "baseline": "base_persistencia",
+      "baseline_value": 0.5389256971449334,
+      "skill": 0.0,
+      "notes": [
+        "Ningún modelo supera a la persistencia (el mejor, k-vecinos, 0.567 contra 0.539, intervalos traslapados)"
+      ]
+    },
+    {
+      "concept": "c05b",
+      "name": "logistica",
+      "role": "modelo",
+      "algorithm": "Regresión logística",
+      "trained_rows": 14076,
+      "trained_through": "2026",
+      "metric": "roc_auc",
+      "value": 0.8709596567991233,
+      "ci_lo": 0.8076495813383402,
+      "ci_hi": 0.9186248286661765,
+      "baseline": "base_persistencia",
+      "baseline_value": 0.5567901858227573,
+      "skill": 0.2353,
+      "notes": [
+        "ROC-AUC 0.871 [0.81–0.92] contra 0.557 de la persistencia"
+      ]
+    },
+    {
+      "concept": "c06",
+      "name": "indice_experto",
+      "role": "indice",
+      "algorithm": "Índice experto (promedio de variables orientadas y estandarizadas)",
+      "trained_rows": 11964,
+      "trained_through": null,
+      "metric": "stability",
+      "value": 1.0,
+      "ci_lo": null,
+      "ci_hi": null,
+      "baseline": "indice_experto",
+      "baseline_value": 1.0,
+      "skill": null,
+      "notes": [
+        "Sin etiqueta real; el índice experto y PCA son igual de estables y el primero se explica en una frase"
+      ]
+    },
+    {
+      "concept": "c07",
+      "name": "xgboost",
+      "role": "modelo",
+      "algorithm": "XGBoost (regresión)",
+      "trained_rows": 1028,
+      "trained_through": "2026",
+      "metric": "r2",
+      "value": 0.9828930574391532,
+      "ci_lo": null,
+      "ci_hi": null,
+      "baseline": "base_referencia",
+      "baseline_value": 0.9729626011691295,
+      "skill": 0.2046,
+      "notes": [
+        "Error de ~8 días contra 10.5 de la duración habitual"
+      ]
+    },
+    {
+      "concept": "c08a",
+      "name": "catboost",
+      "role": "modelo",
+      "algorithm": "CatBoost (clasificación)",
+      "trained_rows": 33440,
+      "trained_through": "2026",
+      "metric": "roc_auc",
+      "value": 0.7725729556524001,
+      "ci_lo": null,
+      "ci_hi": null,
+      "baseline": "base_frecuencia",
+      "baseline_value": 0.5,
+      "skill": 0.1723,
+      "notes": [
+        "ROC-AUC 0.77 contra 0.50 de la frecuencia histórica"
+      ]
+    },
+    {
+      "concept": "c08b",
+      "name": "base_climatologia",
+      "role": "regla-base",
+      "algorithm": "Climatología mensual (promedio de cada mes)",
+      "trained_rows": 1100,
+      "trained_through": "2026-10-01",
+      "metric": "mase",
+      "value": 0.6864808942895296,
+      "ci_lo": 0.5572408219891449,
+      "ci_hi": 0.7879483203357289,
+      "baseline": "base_climatologia",
+      "baseline_value": 0.6864808942895296,
+      "skill": 0.0,
+      "notes": [
+        "AutoTheta (0.657) y la climatología (0.686) no se distinguen; se despliega la regla simple"
+      ]
+    },
+    {
+      "concept": "c10",
+      "name": "auto_theta",
+      "role": "modelo",
+      "algorithm": "AutoTheta (pronóstico a 6 meses)",
+      "trained_rows": 3087,
+      "trained_through": "2026-09-01",
+      "metric": "mase",
+      "value": 0.7112888640190774,
+      "ci_lo": null,
+      "ci_hi": null,
+      "baseline": "base_persistencia",
+      "baseline_value": 0.8482660005536069,
+      "skill": 0.1586,
+      "notes": [
+        "MASE 0.711 contra 0.848 de la persistencia"
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "layers/temperature.json",
+      "sha256": "c3a6159cf6b8a754aa422d207af2cfde2699d70b6ce965f184fa8dd5a390e272",
+      "kind": "layer"
+    },
+    {
+      "path": "layers/rain.json",
+      "sha256": "f65e28ecfc73db13b9678630e6766c166267dae0281f60e835f7be615f072754",
+      "kind": "layer"
+    },
+    {
+      "path": "layers/humidity.json",
+      "sha256": "31e2532030ac4d4f0cc6575d863a66e0b770740dccee06419a1909025b3855a1",
+      "kind": "layer"
+    },
+    {
+      "path": "layers/drought.json",
+      "sha256": "d1791bbacbc98f08643d000043196b9985a9e594cb89650898bc38356d77df3e",
+      "kind": "layer"
+    },
+    {
+      "path": "layers/vulnerability.json",
+      "sha256": "7d6d2e2dfa94de2145b109e26465b32b3e1ed7134fef6fe9cbcf3bc72716c4f2",
+      "kind": "layer"
+    },
+    {
+      "path": "points/stress.json",
+      "sha256": "dbf5cd727f49f736273f9efde94945e36a2b0876f651908e4da33e555fae5c28",
+      "kind": "points"
+    },
+    {
+      "path": "series/market.json",
+      "sha256": "539278a5d35d5bca256e0282e474cd90da3e8a2324664af551cb0cc3d829122d",
+      "kind": "series"
+    },
+    {
+      "path": "series/statistics.json",
+      "sha256": "203ffbc593bf94858d61033f4db0a139ab0759788c0d2786bdcaf4a01284f2e1",
+      "kind": "series"
+    },
+    {
+      "path": "tables.json",
+      "sha256": "f75b4070c85d16a6b2a5cf868bc34c6914cd813745fbd9b652f454eb4d42a5fb",
+      "kind": "tables"
+    },
+    {
+      "path": "summaries.json",
+      "sha256": "93cfb3eba4c79c4462dec31eb84f6d37ef88ce1d43096895f92b25af8697e8b7",
+      "kind": "summaries"
+    }
+  ],
+  "limitations": [
+    "Los modelos se entrenaron con datos de Weld, Colorado (EE. UU.), no de Durango.",
+    "Temperatura, humedad, lluvia y sequía vienen de reanálisis de 25–50 km: no distinguen parcelas vecinas.",
+    "Los escenarios ¿y si? son sensibilidades de los modelos, no proyecciones climáticas.",
+    "El ML entrega insumos; la recomendación final la da y explica el motor de reglas. La herramienta apoya, no reemplaza, la experiencia local."
+  ]
+}
