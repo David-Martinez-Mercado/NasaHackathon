@@ -4,6 +4,7 @@
  * Nothing is invented on the client: what the server does not have is reported as unavailable.
  */
 import { ApiError, gql } from './api';
+import { translateNote, translateSource } from './i18n';
 import type {
   AlertSummary, ClimateSummary, ColorStop, Crop, Field, GridLayer, HumiditySummary, LayerKind, LngLat, MapPoint,
   CropSuggestion, CropSuggestions, FactorKey, FieldValues, Irrigation, ModelTable, NewField, PlotRecord, PredictionStatus, Priorities, Ring,
@@ -337,11 +338,11 @@ export async function fetchLayer(kind: LayerKind, scenario: Scenario): Promise<G
     grid: { bbox: c.rejilla.bbox, cols: c.rejilla.columnas, rows: c.rejilla.filas, values: c.rejilla.valores },
     clipToFields: look.clipToFields,
     fadeLow: look.fadeLow,
-    source: c.fuente,
+    source: translateSource(c.fuente),
     resolutionMeters: c.resolucionM,
     interpolated: c.interpolada,
     dataAsOf: c.datosAl,
-    notes: c.notas,
+    notes: c.notas.map(translateNote),
     scenarioApplies: c.escenario.aplica,
   };
 }
@@ -442,7 +443,7 @@ export async function fetchClimate(): Promise<ClimateSummary | null> {
     rainNextMonthMm: c.lluviaMensualMm[0] ?? null,
     rainNextDayPct: c.lluviaMananaPct,
     asOf: c.datosAl,
-    notes: c.notas,
+    notes: c.notas.map(translateNote),
   };
 }
 
