@@ -7,7 +7,7 @@ import { ApiError, gql } from './api';
 import type {
   AlertSummary, ClimateSummary, ColorStop, Crop, Field, GridLayer, HumiditySummary, LayerKind, LngLat, MapPoint,
   CropSuggestion, CropSuggestions, FactorKey, FieldValues, Irrigation, ModelTable, NewField, PlotRecord, PredictionStatus, Priorities, Ring,
-  Risk, RiskKey, RiskLevel, Scenario, Series, ServerStatus, Severity, Soil,
+  DataSource, LiveForecast, Risk, RiskKey, RiskLevel, Scenario, Series, ServerStatus, Severity, Soil,
 } from './types';
 
 export * from './types';
@@ -481,5 +481,42 @@ export async function fetchStatus(): Promise<ServerStatus> {
   return {
     motorAvailable: data.salud.fuentes.find((f) => f.nombre === 'motor de reglas')?.estado === 'OK',
     predictionsVersion: data.estadoPredicciones?.version ?? null,
+  };
+}
+
+/* ---------- live predictions (fresh weather from the APIs, with the last batch as a fallback) ---------- */
+
+const SOURCE: Record<string, DataSource> = { VIVO: 'live', LOTE: 'batch', NO_DISPONIBLE: 'none' };
+
+export async function fetchLive(fieldId: string, scenario?: Scenario): Promise<LiveForecast> {
+  const data = await gql<{
+    prediccionesEnVivo: {
+      fuente: string; datosAl: string | null; antiguedadDias: number | null; obsoleto: boolean; sitio: string | null;
+      distanciaKm: number | null; latenciaMs: number | null; generadoEn: string; advertencias: string[];
+      resultados: {
+        concepto: string; titulo: string; unidad: string; horizonte: string; disponible: boolean; valor: number | null;
+        serie: number[] | null; datosAl: string | null; rol: string; algoritmo: string; escenarioAplicado: boolean; notas: string[];
+        motivo: string | null; fuente: string;
+      }[];
+    };
+  }>(
+    `query($id: ID!, $e: EscenarioInput) { prediccionesEnVivo(parcelaId: $id, escenario: $e) {
+        fuente datosAl antiguedadDias obsoleto sitio distanciaKm latenciaMs generadoEn advertencias
+        resultados { concepto titulo unidad horizonte disponible valor serie datosAl rol algoritmo escenarioAplicado notas motivo fuente } } }`,
+    {
+      id: fieldId,
+      e: scenario && (scenario.rainPct !== 0 || scenario.tempDelta !== 0)
+        ? { lluviaPct: Math.round(scenario.rainPct), tempDeltaC: scenario.tempDelta } : null,
+    },
+  );
+  const p = data.prediccionesEnVivo;
+  return {
+    source: SOURCE[p.fuente] ?? 'none', asOf: p.datosAl, ageDays: p.antiguedadDias, outdated: p.obsoleto, site: p.sitio,
+    distanceKm: p.distanciaKm, latencyMs: p.latenciaMs, generatedAt: p.generadoEn, warnings: p.advertencias,
+    results: p.resultados.map((r) => ({
+      concept: r.concepto, title: r.titulo, unit: r.unidad, horizon: r.horizonte, available: r.disponible, value: r.valor,
+      series: r.serie, asOf: r.datosAl, source: SOURCE[r.fuente] ?? 'none', role: r.rol, algorithm: r.algoritmo,
+      scenarioApplied: r.escenarioAplicado, notes: r.notas, reason: r.motivo,
+    })),
   };
 }

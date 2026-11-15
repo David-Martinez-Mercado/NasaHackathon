@@ -2,6 +2,7 @@ import { CloudDrizzle, Sun, TrendingUp, Triangle } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useApp, useMapConfig } from '../AppContext';
 import { CropSuggestions } from '../components/CropSuggestions';
+import { LiveForecast } from '../components/LiveForecast';
 import { Card, Notice, Panel, Slider } from '../components/ui';
 import { LevelPill, RISK_INFO } from '../components/risk';
 import { fetchAlerts, fetchErosionPoints, fetchRisks, fetchStressPoints, type AlertKind } from '../data';
@@ -62,6 +63,8 @@ export function Home() {
           The sliders repaint the heat-wave and rain layers. They show how the model reacts to a change; they are not a climate projection.
         </small>
       </Card>
+
+      <LiveForecast withSliders title="Forecast for your field" />
 
       <Card title="Risks in your zone" className="risk-summary">
         {risks.error && <Notice kind="error">{risks.error}</Notice>}

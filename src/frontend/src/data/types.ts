@@ -277,3 +277,39 @@ export interface ModelTable {
   notes: string[];
   rows: Record<string, string | number | null>[];
 }
+
+/** Where a prediction comes from: queried from the APIs a moment ago, or from the last batch export. */
+export type DataSource = 'live' | 'batch' | 'none';
+
+export interface LiveResult {
+  concept: string;
+  title: string;
+  unit: string;
+  horizon: string;
+  available: boolean;
+  value: number | null;
+  /** One value per period (months or weeks) when it applies */
+  series: number[] | null;
+  asOf: string | null;
+  source: DataSource;
+  role: string;
+  algorithm: string;
+  scenarioApplied: boolean;
+  notes: string[];
+  /** Why there is no value (out of season, model not loaded…). Never invented. */
+  reason: string | null;
+}
+
+export interface LiveForecast {
+  source: DataSource;
+  asOf: string | null;
+  ageDays: number | null;
+  /** True when it could not be refreshed: the data is saved or from the last batch */
+  outdated: boolean;
+  site: string | null;
+  distanceKm: number | null;
+  latencyMs: number | null;
+  generatedAt: string;
+  results: LiveResult[];
+  warnings: string[];
+}

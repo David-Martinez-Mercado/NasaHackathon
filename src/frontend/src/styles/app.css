@@ -309,3 +309,20 @@ h1, h2, h3, p { margin: 0; }
 .model-role { color: var(--text-muted); }
 
 .factor-none > i { background: #b8bec6; }
+
+/* ---------- live predictions ---------- */
+.source { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; line-height: 13px; font-weight: 600; border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+.source-live { background: #dff3dc; color: #1e6433; }
+.source-batch { background: #e6e9ee; color: #474b4e; }
+.source-none { background: #fbdcd8; color: #9b1c12; }
+.live-row { border-bottom: 1px solid #eef0f3; padding: 8px 0 10px; display: grid; gap: 3px; }
+.live-row:last-of-type { border-bottom: 0; }
+.live-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; }
+.live-head strong { font-size: 13px; }
+.live-body { display: flex; align-items: baseline; gap: 10px; }
+.live-value { font-size: 22px; line-height: 26px; }
+.live-horizon { font-size: 11px; color: var(--text-muted); }
+.live-series { font-size: 11px; color: var(--text-soft); }
+.live-reason { font-size: 10px; line-height: 13px; color: var(--text-muted); }
+.live-foot { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.live-foot .btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; font-size: 12px; }

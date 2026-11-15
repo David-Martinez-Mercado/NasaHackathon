@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useApp, useMapConfig } from '../AppContext';
 import { Card, Notice, Panel } from '../components/ui';
+import { LiveForecast } from '../components/LiveForecast';
 import { LevelPill, RISK_INFO } from '../components/risk';
 import { fetchErosionPoints, fetchRisks, fetchStressPoints, type LayerKind, type RiskKey } from '../data';
 import { useLayer, useRemote } from '../hooks';
@@ -34,6 +35,7 @@ export function Risks() {
       {currentField && (
         <>
           <p className="section-sub">Around <b>{currentField.name}</b>. Tap a card to see it on the map.</p>
+          <LiveForecast title="Right now" />
           {risks.error && <Notice kind="error">{risks.error}</Notice>}
           {risks.loading && !risks.data && <Notice kind="loading">Evaluating the zone…</Notice>}
           <div className="risk-list">
