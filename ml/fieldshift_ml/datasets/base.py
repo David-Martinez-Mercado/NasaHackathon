@@ -37,9 +37,15 @@ class Dataset:
     group_col: str | None = None
     # optional column holding a domain reference prediction (a formula, a historical mean...)
     baseline_feature: str | None = None
+    # label of that baseline in the results (default: base_referencia / base_markov)
+    baseline_name: str | None = None
+    # more baselines, {name: column}; each one is scored and the skill is taken against the best of all
+    extra_baselines: dict[str, str] = field(default_factory=dict)
     # ordered categorical columns (oldest -> newest) for the recurrent models
     sequence_cols: list[str] = field(default_factory=list)
-    # forecast only (frame is long: unique_id, ds, y)
+    # forecast only (frame is long: unique_id, ds, y [+ exog_cols])
+    # same-period weather columns; the models that use them shift them by at least `horizon` periods
+    exog_cols: list[str] = field(default_factory=list)
     freq: str | None = None
     horizon: int | None = None
     season_length: int | None = None

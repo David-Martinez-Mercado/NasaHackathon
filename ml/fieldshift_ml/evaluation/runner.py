@@ -68,8 +68,17 @@ def _skill_metric(task: str, n_classes: int | None) -> str:
     return "brier" if n_classes == 2 else "log_loss"
 
 
+def _add_ci(result: Result, metric, blocks: np.ndarray | None, n_boot: int, seed: int) -> None:
+    """Add `<primary>_lo` / `<primary>_hi` (95 % block-bootstrap interval) to the result's metrics."""
+    if blocks is None or n_boot <= 0:
+        return
+    low, high = M.block_bootstrap_ci(metric, blocks, n_boot=n_boot, seed=seed)
+    result.metrics[f"{result.primary}_lo"] = low
+    result.metrics[f"{result.primary}_hi"] = high
+
+
 def _run_tabular(dataset: Dataset, split: str, fast: bool, only: set[str] | None, tune: int,
-                 seed: int, test_fraction: float) -> tuple[list[Result], pl.DataFrame, dict]:
+                 seed: int, test_fraction: float, n_boot: int = 0) -> tuple[list[Result], pl.DataFrame, dict]:
     frame = dataset.frame
     train_idx, test_idx = split_dataset(dataset, split, test_fraction, seed)
     columns = dataset.features
@@ -91,10 +100,23 @@ def _run_tabular(dataset: Dataset, split: str, fast: bool, only: set[str] | None
         y = y_raw.astype(float)
     X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
     y_train, y_test = y[train_idx], y[test_idx]
+    blocks = None
+    ci_note = ""
+    if dataset.time_col:  # whole years (or months/weeks when the test period is short) are resampled together
+        blocks = M.time_blocks(frame.get_column(dataset.time_col).to_numpy()[test_idx])
+    if (blocks is None or np.unique(blocks).size < 3) and dataset.group_col:
+        # fewer than 3 test periods (e.g. 2 test years): time blocks cannot give an interval, so resample the spatial
+        # blocks instead. That captures location-to-location noise only, not year-to-year variation.
+        blocks = frame.get_column(dataset.group_col).to_numpy()[test_idx]
+        ci_note = "intervalo por bloques espaciales (la prueba cubre menos de 3 periodos)"
 
     specs: list[ModelSpec] = [s for s in tabular_models(dataset.task) if not (fast and s.slow)]
+    references = []
     if dataset.baseline_feature:
-        specs.insert(1, reference_spec(dataset.baseline_feature, dataset.task))
+        references.append(reference_spec(dataset.baseline_feature, dataset.task, dataset.baseline_name))
+    references += [reference_spec(column, dataset.task, name) for name, column in dataset.extra_baselines.items()]
+    for offset, reference in enumerate(references):
+        specs.insert(1 + offset, reference)
     if dataset.sequence_cols and dataset.task == "classification":
         specs += sequence_specs(dataset.sequence_cols)
     if only:
@@ -108,6 +130,8 @@ def _run_tabular(dataset: Dataset, split: str, fast: bool, only: set[str] | None
     results: list[Result] = []
     predictions: list[pl.DataFrame] = []
     fitted: dict[str, object] = {}
+    per_class: dict[str, dict] = {}
+    class_names = [str(c) for c in encoder.classes_] if dataset.task == "classification" else []
     skill_metric = _skill_metric(dataset.task, n_classes)
     primary, _ = M.primary_metric(dataset.task, n_classes)
     for spec in specs:
@@ -133,6 +157,11 @@ def _run_tabular(dataset: Dataset, split: str, fast: bool, only: set[str] | None
                 result.metrics = M.regression_metrics(y_test, y_pred)
             else:
                 result.metrics = M.classification_metrics(y_test, np.asarray(y_pred).ravel(), proba, n_classes)
+                per_class[spec.name] = M.per_class_report(y_test, np.asarray(y_pred).ravel(), class_names)
+            _add_ci(result, M.primary_metric_fn(dataset.task, y_test, y_pred, proba, n_classes=n_classes),
+                    blocks, n_boot, seed)
+            if ci_note and n_boot > 0:
+                result.note = "; ".join(filter(None, [result.note, ci_note]))
             pred_frame = pl.DataFrame({
                 "model": spec.name, "row": test_idx,
                 "y_true": y_test.astype(float), "y_pred": np.asarray(y_pred, dtype=float).ravel(),
@@ -149,7 +178,8 @@ def _run_tabular(dataset: Dataset, split: str, fast: bool, only: set[str] | None
                  result.metrics.get(primary), result.fit_seconds)
     _set_skill(results, skill_metric)
     extra = {"n_classes": n_classes, "skill_metric": skill_metric,
-             "classes": encoder.classes_.tolist() if dataset.task == "classification" else None}
+             "classes": encoder.classes_.tolist() if dataset.task == "classification" else None,
+             "per_class": per_class}
     all_preds = pl.concat(predictions, how="diagonal_relaxed") if predictions else pl.DataFrame()
     return results, all_preds, {"fitted": fitted, **extra}
 
@@ -165,8 +195,8 @@ def _seasonal_scale(train: pd.DataFrame, season: int) -> dict[str, float]:
 
 
 def _run_forecast(dataset: Dataset, fast: bool, only: set[str] | None, seed: int,
-                  test_fraction: float) -> tuple[list[Result], pl.DataFrame, dict]:
-    frame = dataset.frame.select(ID, DS, Y).to_pandas()
+                  test_fraction: float, n_boot: int = 0) -> tuple[list[Result], pl.DataFrame, dict]:
+    frame = dataset.frame.select(ID, DS, Y, *dataset.exog_cols).to_pandas()
     frame[DS] = pd.to_datetime(frame[DS])
     dates = np.sort(frame[DS].unique())
     h, season = int(dataset.horizon), int(dataset.season_length)
@@ -178,7 +208,7 @@ def _run_forecast(dataset: Dataset, fast: bool, only: set[str] | None, seed: int
     train = frame[frame[DS] < dates[first]]
     scale = _seasonal_scale(train, season)
 
-    models: list[Forecaster] = forecast_models(dataset.freq, season, h, fast, seed)
+    models: list[Forecaster] = forecast_models(dataset.freq, season, h, fast, seed, dataset.exog_cols)
     models = [m for m in models if not (fast and m.slow)]
     if only:
         models = [m for m in models if m.name in only or m.baseline]
@@ -208,6 +238,9 @@ def _run_forecast(dataset: Dataset, fast: bool, only: set[str] | None, seed: int
             per_series = [M.regression_metrics(g[Y].to_numpy(), g[YHAT].to_numpy())["r2"]
                           for _, g in merged.groupby(ID) if len(g) > 1]
             result.metrics["r2"] = float(np.mean(per_series))  # mean of each series' own R²
+            _add_ci(result, M.primary_metric_fn("forecast", merged[Y].to_numpy(), merged[YHAT].to_numpy(),
+                                                scale=row_scale),
+                    M.time_blocks(merged["cutoff"].to_numpy()), n_boot, seed)  # each forecast origin is a block
             merged["model"] = model.name
             predictions.append(pl.from_pandas(merged[["model", ID, DS, "cutoff", Y, YHAT]]).with_columns(
                 pl.col(DS).cast(pl.Datetime("ms")), pl.col("cutoff").cast(pl.Datetime("ms")),
@@ -234,20 +267,27 @@ def results_frame(results: list[Result]) -> pl.DataFrame:
 
 
 def evaluate(dataset: Dataset, *, split: str | None = None, fast: bool = False,
-             models: list[str] | None = None, tune: int = 0, save: bool = True) -> pl.DataFrame:
-    """Run the comparison for one concept and return one row per model, best first."""
+             models: list[str] | None = None, tune: int = 0, save: bool = True,
+             n_boot: int | None = None) -> pl.DataFrame:
+    """Run the comparison for one concept and return one row per model, best first.
+
+    `n_boot` = resamples for the 95 % interval of the primary metric (`<metric>_lo`, `<metric>_hi`); the default is
+    200 (50 with `fast`) and 0 turns it off.
+    """
     settings = get_settings()
+    n_boot = (50 if fast else 200) if n_boot is None else n_boot
     only = set(models) if models else None
     split_kind = split or dataset.split
     if dataset.task == "forecast":
-        results, predictions, extra = _run_forecast(dataset, fast, only, settings.seed, settings.test_fraction)
+        results, predictions, extra = _run_forecast(dataset, fast, only, settings.seed, settings.test_fraction,
+                                                    n_boot)
     elif dataset.task == "unsupervised":
         from fieldshift_ml.evaluation.unsupervised import run_unsupervised
 
         results, predictions, extra = run_unsupervised(dataset, fast, only, settings.seed)
     else:
         results, predictions, extra = _run_tabular(dataset, split_kind, fast, only, tune, settings.seed,
-                                                   settings.test_fraction)
+                                                   settings.test_fraction, n_boot)
 
     table = results_frame(results)
     primary = results[0].primary if results else ""

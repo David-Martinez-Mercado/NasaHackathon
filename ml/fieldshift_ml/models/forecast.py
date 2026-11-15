@@ -167,13 +167,45 @@ class ProphetModel(Forecaster):
         return pd.concat(parts, ignore_index=True)
 
 
-class LagBoosting(Forecaster):
-    """Gradient boosting on lagged values (one global model for all series), forecast recursively."""
+def lag_exog(frame: pd.DataFrame, cols: list[str], lag: int, freq: str) -> pd.DataFrame:
+    """Return (id, ds, `<col>_lag<lag>`...) where the value on date d is the column's value on d - lag periods.
 
-    def __init__(self, name: str, engine: str, freq: str, season_length: int, seed: int = 42):
+    The shift is by DATE, not by row, so a missing period gives NaN instead of silently pulling a wrong row.
+    The result has a row for every date up to `last date + lag periods`, which is exactly what is needed to
+    describe the next `lag` periods using only what is already known.
+    """
+    offset = pd.tseries.frequencies.to_offset(freq) * lag
+    shifted = frame[[ID, DS, *cols]].copy()
+    shifted[DS] = shifted[DS] + offset
+    return shifted.rename(columns={c: f"{c}_lag{lag}" for c in cols})
+
+
+class LagBoosting(Forecaster):
+    """Gradient boosting on lagged values (one global model for all series), forecast recursively.
+
+    With `exog` (names of weather columns of the same period) it also sees those columns shifted by `exog_lag`
+    periods. The rule against leakage: the weather of a future period is unknown at the forecast origin, so the
+    value used to predict period t+k is the one from t+k-`exog_lag`, which is already known as long as
+    `exog_lag` >= k. Hence `exog_lag` must be at least the forecast horizon, and `predict` refuses a longer one.
+    """
+
+    def __init__(self, name: str, engine: str, freq: str, season_length: int, seed: int = 42,
+                 exog: list[str] | None = None, exog_lag: int | None = None):
         super().__init__(name, "boosting", freq, season_length)
         self.engine = engine
         self.seed = seed
+        self.exog = list(exog or [])
+        self.exog_lag = exog_lag
+        if self.exog and not exog_lag:
+            raise ValueError("Las variables exógenas necesitan exog_lag (>= horizonte) para no usar el futuro")
+
+    def _with_exog(self, frame: pd.DataFrame) -> pd.DataFrame:
+        """(id, ds, y) plus the lagged weather columns, built only from `frame` itself."""
+        base = frame[[ID, DS, Y]]
+        if not self.exog:
+            return base
+        lagged = lag_exog(frame, self.exog, self.exog_lag, self.freq)
+        return base.merge(lagged, on=[ID, DS], how="left")
 
     def _estimator(self):
         if self.engine == "xgboost":
@@ -202,10 +234,20 @@ class LagBoosting(Forecaster):
                                 RollingMean(window_size=min(season, 12))]},
             date_features=["month"],
         )
-        self._fcst.fit(train[[ID, DS, Y]], static_features=[])
+        self._fcst.fit(self._with_exog(train), static_features=[])
 
     def predict(self, history: pd.DataFrame, h: int) -> pd.DataFrame:
-        out = self._fcst.predict(h, new_df=history[[ID, DS, Y]])
+        if not self.exog:
+            out = self._fcst.predict(h, new_df=history[[ID, DS, Y]])
+            return out.rename(columns={self.name: YHAT})[[ID, DS, YHAT]]
+        if h > self.exog_lag:
+            raise ValueError(
+                f"{self.name}: con exog_lag={self.exog_lag} no se pueden pronosticar {h} periodos "
+                "(se usaría clima del futuro)"
+            )
+        lagged = lag_exog(history, self.exog, self.exog_lag, self.freq)
+        future = _future_dates(history, h, self.freq).merge(lagged, on=[ID, DS], how="left")
+        out = self._fcst.predict(h, new_df=self._with_exog(history), X_df=future)
         return out.rename(columns={self.name: YHAT})[[ID, DS, YHAT]]
 
 
@@ -246,7 +288,7 @@ class NeuralModel(Forecaster):
 
 
 def forecast_models(freq: str, season_length: int, horizon: int, fast: bool = False,
-                    seed: int = 42) -> list[Forecaster]:
+                    seed: int = 42, exog: list[str] | None = None) -> list[Forecaster]:
     """All candidates for one forecasting concept. The first baseline is the reference for `skill`."""
     models: list[Forecaster] = [
         SeasonalNaive("base_estacional", "base", freq, season_length, baseline=True),
@@ -259,6 +301,11 @@ def forecast_models(freq: str, season_length: int, horizon: int, fast: bool = Fa
         LagBoosting("lightgbm_rezagos", "lightgbm", freq, season_length, seed),
         LagBoosting("xgboost_rezagos", "xgboost", freq, season_length, seed),
     ]
+    if exog:  # added next to the plain versions so that the gain from weather can be measured
+        models += [
+            LagBoosting("lightgbm_exogenas", "lightgbm", freq, season_length, seed, exog, horizon),
+            LagBoosting("xgboost_exogenas", "xgboost", freq, season_length, seed, exog, horizon),
+        ]
     for name, cls in (("lstm", "LSTM"), ("gru", "GRU"), ("nbeats", "NBEATS"), ("patchtst", "PatchTST")):
         models.append(NeuralModel(name, cls, freq, season_length, horizon, fast, seed))
     return models

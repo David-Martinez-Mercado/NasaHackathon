@@ -33,11 +33,11 @@ Los notebooks se regeneran con `python scripts/make_notebooks.py`.
 | id | Concepto | Tarea | Datos | Modelo base |
 |---|---|---|---|---|
 | c01 | Rendimiento por cultivo | regresión | QuickStats + PRISM por condado (8 estados) | promedio histórico del condado |
-| c02 | Rotación de cultivos | clasificación | CDL 2008–2023 | cadena de Markov |
+| c02 | Rotación de cultivos | clasificación | CDL (Weld, un raster por año) | cadena de Markov (`base_markov`) y de 2.º orden (`base_markov2`) |
 | c03 | Estrés de vegetación | regresión | ECOSTRESS ESI + NASA POWER + SSURGO | ESI promedio del píxel |
-| c04 | Humedad del suelo | pronóstico (4 semanas) | NASA POWER `GWETROOT` | persistencia |
-| c05a | Sequía | clasificación | ERA5 mensual 1940–2026 (SPI) | frecuencia histórica |
-| c05b | Olas de calor | clasificación | NASA POWER diario | frecuencia histórica |
+| c04 | Humedad del suelo | pronóstico (4 semanas) | NASA POWER `GWETROOT` (+ lluvia, Tmax y ET como exógenas) | persistencia |
+| c05a | Sequía | clasificación | ERA5 mensual 1940–2026 (SPI) | persistencia: P(sequía futura \| ¿sequía ahora?) |
+| c05b | Olas de calor | clasificación | NASA POWER diario | persistencia: P(ola próxima \| ¿ola ahora?) |
 | c06 | Vulnerabilidad | sin etiqueta | SSURGO + PRISM normales + CDL | índice experto |
 | c07 | Duración del ciclo | regresión | avance de cultivos (QuickStats) + PRISM | fórmula de grados-día |
 | c08a | Probabilidad de lluvia | clasificación | NASA POWER diario | frecuencia histórica |
@@ -64,6 +64,11 @@ Los notebooks se regeneran con `python scripts/make_notebooks.py`.
 - Regresión: R², RMSE, MAE. Clasificación: ROC-AUC, F1 macro, exactitud balanceada, Brier. Pronóstico: MASE, MAE,
   RMSE, sMAPE. Sin etiqueta: estabilidad, silueta, acuerdo con el índice experto.
 - `skill` = reducción del error frente al **mejor** modelo base. Si es ≤ 0, conviene la regla simple.
+- **Intervalo de confianza al 95 %** de la métrica principal (`<métrica>_lo`, `<métrica>_hi`) con bootstrap por bloques de tiempo: se remuestrean años completos (meses o semanas si la prueba es corta; ventanas en los pronósticos), nunca filas sueltas. Por defecto 200 remuestreos (50 con `--fast`); `--n-boot 0` lo apaga. Si los intervalos de dos modelos se traslapan, la diferencia no es concluyente.
+- **`--fast` es solo para probar que todo corre**: no saques conclusiones de esa corrida.
+- Bases adicionales por concepto (`Dataset.extra_baselines`): el `skill` se calcula contra la mejor de todas.
+- c04 tiene modelos con clima (`lightgbm_exogenas`, `xgboost_exogenas`) al lado de los `*_rezagos`. La regla sin fuga: el clima de una semana futura no se conoce en el origen, así que se usa el de `t+k-horizonte`; el modelo se niega a pronosticar más lejos que ese rezago.
+- c02 guarda en su JSON un informe por clase (precisión, recall, F1 y soporte) y reporta también `f1_weighted`.
 - Umbrales, climatologías y promedios históricos se calculan solo con los años de entrenamiento.
 
 ## Estructura

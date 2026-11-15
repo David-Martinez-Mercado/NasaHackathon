@@ -85,10 +85,15 @@ class ConditionalFrequency(ClassifierMixin, BaseEstimator):
         return self.classes_[self.predict_proba(X).argmax(axis=1)]
 
 
-def reference_spec(column: str, task: str = "regression") -> ModelSpec:
+def reference_spec(column: str, task: str = "regression", name: str | None = None) -> ModelSpec:
+    """Baseline built from one column that already holds the reference (a formula, the previous state...).
+
+    `name` lets a concept label it after what the column means (`base_persistencia`, `base_markov2`...).
+    """
     if task == "classification":
-        return ModelSpec("base_markov", "base", lambda fast, seed: ConditionalFrequency(column), baseline=True)
-    return ModelSpec("base_referencia", "base", lambda fast, seed: ColumnBaseline(column), baseline=True)
+        return ModelSpec(name or "base_markov", "base", lambda fast, seed: ConditionalFrequency(column),
+                         baseline=True)
+    return ModelSpec(name or "base_referencia", "base", lambda fast, seed: ColumnBaseline(column), baseline=True)
 
 
 def sequence_specs(sequence_cols: list[str]) -> list[ModelSpec]:

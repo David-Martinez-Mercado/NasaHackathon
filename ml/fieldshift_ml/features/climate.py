@@ -34,6 +34,21 @@ def run_length_at_least(flags: np.ndarray, length: int) -> np.ndarray:
     return out
 
 
+def trailing_run_at_least(flags: np.ndarray, length: int) -> np.ndarray:
+    """True on day t when the run of consecutive True values ENDING at t already has `length` days or more.
+
+    Unlike `run_length_at_least`, which marks a whole run (including its first days) once the run is known to
+    last long enough, this only looks backwards: it is what a forecaster really knows on day t.
+    """
+    flags = np.asarray(flags, dtype=bool)
+    out = np.zeros(flags.shape[0], dtype=bool)
+    run = 0
+    for index, flag in enumerate(flags):
+        run = run + 1 if flag else 0
+        out[index] = run >= length
+    return out
+
+
 def spi(values: np.ndarray, months: np.ndarray, reference: np.ndarray) -> np.ndarray:
     """Standardized Precipitation Index.
 

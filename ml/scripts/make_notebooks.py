@@ -35,13 +35,21 @@ entrenar y 20 % para probar. Cambia `CONCEPT` en la primera celda y ejecuta todo
 - Cada modelo se compara con un **modelo base** ingenuo (el promedio, la persistencia, la fórmula).
   `skill > 0` significa que le gana al mejor modelo base.
 - El ML entrega insumos al motor de reglas; no decide la recomendación.
+- La tabla trae un **intervalo de confianza al 95 %** de la métrica principal (`<métrica>_lo`, `<métrica>_hi`),
+  calculado remuestreando bloques completos de tiempo (años o ventanas de pronóstico). Si dos modelos tienen
+  intervalos que se traslapan mucho, la diferencia entre ellos no es concluyente.
+
+> **`FAST = True` es solo para probar que todo corre.** Usa menos árboles, deja fuera las redes neuronales y los
+> modelos lentos, y calcula los intervalos con menos remuestreos. **No saques conclusiones de una corrida rápida:**
+> para cifras finales pon `FAST = False`.
 """),
     ("code", """
 CONCEPT = "c08a"   # c01 c02 c03 c04 c05a c05b c06 c07 c08a c08b c10
-FAST = True        # True: menos árboles y sin redes neuronales (minutos). False: corrida completa.
+FAST = True        # SOLO PARA PROBAR: menos árboles, sin redes neuronales. Para conclusiones usa False.
 SPLIT = None       # None = el del concepto ("time"); "random" o "group" para comparar
 MODELS = None      # None = todos; o una lista, p. ej. ["lightgbm", "xgboost"]
 TUNE = 0           # pruebas de Optuna por modelo (0 = sin búsqueda de hiperparámetros)
+N_BOOT = None      # remuestreos del intervalo de confianza: None = 200 (50 si FAST), 0 = sin intervalo
 """, ["parameters"]),
     ("code", """
 import logging
@@ -77,7 +85,7 @@ concept = registry.get_concept(CONCEPT)
 try:
     dataset = registry.build(CONCEPT)
 except DataNotReady as exc:
-    raise SystemExit(f"Este concepto aún no se puede evaluar. Falta: {'; '.join(exc.missing)}")
+    raise SystemExit(f"Este concepto aún no se puede evaluar. Falta: {'; '.join(exc.missing)}") from exc
 
 display(Markdown(f"### {concept.number}. {concept.name}\\n**{concept.question}**\\n\\n"
                  f"Tarea: `{dataset.task}` · {dataset.n_rows:,} filas · objetivo: `{dataset.target}`\\n\\n"
@@ -111,10 +119,14 @@ plt.show()
 Una fila por modelo, del mejor al peor según la métrica principal del concepto.
 """),
     ("code", """
-table = evaluate(dataset, split=SPLIT, fast=FAST, models=MODELS, tune=TUNE)
+if FAST:
+    display(Markdown("> ⚠️ **Corrida rápida (`FAST = True`)**: sirve para comprobar que todo corre, no para "
+                     "sacar conclusiones. Los modelos lentos no participan y los intervalos usan pocos remuestreos."))
+table = evaluate(dataset, split=SPLIT, fast=FAST, models=MODELS, tune=TUNE, n_boot=N_BOOT)
 primary = table["primary"][0]
 tag = CONCEPT if SPLIT in (None, dataset.split) else f"{CONCEPT}__{SPLIT}"
-shown = [c for c in ("model", "family", primary, "skill", "r2", "rmse", "mae", "roc_auc", "f1_macro", "brier",
+shown = [c for c in ("model", "family", primary, f"{primary}_lo", f"{primary}_hi", "skill", "r2", "rmse", "mae",
+                     "roc_auc", "f1_macro", "brier",
                      "balanced_accuracy", "mase", "smape", "silhouette", "agreement_expert", "n_train",
                      "n_test", "fit_seconds", "note", "error") if c in table.columns]
 table.select(list(dict.fromkeys(shown)))

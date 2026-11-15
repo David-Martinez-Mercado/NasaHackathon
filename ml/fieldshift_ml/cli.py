@@ -50,6 +50,8 @@ def evaluate(
     split: Annotated[str | None, typer.Option(help="time | group | random (por defecto, el del concepto)")] = None,
     models: Annotated[str | None, typer.Option(help="Lista separada por comas")] = None,
     tune: Annotated[int, typer.Option(help="Pruebas de Optuna por modelo (0 = sin búsqueda)")] = 0,
+    n_boot: Annotated[int | None, typer.Option(
+        help="Remuestreos para el intervalo de confianza (por defecto 200; 50 con --fast; 0 = sin intervalo)")] = None,
 ) -> None:
     """Entrena y evalúa los modelos candidatos (80 % entrenamiento, 20 % prueba)."""
     from fieldshift_ml.evaluation.runner import evaluate as run
@@ -64,8 +66,11 @@ def evaluate(
         except DataNotReady as exc:
             print(f"[pendiente] {exc}")
             continue
-        table = run(dataset, split=split, fast=fast, models=models.split(",") if models else None, tune=tune)
-        keep = [c for c in ("model", "family", table["primary"][0], "skill", "r2", "rmse", "mae", "f1_macro",
+        table = run(dataset, split=split, fast=fast, models=models.split(",") if models else None, tune=tune,
+                    n_boot=n_boot)
+        primary = table["primary"][0]
+        keep = [c for c in ("model", "family", primary, f"{primary}_lo", f"{primary}_hi", "skill", "r2", "rmse",
+                            "mae", "f1_macro",
                             "brier", "fit_seconds", "error") if c in table.columns]
         print(f"\n== {concept_id}: {registry.get_concept(concept_id).name} ({dataset.n_rows:,} filas)")
         print(table.select(list(dict.fromkeys(keep))))

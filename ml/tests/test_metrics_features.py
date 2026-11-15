@@ -57,3 +57,22 @@ def test_spi_is_standardized_and_uses_only_the_reference_period():
     changed = rain.copy()
     changed[~reference] *= 10  # altering the test years must not move the training-period index
     assert np.allclose(spi(changed, months, reference)[reference], index[reference])
+
+
+def test_f1_weighted_counts_classes_by_support_and_f1_macro_does_not():
+    y = np.array([0] * 90 + [1] * 10)
+    pred = np.array([0] * 90 + [0] * 10)  # always predicts the big class
+    out = M.classification_metrics(y, pred, None, 2)
+    assert out["f1_macro"] < out["f1_weighted"]  # the missed minority class drags the macro average down
+    assert out["f1_weighted"] == pytest.approx(0.9 * 2 * 0.9 / (0.9 + 1.0) + 0.0, abs=1e-6)
+
+
+def test_per_class_report_has_precision_recall_f1_and_support():
+    y = np.array([0, 0, 1, 1, 1, 2])
+    pred = np.array([0, 1, 1, 1, 0, 2])
+    report = M.per_class_report(y, pred, ["maiz", "trigo", "alfalfa", "ausente"])
+    assert set(report) == {"maiz", "trigo", "alfalfa", "ausente"}
+    assert report["trigo"]["support"] == 3 and report["trigo"]["precision"] == pytest.approx(2 / 3)
+    assert report["trigo"]["recall"] == pytest.approx(2 / 3)
+    assert report["maiz"]["f1"] == pytest.approx(0.5)
+    assert report["ausente"]["support"] == 0 and report["ausente"]["f1"] == 0.0  # class absent from the test fold

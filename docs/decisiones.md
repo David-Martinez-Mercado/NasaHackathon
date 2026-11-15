@@ -35,3 +35,36 @@
 - Sin datos todavía: SMAP, MODIS NDVI, SRTM, IMERG, GLDAS/NLDAS y OpenET. Por eso el concepto 4 usa `GWETROOT` de
   NASA POWER, la pendiente del concepto 6 sale de SSURGO, y los conceptos 9 y 11 quedan pendientes.
 - Afecta a: ingeniero-ia e ingeniero-datos (insumos disponibles), agronomo-reglas (qué pronósticos puede usar el motor).
+
+## 2026-11-15 — Revisión del pipeline de ML: bases más exigentes, sin fugas, con intervalos
+Aplicada a c02, c03, c04, c05a, c05b y c08b (`ml/`). Para el motor de reglas y quien use estos números:
+- **Los skills bajan, y es lo correcto.** Cada concepto se compara con una base más fuerte: c05a y c05b con
+  persistencia (`base_persistencia` = P(evento futuro | estado actual), aprendida solo con el entrenamiento) y c02 con
+  una cadena de Markov de 2.º orden además de la de 1.º. Antes la sequía y las olas de calor solo se comparaban con la
+  frecuencia histórica. El `skill` se calcula contra la mejor base de cada concepto.
+- **Sequía a 3 meses (c05a): no hay modelo útil.** El mejor (k-vecinos, ROC-AUC 0.567 [0.51–0.62]) no supera a la
+  persistencia (0.539 [0.47–0.59]). El motor no debe depender de un pronóstico de sequía a 3 meses de este modelo.
+- **Olas de calor (c05b): sigue siendo útil.** Logística ROC-AUC 0.871 [0.81–0.92] contra 0.557 de la persistencia.
+- **Corrección de una fuga en c05b:** `in_wave` (ya calculado) marca los primeros días de una ola cuando se sabe que
+  durará 3 días, o sea que mira el futuro; no se puede usar como "estado actual". El estado actual (`heatwave_now`)
+  usa solo días pasados (`trailing_run_at_least`).
+- **c03 (estrés):** `esi_hist` ya no incluye la etiqueta de la propia fila en entrenamiento (media dejando fuera la
+  fecha propia; sin otras fechas, media global de entrenamiento) y la hora local usa America/Denver con horario de
+  verano (antes UTC-7 fijo). Resultado casi igual (R² 0.251 contra 0.255): la fuga no inflaba el resultado.
+  [POR VERIFICAR] que las marcas de tiempo del nombre de archivo de ECOSTRESS son UTC: los GeoTIFF no traen etiqueta
+  de hora.
+- **c04 (humedad):** nuevos `lightgbm_exogenas` y `xgboost_exogenas` con lluvia, Tmax y ET semanales desplazadas al menos
+  el horizonte (4 semanas); sin clima del futuro y se niegan a pronosticar más lejos que el rezago. **No mejoran** a
+  los `*_rezagos` (MASE 0.407 y 0.412 contra 0.414 y 0.406): con ese rezago el clima no añade información sobre la
+  propia humedad. El mejor sigue siendo PatchTST (0.353 [0.31–0.41]) y su intervalo se traslapa con el de la
+  persistencia (0.396 [0.35–0.44]): la ventaja no es concluyente.
+- **c08b (lluvia mensual):** AutoTheta (0.657 [0.53–0.77]) y la climatología (0.686 [0.56–0.79]) no se distinguen.
+  No hay ningún índice ENSO/ONI en `F:\FieldShift-Recursos` (se buscó por nombre y en `enlaces.md`); no se añadieron fuentes.
+- **Intervalos de confianza al 95 %** (`<métrica>_lo`, `<métrica>_hi`) con bootstrap por bloques de tiempo (años; meses o
+  semanas si la prueba es corta; ventanas en pronósticos). `--n-boot 0` los apaga. Con menos de 3 periodos de prueba (c02:
+  2 años) se usan bloques espaciales de 10 km y la columna `note` lo avisa: ese intervalo no refleja la variación entre años.
+- **c02:** `f1_weighted` y un informe por clase (precisión, recall, F1, soporte) en el JSON de resultados. F1 macro 0.31
+  contra F1 ponderado 0.63: las clases pequeñas (sorgo, mijo) casi no se predicen. El texto "CDL 2008–2025" era incorrecto:
+  hay 16 años (2008–2023).
+- El notebook avisa que `FAST = True` es solo para probar y no para sacar conclusiones.
+- Afecta a: agronomo-reglas e ingeniero-ia (qué pronósticos del ML pueden usar y con qué confianza).

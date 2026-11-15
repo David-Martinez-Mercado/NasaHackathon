@@ -10,6 +10,7 @@ from fieldshift_ml.io import cdl
 
 HISTORY = 5  # previous years used to predict the next crop
 MAX_PIXELS = 15_000
+STREAK_CAP = 3
 
 
 def _crop_history() -> pl.DataFrame:
@@ -38,6 +39,9 @@ def build_rotation() -> Dataset:
             "year": years[position], "crop": names[:, position],
             **{f"prev{HISTORY - k}": window[:, k] for k in range(HISTORY)},
             "streak": streak.astype(np.int16),
+            # previous crop + how many years it has lasted (capped): key of the second-order Markov baseline
+            "prev1_streak": np.char.add(np.char.add(window[:, -1].astype(str), "|"),
+                                        np.minimum(streak, STREAK_CAP).astype(str)),
             "distinct_crops": np.array([len(set(row)) for row in window], dtype=np.int16),
             **{f"n_{crop}": (window == crop).sum(axis=1).astype(np.int16)
                for crop in ("maiz", "trigo_invierno", "barbecho", "alfalfa")},
@@ -45,15 +49,18 @@ def build_rotation() -> Dataset:
     frame = pl.concat(parts).filter(pl.col("crop") != "pastizal")
     sequence = [f"prev{k}" for k in range(HISTORY, 0, -1)]  # oldest -> newest
     features = [*sequence, "streak", "distinct_crops", "n_maiz", "n_trigo_invierno", "n_barbecho",
-                "n_alfalfa", "x_km", "y_km"]
+                "n_alfalfa", "x_km", "y_km", "prev1_streak"]
     return Dataset(
         concept="c02", task="classification", frame=frame.sort("year", "pixel"), target="crop",
-        features=features, categorical=sequence, split="time", time_col="year", group_col="block",
-        baseline_feature="prev1", sequence_cols=sequence,
+        features=features, categorical=[*sequence, "prev1_streak"], split="time", time_col="year",
+        group_col="block", baseline_feature="prev1", extra_baselines={"base_markov2": "prev1_streak"},
+        sequence_cols=sequence,
         notes=[f"Fuente: CDL CropScape {years[0]}–{years[-1]}, Weld, 30 m. Muestra de un píxel cada 360 m "
                "que fue cultivo o barbecho al menos la mitad de los años.",
                f"Se predice el cultivo del año con los {HISTORY} anteriores; la prueba son los últimos años.",
-               "`base_markov` = cultivo más frecuente después del cultivo del año pasado.",
+               "`base_markov` = cultivo más frecuente después del cultivo del año pasado; `base_markov2` añade "
+               f"cuántos años seguidos lleva ese cultivo (hasta {STREAK_CAP}). Ambas se aprenden solo con el "
+               "entrenamiento.",
                "CDL es una clasificación de satélite: sus errores entran como ruido en las etiquetas.",
                "Para medir generalización a parcelas nuevas usar `--split group` (bloques de 10 km)."],
     )
