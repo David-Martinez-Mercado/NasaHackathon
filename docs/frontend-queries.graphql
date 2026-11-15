@@ -76,3 +76,16 @@ query EstadoPredicciones {
     modelos { concepto nombre rol algoritmo metrica valor intervaloInf intervaloSup skill base notas }
   }
 }
+
+# ---- Editar una parcela guardada: nombre, cultivo y preferencias en UNA transacción (CONFLICTO_VERSION si cambió) ----
+mutation ActualizarParcelaCompleta($id: ID!, $input: ActualizarParcelaInput!) {
+  actualizarParcela(id: $id, input: $input) { id version nombre cultivoActual preferencias { sistemaRiego tipoSuelo } }
+}
+
+# ---- Otros cultivos que se podrían sembrar (rotación observada + precio esperado + cambio de familia) ----
+query SugerenciasCultivo($parcelaId: ID!) {
+  sugerenciasCultivo(parcelaId: $parcelaId) {
+    cultivoBase origenBase metodo advertencias
+    sugerencias { cultivo nombre puntaje probabilidadSiguientePct cambioPrecioPct unidadPrecio otraFamilia }
+  }
+}

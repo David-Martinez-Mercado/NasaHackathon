@@ -13,6 +13,7 @@ import { CultivosResolver } from '../src/cultivos/cultivos.resolver';
 import { EscenariosResolver } from '../src/escenarios/escenarios.resolver';
 import { HistorialResolver } from '../src/historial/historial.resolver';
 import { ParcelasResolver } from '../src/parcelas/parcelas.resolver';
+import { SugerenciasResolver } from '../src/predicciones/sugerencias.resolver';
 import { PrediccionesResolver } from '../src/predicciones/predicciones.resolver';
 import { PreferenciasResolver } from '../src/preferencias/preferencias.resolver';
 import { RecomendacionesResolver } from '../src/recomendaciones/recomendaciones.resolver';
@@ -27,7 +28,7 @@ async function main() {
     ParcelasResolver,
     PreferenciasResolver,
     HistorialResolver,
-    PrediccionesResolver,
+    PrediccionesResolver, SugerenciasResolver,
     RecomendacionesResolver,
     EscenariosResolver,
     SaludResolver,

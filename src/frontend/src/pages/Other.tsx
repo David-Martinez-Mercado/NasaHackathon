@@ -2,10 +2,11 @@ import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useApp, useMapConfig } from '../AppContext';
-import { Card, Chips, Notice, Panel, PriorityBar, ReadField } from '../components/ui';
+import { EMPTY_VALUES, FieldForm, monthsIncomplete } from '../components/FieldForm';
+import { Btn, Card, Chips, Notice, Panel, ReadField } from '../components/ui';
 import {
-  createField, errorMessage, fetchClimate, fetchCrops, fetchSeries, saveHistory, type Crop, type Field, type LngLat,
-  type NewField, type PlotRecord, type Series,
+  createField, errorMessage, fetchClimate, fetchCrops, fetchSeries, saveHistory, type Crop, type Field, type FieldValues,
+  type LngLat, type PlotRecord, type Series,
 } from '../data';
 import { useLayer, useRemote } from '../hooks';
 
@@ -13,12 +14,6 @@ const cropName = (crops: Crop[] | null, code: string) => crops?.find((c) => c.co
 const num = (v: number | null, unit: string, digits = 1) => (v == null ? 'No data' : `${Number(v.toFixed(digits))}${unit}`);
 
 /* ---------- Add field ---------- */
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const IRRIGATION = ['Rainfed', 'Gravity', 'Sprinkler', 'Drip'] as const;
-const SOIL = ['Clay', 'Sandy', 'Loam', 'Use satellite data'] as const;
-const EQUIPMENT = ['Seed drill', 'Row crop planter', 'No-till drill'] as const;
-const PRIORITIES = ['Save water / drought tolerance', 'Improve fertility and soil', 'Stop soil erosion', 'Generate extra income'];
 
 /** Polygon area in hectares (shoelace on a local flat projection). Preview only: the server computes the saved area. */
 function areaHa(points: LngLat[]): number {
@@ -36,41 +31,25 @@ export function AddField() {
   const { draft, setDraft, refreshFields, selectField } = useApp();
   const navigate = useNavigate();
   const crops = useRemote(fetchCrops, []);
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [crop, setCrop] = useState('');
-  const [monthFrom, setMonthFrom] = useState('');
-  const [monthTo, setMonthTo] = useState('');
-  const [irrigation, setIrrigation] = useState<(typeof IRRIGATION)[number]>('Sprinkler');
-  const [soil, setSoil] = useState<(typeof SOIL)[number]>('Use satellite data');
-  const [equipment, setEquipment] = useState<string[]>([]);
-  const [priorities, setPriorities] = useState<[number, number, number, number]>([40, 80, 25, 90]);
+  const [values, setValues] = useState<FieldValues>(EMPTY_VALUES);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // One key per form: if the request is repeated (double click, bad connection) the server does not create a second field.
   const retryKey = useRef(crypto.randomUUID());
   useMapConfig({ draw: true }, []);
 
-  const toggle = (e: string) => setEquipment(equipment.includes(e) ? equipment.filter((x) => x !== e) : [...equipment, e]);
-  const monthsIncomplete = (monthFrom === '') !== (monthTo === '');
-  const canSave = draft.length >= 3 && !monthsIncomplete && !saving;
+  const canSave = draft.length >= 3 && !monthsIncomplete(values) && !saving;
 
   async function save() {
     setSaving(true);
     setError(null);
-    const payload: NewField = {
-      name, description, crop,
-      monthsEmptyFrom: monthFrom ? Number(monthFrom) : null,
-      monthsEmptyTo: monthTo ? Number(monthTo) : null,
-      irrigation, soil, equipment, priorities, polygon: draft,
-    };
     try {
-      const created: Field = await createField(payload, retryKey.current);
+      const created: Field = await createField({ ...values, polygon: draft }, retryKey.current);
       retryKey.current = crypto.randomUUID();
       await refreshFields();
       selectField(created.id);
       setDraft([]);
-      navigate('/');
+      navigate('/fields');
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -80,52 +59,20 @@ export function AddField() {
 
   return (
     <Panel title="Add a field">
-      <Card className="form">
-        <h3>General characteristics</h3>
-        <label>Field name<input placeholder="Chili field" value={name} maxLength={120} onChange={(e) => setName(e.target.value)} /></label>
-        <label>Description<input placeholder="Description" value={description} maxLength={500} onChange={(e) => setDescription(e.target.value)} /></label>
-        <label>Crop type
-          <select value={crop} onChange={(e) => setCrop(e.target.value)}>
-            <option value="">Crop type</option>
-            {(crops.data ?? []).map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-          </select>
-        </label>
-        {crops.error && <Notice kind="error">{crops.error}</Notice>}
-        <div className="label">Months the field stays empty</div>
-        <div className="months">
-          From <select value={monthFrom} onChange={(e) => setMonthFrom(e.target.value)}><option value="">month</option>{MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select>
-          To <select value={monthTo} onChange={(e) => setMonthTo(e.target.value)}><option value="">month</option>{MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select>
-        </div>
-        {monthsIncomplete && <small>Choose both months, or leave both empty.</small>}
-        <div className="label">Irrigation system</div>
-        <Chips options={IRRIGATION} value={irrigation} onChange={setIrrigation} />
-        <h3>Perceived soil type <small>satellite data recommended*</small></h3>
-        <Chips options={SOIL} value={soil} onChange={setSoil} />
-        <div className="label">Equipment available</div>
-        <div className="chips">
-          {EQUIPMENT.map((e) => <button key={e} type="button" className="chip" aria-pressed={equipment.includes(e)} onClick={() => toggle(e)}>{e}</button>)}
-        </div>
-        <div className="draw-status">
-          {draft.length < 3
-            ? 'Click on the map to mark the corners of your field.'
-            : <>Calculated area: <b>{areaHa(draft).toFixed(1)} ha</b></>}
-          {draft.length > 0 && <button type="button" className="link" onClick={() => setDraft([])}>Clear</button>}
-        </div>
-      </Card>
-      <Card className="priorities">
-        <h3>Farmer priorities</h3>
-        <div className="priority-row">
-          {PRIORITIES.map((p, i) => (
-            <PriorityBar
-              key={p} label={p} value={priorities[i]}
-              onChange={(v) => setPriorities(priorities.map((x, j) => (j === i ? v : x)) as [number, number, number, number])}
-            />
-          ))}
-        </div>
-      </Card>
+      <FieldForm
+        values={values} onChange={setValues} crops={crops.data} cropsError={crops.error}
+        footer={
+          <div className="draw-status">
+            {draft.length < 3
+              ? 'Click on the map to mark the corners of your field.'
+              : <>Calculated area: <b>{areaHa(draft).toFixed(1)} ha</b></>}
+            {draft.length > 0 && <button type="button" className="link" onClick={() => setDraft([])}>Clear</button>}
+          </div>
+        }
+      />
       {error && <Notice kind="error">{error}</Notice>}
       <div className="form-actions">
-        <button type="button" className="primary" disabled={!canSave} onClick={save}>{saving ? 'Saving…' : 'Save field'}</button>
+        <Btn variant="save" disabled={!canSave} onClick={save}>{saving ? 'Saving…' : 'Save field'}</Btn>
         {draft.length < 3 && <small>Draw the field on the map first.</small>}
       </div>
     </Panel>
@@ -179,7 +126,7 @@ function DescriptionEditor({ field, year, record, crops }: { field: Field; year:
       <textarea placeholder="Write..." rows={3} value={text} maxLength={500} onChange={(e) => setText(e.target.value)} />
       {message && <Notice kind={message.kind}>{message.text}</Notice>}
       <div className="form-actions">
-        <button type="button" className="primary" disabled={saving || (needsCrop && !crop)} onClick={save}>{saving ? 'Saving…' : 'Save'}</button>
+        <Btn variant="save" disabled={saving || (needsCrop && !crop)} onClick={save}>{saving ? 'Saving…' : 'Save'}</Btn>
       </div>
     </Card>
   );

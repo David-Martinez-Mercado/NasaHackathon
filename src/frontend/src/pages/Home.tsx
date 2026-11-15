@@ -1,6 +1,7 @@
 import { CloudDrizzle, Sun, TrendingUp, Triangle } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useApp, useMapConfig } from '../AppContext';
+import { CropSuggestions } from '../components/CropSuggestions';
 import { Card, Notice, Panel, Slider } from '../components/ui';
 import { fetchAlerts, fetchStressPoints, type AlertKind } from '../data';
 import { useLayer, useRemote } from '../hooks';
@@ -8,7 +9,7 @@ import { useLayer, useRemote } from '../hooks';
 const signed = (v: number, unit: string) => `${v > 0 ? '+' : ''}${v}${unit}`;
 
 export function Home() {
-  const { scenario, setScenario, fields, fieldsError, currentField, selectField, status } = useApp();
+  const { scenario, setScenario, fields, fieldsError, currentField, selectField } = useApp();
   const [params, setParams] = useSearchParams();
   const requested = params.get('alert');
   const alerts = useRemote(fetchAlerts, []);
@@ -44,26 +45,21 @@ export function Home() {
       )}
       <Card title="What if?" className="whatif">
         <Slider
-          icon={icon} label="Rainfall change" min={-50} max={50} value={scenario.rainPct}
+          icon={icon} tone="rain" label="Rainfall change" min={-50} max={50} value={scenario.rainPct}
           display={signed(scenario.rainPct, '%')} marks={['-50% drought', '0% current', '+50%']}
           onChange={(rainPct) => setScenario({ ...scenario, rainPct })}
         />
         <Slider
-          icon={icon} label="Temperature anomaly" min={-2} max={4} step={0.5} value={scenario.tempDelta}
+          icon={icon} tone="heat" label="Temperature anomaly" min={-2} max={4} step={0.5} value={scenario.tempDelta}
           display={signed(scenario.tempDelta, ' °C')} marks={['-2 °C', '0 °C', '+4 °C']}
           onChange={(tempDelta) => setScenario({ ...scenario, tempDelta })}
         />
         <small className="note-list">
           The sliders repaint the heat-wave and rain layers. They show how the model reacts to a change; they are not a climate projection.
         </small>
-        <hr />
-        <div className="rotation">
-          <div className="rotation-row"><strong>Impact and suggested rotation</strong><span>Next 3 seasons</span></div>
-          {status?.motorAvailable
-            ? <p>The rules engine is connected; rotation suggestions will appear here.</p>
-            : <p>Rotation suggestions are not available yet: the rules engine is not connected to the server.</p>}
-        </div>
       </Card>
+
+      <CropSuggestions field={currentField} title="Crop suggestions" />
 
       <Card title="Critical alerts" className="alerts">
         {alerts.error && <Notice kind="error">{alerts.error}</Notice>}

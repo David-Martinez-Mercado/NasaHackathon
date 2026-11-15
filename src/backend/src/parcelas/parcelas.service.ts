@@ -201,18 +201,24 @@ export class ParcelasService {
                    THEN ST_Area(ST_SetSRID(ST_GeomFromGeoJSON(${geojson}::text), 4326)::geography) / 10000 END`,
       );
     }
-    if (!cambios.length) throw new AppError(CodigoError.VALIDACION_FALLIDA, 'No indicaste ningún cambio para la parcela.');
+    if (!cambios.length && !input.preferencias) {
+      throw new AppError(CodigoError.VALIDACION_FALLIDA, 'No indicaste ningún cambio para la parcela.');
+    }
+    if (input.preferencias) this.preferencias.validar(input.preferencias); // falla rápido, antes de abrir la transacción
 
     return this.transaccion.ejecutar(async (tx) => {
       if (input.cultivoActual) await this.cultivos.validarCodigos(tx, [input.cultivoActual]);
       const filas = await tx.$queryRaw<FilaSql[]>(Prisma.sql`
         UPDATE "Parcela"
-        SET ${Prisma.join(cambios, ', ')}, "version" = "version" + 1, "actualizadaEn" = now()
+        SET ${Prisma.join([...cambios, Prisma.sql`"version" = "version" + 1`, Prisma.sql`"actualizadaEn" = now()`], ', ')}
         WHERE "id" = ${id}::uuid AND "version" = ${input.version}
           ${geometria ? Prisma.sql`AND ST_IsValid(ST_SetSRID(ST_GeomFromGeoJSON(${JSON.stringify(geometria)}::text), 4326))` : Prisma.empty}
         RETURNING ${COLUMNAS}
       `);
-      if (filas.length) return aFila(filas[0]);
+      if (filas.length) {
+        if (input.preferencias) await this.preferencias.guardarEn(tx, id, input.preferencias);
+        return aFila(filas[0]);
+      }
       // No se actualizó nada: ¿no existe, la versión cambió o la forma era inválida?
       const actual = await this.buscar(id, tx);
       if (!actual) throw noEncontrado('esa parcela');

@@ -10,10 +10,11 @@ En desarrollo: `http://localhost:3000/graphql` abre el Sandbox de Apollo. En pro
 | `salud` | listo | Servidor, base de datos, PostGIS, motor, datos y versión de predicciones cargada |
 | `cultivos` | listo | Catálogo (sin parámetros agronómicos hasta que `agronomo-reglas` los entregue) |
 | `crearParcela` | listo, **transaccional** | Parcela + preferencias + historial en una transacción; `claveIdempotencia` permite reintentar sin duplicar |
-| `actualizarParcela`, `eliminarParcela` | listo, **bloqueo optimista** | Exigen la `version` que el cliente vio; si cambió, `CONFLICTO_VERSION` |
+| `actualizarParcela`, `eliminarParcela` | listo, **bloqueo optimista** | Exigen la `version` que el cliente vio; si cambió, `CONFLICTO_VERSION`. `actualizarParcela` acepta `preferencias` y las guarda en la misma transacción que el nombre y el cultivo |
 | `parcela`, `parcelas` | listo | Con preferencias e historial (sin una consulta por parcela) |
 | `guardarPreferencias`, `guardarHistorial`, `eliminarHistorial`, `historial` | listo | Reemplazan atómicamente; validan cultivos y reglas entre campos |
 | `capa`, `puntos`, `series`, `tablaModelo`, `alertas`, `resumenHumedad`, `resumenClima`, `estadoPredicciones` | listo | Salen de las predicciones de `ml/` ya importadas a PostgreSQL |
+| `sugerenciasCultivo` | listo | Otros cultivos ordenados con la rotación observada (c02), el precio esperado (c10) y el cambio de familia botánica. **No** usa agua, suelo ni maquinaria (faltan parámetros agronómicos) y no es el motor de reglas |
 | `datosNoDisponibles` | listo | Lo que el frontend pide pero no hay modelo ni dato (erosión, reservas de agua, elevación) |
 | `recomendaciones`, `simularEscenario` | listo, esperan al motor | `NO_IMPLEMENTADO` / `FUENTE_NO_DISPONIBLE` hasta conectar `motor/` y `datos/` |
 | `guardarEscenario`, `escenarios` | listo, esperan al motor | El resultado lo calcula el servidor; el cliente no manda resultados |

@@ -6,7 +6,7 @@
 import { ApiError, gql } from './api';
 import type {
   AlertSummary, ClimateSummary, ColorStop, Crop, Field, GridLayer, HumiditySummary, LayerKind, LngLat, MapPoint,
-  NewField, PlotRecord, Ring, Scenario, Series, ServerStatus, Severity,
+  CropSuggestions, FieldValues, Irrigation, NewField, PlotRecord, Ring, Scenario, Series, ServerStatus, Severity, Soil,
 } from './types';
 
 export * from './types';
@@ -30,10 +30,26 @@ interface RawField {
   longitud: number;
   geometria: { type: string; coordinates: unknown } | null;
   historial: { anio: number; cultivo: string; fechaSiembra: string | null; descripcion: string | null }[];
+  preferencias: {
+    sistemaRiego: string; tipoSuelo: string; aguaRiegoMm: number | null; mesesVaciosDesde: number | null; mesesVaciosHasta: number | null;
+    maquinaria: string[]; cultivosPreferidos: string[]; cultivosExcluidos: string[];
+    prioridades: { agua: number; suelo: number; erosion: number; ingreso: number };
+  } | null;
 }
 
 const FIELD_FIELDS = `id version nombre descripcion cultivoActual areaHa latitud longitud geometria
-  historial { anio cultivo fechaSiembra descripcion }`;
+  historial { anio cultivo fechaSiembra descripcion }
+  preferencias { sistemaRiego tipoSuelo aguaRiegoMm mesesVaciosDesde mesesVaciosHasta maquinaria cultivosPreferidos cultivosExcluidos
+    prioridades { agua suelo erosion ingreso } }`;
+
+const IRRIGATION = { Rainfed: 'TEMPORAL', Gravity: 'GRAVEDAD', Sprinkler: 'ASPERSION', Drip: 'GOTEO' } as const;
+const SOIL = { Clay: 'ARCILLOSO', Sandy: 'ARENOSO', Loam: 'FRANCO', 'Use satellite data': 'SATELITAL' } as const;
+const EQUIPMENT_CODE: Record<string, string> = {
+  'Seed drill': 'seed-drill', 'Row crop planter': 'row-crop-planter', 'No-till drill': 'no-till-drill',
+};
+const reverse = <T extends string>(map: Record<T, string>, code: string): T | undefined =>
+  (Object.keys(map) as T[]).find((k) => map[k] === code);
+const EQUIPMENT_LABEL = Object.fromEntries(Object.entries(EQUIPMENT_CODE).map(([label, code]) => [code, label]));
 
 function toBoundary(geometry: RawField['geometria']): Ring {
   if (geometry?.type !== 'Polygon') return [];
@@ -46,6 +62,7 @@ function toBoundary(geometry: RawField['geometria']): Ring {
 
 const toField = (f: RawField): Field => {
   const boundary = toBoundary(f.geometria);
+  const p = f.preferencias;
   return {
     id: f.id,
     version: f.version,
@@ -59,6 +76,23 @@ const toField = (f: RawField): Field => {
     history: f.historial
       .map((h): PlotRecord => ({ year: h.anio, crop: h.cultivo, plantedOn: h.fechaSiembra, description: h.descripcion ?? '' }))
       .sort((a, b) => b.year - a.year),
+    values: {
+      name: f.nombre ?? '',
+      description: f.descripcion ?? '',
+      crop: f.cultivoActual ?? '',
+      monthsEmptyFrom: p?.mesesVaciosDesde ?? null,
+      monthsEmptyTo: p?.mesesVaciosHasta ?? null,
+      irrigation: (p && reverse<Irrigation>(IRRIGATION, p.sistemaRiego)) || 'Rainfed',
+      soil: (p && reverse<Soil>(SOIL, p.tipoSuelo)) || 'Use satellite data',
+      equipment: (p?.maquinaria ?? []).map((m) => EQUIPMENT_LABEL[m]).filter(Boolean),
+      priorities: p ? [p.prioridades.agua, p.prioridades.suelo, p.prioridades.erosion, p.prioridades.ingreso] : [50, 50, 50, 50],
+    },
+    extras: {
+      waterMm: p?.aguaRiegoMm ?? null,
+      preferredCrops: p?.cultivosPreferidos ?? [],
+      excludedCrops: p?.cultivosExcluidos ?? [],
+      otherEquipment: (p?.maquinaria ?? []).filter((m) => !EQUIPMENT_LABEL[m]),
+    },
   };
 };
 
@@ -72,16 +106,25 @@ export async function fetchCrops(): Promise<Crop[]> {
   return data.cultivos.map((c) => ({ code: c.codigo, name: c.nombre }));
 }
 
-const IRRIGATION = { Rainfed: 'TEMPORAL', Gravity: 'GRAVEDAD', Sprinkler: 'ASPERSION', Drip: 'GOTEO' } as const;
-const SOIL = { Clay: 'ARCILLOSO', Sandy: 'ARENOSO', Loam: 'FRANCO', 'Use satellite data': 'SATELITAL' } as const;
-const EQUIPMENT_CODE: Record<string, string> = {
-  'Seed drill': 'seed-drill', 'Row crop planter': 'row-crop-planter', 'No-till drill': 'no-till-drill',
-};
+function preferencesInput(v: FieldValues, extras: Field['extras']) {
+  const [agua, suelo, erosion, ingreso] = v.priorities;
+  const monthsSet = v.monthsEmptyFrom != null && v.monthsEmptyTo != null;
+  return {
+    sistemaRiego: IRRIGATION[v.irrigation],
+    tipoSuelo: SOIL[v.soil],
+    maquinaria: [...v.equipment.map((e) => EQUIPMENT_CODE[e]).filter(Boolean), ...extras.otherEquipment],
+    ...(extras.waterMm != null && v.irrigation !== 'Rainfed' ? { aguaRiegoMm: extras.waterMm } : {}),
+    cultivosPreferidos: extras.preferredCrops,
+    cultivosExcluidos: extras.excludedCrops,
+    ...(monthsSet ? { mesesVaciosDesde: v.monthsEmptyFrom, mesesVaciosHasta: v.monthsEmptyTo } : {}),
+    prioridades: { agua, suelo, erosion, ingreso },
+  };
+}
+
+const NO_EXTRAS: Field['extras'] = { waterMm: null, preferredCrops: [], excludedCrops: [], otherEquipment: [] };
 
 /** One atomic mutation: field + preferences are saved together or not at all. `retryKey` makes a retry safe (no duplicates). */
 export async function createField(f: NewField, retryKey: string): Promise<Field> {
-  const [agua, suelo, erosion, ingreso] = f.priorities;
-  const monthsSet = f.monthsEmptyFrom != null && f.monthsEmptyTo != null;
   const ring = f.polygon.map(([lng, lat]) => [lng, lat]);
   const input = {
     claveIdempotencia: retryKey,
@@ -89,19 +132,62 @@ export async function createField(f: NewField, retryKey: string): Promise<Field>
     descripcion: f.description.trim() || undefined,
     cultivoActual: f.crop || undefined,
     poligono: { type: 'Polygon', coordinates: [[...ring, ring[0]]] },
-    preferencias: {
-      sistemaRiego: IRRIGATION[f.irrigation],
-      tipoSuelo: SOIL[f.soil],
-      maquinaria: f.equipment.map((e) => EQUIPMENT_CODE[e]).filter(Boolean),
-      ...(monthsSet ? { mesesVaciosDesde: f.monthsEmptyFrom, mesesVaciosHasta: f.monthsEmptyTo } : {}),
-      prioridades: { agua, suelo, erosion, ingreso },
-    },
+    preferencias: preferencesInput(f, NO_EXTRAS),
   };
   const data = await gql<{ crearParcela: RawField }>(
     `mutation($input: CrearParcelaInput!) { crearParcela(input: $input) { ${FIELD_FIELDS} } }`,
     { input },
   );
   return toField(data.crearParcela);
+}
+
+const UPDATE = `mutation($id: ID!, $input: ActualizarParcelaInput!) { actualizarParcela(id: $id, input: $input) { ${FIELD_FIELDS} } }`;
+
+/**
+ * Changes a saved field. Name, crop and preferences go in ONE transaction, and the server answers CONFLICTO_VERSION
+ * if someone else changed the field since it was loaded.
+ */
+export async function updateField(field: Field, values: FieldValues): Promise<Field> {
+  const input = {
+    version: field.version,
+    nombre: values.name.trim() || null,
+    descripcion: values.description.trim() || null,
+    cultivoActual: values.crop || null,
+    preferencias: preferencesInput(values, field.extras),
+  };
+  return toField((await gql<{ actualizarParcela: RawField }>(UPDATE, { id: field.id, input })).actualizarParcela);
+}
+
+/** Changes only the current crop (used by "Switch to this crop"). */
+export async function setFieldCrop(field: Field, crop: string): Promise<Field> {
+  const input = { version: field.version, cultivoActual: crop };
+  return toField((await gql<{ actualizarParcela: RawField }>(UPDATE, { id: field.id, input })).actualizarParcela);
+}
+
+export async function fetchSuggestions(fieldId: string): Promise<CropSuggestions> {
+  const data = await gql<{
+    sugerenciasCultivo: {
+      cultivoBase: string | null;
+      origenBase: string | null;
+      sugerencias: {
+        cultivo: string; nombre: string; puntaje: number; probabilidadSiguientePct: number | null;
+        cambioPrecioPct: number | null; unidadPrecio: string | null; otraFamilia: boolean | null;
+      }[];
+    };
+  }>(
+    `query($id: ID!) { sugerenciasCultivo(parcelaId: $id) { cultivoBase origenBase
+        sugerencias { cultivo nombre puntaje probabilidadSiguientePct cambioPrecioPct unidadPrecio otraFamilia } } }`,
+    { id: fieldId },
+  );
+  const s = data.sugerenciasCultivo;
+  return {
+    baseCrop: s.cultivoBase,
+    baseFrom: s.origenBase === 'actual' ? 'current' : s.origenBase === 'historial' ? 'history' : null,
+    items: s.sugerencias.map((x) => ({
+      code: x.cultivo, name: x.nombre, score: x.puntaje, rotationPct: x.probabilidadSiguientePct,
+      priceChangePct: x.cambioPrecioPct, priceUnit: x.unidadPrecio, otherFamily: x.otraFamilia,
+    })),
+  };
 }
 
 export async function saveHistory(fieldId: string, record: { year: number; crop: string; plantedOn: string | null; description: string }) {
@@ -124,11 +210,18 @@ export async function saveHistory(fieldId: string, record: { year: number; crop:
 const LAYER_TYPE: Record<LayerKind, string> = {
   temperature: 'TEMPERATURA', humidity: 'HUMEDAD', rain: 'LLUVIA', drought: 'SEQUIA', vulnerability: 'VULNERABILIDAD',
 };
-const LAYER_LOOK: Record<LayerKind, { title: string; clipToFields: boolean; fadeLow: boolean }> = {
+/**
+ * Colors must match the legend exactly, so no layer fades its low values to transparent (that made dry soil look olive instead of
+ * red). Rain uses the design's light-blue ramp because the server's ramp starts at white, which reads as a haze over the imagery.
+ */
+const RAIN_RAMP: ColorStop[] = [
+  { at: 0, color: '#BFE3FF' }, { at: 0.34, color: '#4DB3F0' }, { at: 0.67, color: '#1B4FD0' }, { at: 1, color: '#0B2A8A' },
+];
+const LAYER_LOOK: Record<LayerKind, { title: string; clipToFields: boolean; fadeLow: boolean; ramp?: ColorStop[] }> = {
   temperature: { title: 'Heat-wave risk', clipToFields: false, fadeLow: false },
-  humidity: { title: 'Soil moisture', clipToFields: false, fadeLow: true },
-  rain: { title: 'Rain probability', clipToFields: false, fadeLow: true },
-  drought: { title: 'Drought risk', clipToFields: false, fadeLow: true },
+  humidity: { title: 'Soil moisture', clipToFields: false, fadeLow: false },
+  rain: { title: 'Rain probability', clipToFields: false, fadeLow: false, ramp: RAIN_RAMP },
+  drought: { title: 'Drought risk', clipToFields: false, fadeLow: false },
   vulnerability: { title: 'Vulnerability', clipToFields: true, fadeLow: false },
 };
 /** Layers the "What if?" sliders change (the model's sensitivity, not a climate projection). */
@@ -153,7 +246,7 @@ export async function fetchLayer(kind: LayerKind, scenario: Scenario): Promise<G
     unit: c.unidad,
     min: c.min,
     max: c.max,
-    ramp: c.rampa.map((p): ColorStop => ({ at: p.en, color: p.color })),
+    ramp: look.ramp ?? c.rampa.map((p): ColorStop => ({ at: p.en, color: p.color })),
     legend: c.leyenda,
     grid: { bbox: c.rejilla.bbox, cols: c.rejilla.columnas, rows: c.rejilla.filas, values: c.rejilla.valores },
     clipToFields: look.clipToFields,

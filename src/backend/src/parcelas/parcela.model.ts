@@ -162,4 +162,13 @@ export class ActualizarParcelaInput {
   @Field(() => GeoJSONScalar, { nullable: true, description: 'Nueva forma como polígono (no se combina con punto).' })
   @IsOptional()
   poligono?: GeometriaGeoJSON;
+
+  @Field(() => PreferenciasInput, {
+    nullable: true,
+    description: 'Reemplaza las preferencias de la parcela, en la misma transacción que el resto de los cambios.',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => PreferenciasInput)
+  preferencias?: PreferenciasInput;
 }

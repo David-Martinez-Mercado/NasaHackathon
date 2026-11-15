@@ -245,6 +245,42 @@ describe('Predicciones de ml/ (export real, PostgreSQL/PostGIS real)', () => {
       expect(c.notas.join(' ')).toMatch(/no un pronóstico/);
     });
 
+    it('sugerenciasCultivo: ordena otros cultivos con rotación, precio y familia, sin inventar lo que falta', async () => {
+      await prisma.cultivo.createMany({ data: [
+        { codigo: 'maiz', nombre: 'Maíz', familiaBotanica: 'Poaceae' },
+        { codigo: 'remolacha', nombre: 'Remolacha', familiaBotanica: 'Amaranthaceae' },
+        { codigo: 'trigo', nombre: 'Trigo', familiaBotanica: 'Poaceae' },
+        { codigo: 'soya', nombre: 'Soya', familiaBotanica: 'Fabaceae' },
+      ] });
+      const crear = await gql(app, `mutation { crearParcela(input: { punto: { latitud: 40.4, longitud: -104.7 }, cultivoActual: "maiz" }) { id } }`);
+      const id = crear.body.data.crearParcela.id;
+      const res = await gql(app, `query($id: ID!) { sugerenciasCultivo(parcelaId: $id) { cultivoBase origenBase metodo advertencias
+        sugerencias { cultivo nombre puntaje probabilidadSiguientePct cambioPrecioPct unidadPrecio otraFamilia } } }`, { id });
+      expect(res.body.errors).toBeUndefined();
+      const s = res.body.data.sugerenciasCultivo;
+      expect(s).toMatchObject({ cultivoBase: 'maiz', origenBase: 'actual' });
+      expect(s.sugerencias.length).toBeGreaterThan(0);
+      expect(s.sugerencias.map((x: any) => x.cultivo)).not.toContain('maiz'); // sugiere CAMBIAR, no repetir
+      expect(s.sugerencias.map((x: any) => x.cultivo)).not.toContain('barbecho');
+      const puntajes = s.sugerencias.map((x: any) => x.puntaje);
+      expect(puntajes).toEqual([...puntajes].sort((a: number, b: number) => b - a));
+      for (const x of s.sugerencias) {
+        expect(x.puntaje).toBeGreaterThanOrEqual(0);
+        expect(x.puntaje).toBeLessThanOrEqual(100);
+      }
+      const soya = s.sugerencias.find((x: any) => x.cultivo === 'soya');
+      if (soya) expect(soya.probabilidadSiguientePct).toBeNull(); // la soya no está en la tabla de rotación: no se inventa
+      expect(s.advertencias.join(' ')).toMatch(/no sustituye/);
+    });
+
+    it('sugerenciasCultivo: sin cultivo ni historial lo avisa, y una parcela inexistente da NO_ENCONTRADO', async () => {
+      const id = (await gql(app, `mutation { crearParcela(input: { punto: { latitud: 40.4, longitud: -104.7 } }) { id } }`)).body.data.crearParcela.id;
+      const res = await gql(app, `query($id: ID!) { sugerenciasCultivo(parcelaId: $id) { cultivoBase advertencias } }`, { id });
+      expect(res.body.data.sugerenciasCultivo.cultivoBase).toBeNull();
+      expect(res.body.data.sugerenciasCultivo.advertencias[0]).toMatch(/cultivo actual/);
+      expect(codigo(await gql(app, `{ sugerenciasCultivo(parcelaId: "99999999-9999-4999-8999-999999999999") { cultivoBase } }`))).toBe('NO_ENCONTRADO');
+    });
+
     it('lo que no existe se declara, no se inventa', async () => {
       const res = await gql(app, `{ datosNoDisponibles }`);
       expect(res.body.data.datosNoDisponibles.join(' ')).toMatch(/erosión/);

@@ -138,3 +138,17 @@ Aplicada a c02, c03, c04, c05a, c05b y c08b (`ml/`). Para el motor de reglas y q
   Los sliders solo repintan esas dos capas y se rotula que son sensibilidad del modelo, no proyección climática.
 - Los textos que vienen del backend (notas, definiciones, fuentes) están en español y la interfaz en inglés: pendiente i18n.
 - Sin autenticación: el frontend lista todas las parcelas del servidor.
+
+## 2026-11-15 — Sugerencias de cultivo, "My fields" y colores del mapa
+- **`sugerenciasCultivo(parcelaId)`** (backend): ordena otros cultivos con 40 % rotación observada (tabla c02: qué sembró Weld después del cultivo
+  base), 30 % precio esperado (series c10) y 30 % cambio de familia botánica (regla general). Los componentes sin dato se omiten y no se
+  inventan. **No usa agua, suelo ni maquinaria** (no hay parámetros agronómicos por cultivo): sigue pendiente el motor de reglas de `agronomo-reglas`.
+  Se devuelven datos y no texto: la interfaz arma las razones. El puntaje es un orden relativo, no una probabilidad de éxito.
+- **`actualizarParcela` acepta `preferencias`** y guarda nombre, cultivo y preferencias en una sola transacción (bloqueo optimista por `version`).
+- **Frontend:** nueva pantalla "My fields" (ver y editar lo capturado con Modify / Save / Cancel; los botones se ven grises y no responden cuando
+  la acción no es posible) y botón "Switch to <cultivo>" en las sugerencias (Home, Humidity y My fields). El formulario de alta y el de edición
+  comparten el mismo componente. El contorno no se edita (para redibujarlo hay que agregar la parcela de nuevo).
+- **Colores:** ninguna capa difumina sus valores bajos hacia transparente (eso hacía ver la humedad baja en olivo en vez de rojo) y el naranja
+  de la parcela ya no tiñe la capa; la de lluvia usa una rampa azul clara; los sliders de lluvia y temperatura tienen escala con sentido
+  (seco→mojado, frío→calor). Con datos de ~50 km la capa se ve casi uniforme a escala de parcela: es la resolución real, no un error.
+

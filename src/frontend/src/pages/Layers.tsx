@@ -1,5 +1,6 @@
 import { Navigate, useParams } from 'react-router-dom';
 import { useApp, useMapConfig } from '../AppContext';
+import { CropSuggestions } from '../components/CropSuggestions';
 import { Card, Notice, Panel, ReadField } from '../components/ui';
 import { fetchHumidity, fetchUnavailable, valueAt, type GridLayer } from '../data';
 import { useLayer, useRemote } from '../hooks';
@@ -58,6 +59,7 @@ function VariableLayer({ kind }: { kind: 'temperature' | 'vulnerability' }) {
 }
 
 function Humidity() {
+  const { currentField } = useApp();
   const layer = useLayer('humidity');
   const summary = useRemote(fetchHumidity, []);
   const h = summary.data;
@@ -84,7 +86,7 @@ function Humidity() {
           </Card>
         </>
       )}
-      <Notice>Crop advice for your moisture is not available yet: it needs the rules engine, which is not connected to the server.</Notice>
+      <CropSuggestions field={currentField} title="Crops to consider" />
     </Panel>
   );
 }

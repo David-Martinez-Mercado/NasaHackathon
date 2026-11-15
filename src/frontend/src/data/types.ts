@@ -64,6 +64,33 @@ export interface PlotRecord {
   description: string;
 }
 
+export type Irrigation = 'Rainfed' | 'Gravity' | 'Sprinkler' | 'Drip';
+export type Soil = 'Clay' | 'Sandy' | 'Loam' | 'Use satellite data';
+
+/** What the farmer captured about the field (everything the "Add a field" form asks, except the outline). */
+export interface FieldValues {
+  name: string;
+  description: string;
+  /** Crop code, or '' */
+  crop: string;
+  monthsEmptyFrom: number | null;
+  monthsEmptyTo: number | null;
+  irrigation: Irrigation;
+  soil: Soil;
+  equipment: string[];
+  /** water, soil, erosion, income (0–100) */
+  priorities: [number, number, number, number];
+}
+
+/** Saved preferences that the form does not edit but that must be sent back unchanged on a save. */
+export interface FieldExtras {
+  waterMm: number | null;
+  preferredCrops: string[];
+  excludedCrops: string[];
+  /** Equipment codes the form has no button for. */
+  otherEquipment: string[];
+}
+
 export interface Field {
   id: string;
   /** Optimistic-lock version the server expects back on edits. */
@@ -78,6 +105,8 @@ export interface Field {
   /** Empty when the field was saved as a single point. */
   boundary: Ring;
   history: PlotRecord[];
+  values: FieldValues;
+  extras: FieldExtras;
 }
 
 export interface Crop {
@@ -140,16 +169,26 @@ export interface ServerStatus {
 }
 
 /** Everything the "Add a field" form sends. */
-export interface NewField {
-  name: string;
-  description: string;
-  crop: string;
-  monthsEmptyFrom: number | null;
-  monthsEmptyTo: number | null;
-  irrigation: 'Rainfed' | 'Gravity' | 'Sprinkler' | 'Drip';
-  soil: 'Clay' | 'Sandy' | 'Loam' | 'Use satellite data';
-  equipment: string[];
-  /** water, soil, erosion, income (0–100) */
-  priorities: [number, number, number, number];
+export interface NewField extends FieldValues {
   polygon: Ring;
+}
+
+export interface CropSuggestion {
+  code: string;
+  name: string;
+  /** 0–100, relative order between the options (not a chance of success). */
+  score: number;
+  /** % of Weld cropland that grew the base crop one year and this crop the next. */
+  rotationPct: number | null;
+  /** Expected price change over the forecast months (%). */
+  priceChangePct: number | null;
+  priceUnit: string | null;
+  /** True when it is a different botanical family than the base crop. */
+  otherFamily: boolean | null;
+}
+
+export interface CropSuggestions {
+  baseCrop: string | null;
+  baseFrom: 'current' | 'history' | null;
+  items: CropSuggestion[];
 }

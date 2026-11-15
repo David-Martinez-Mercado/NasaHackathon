@@ -1,8 +1,9 @@
-import { ArrowLeft, Calendar, ChartNoAxesColumn, Database, House, Map, Plus, User } from 'lucide-react';
+import { ArrowLeft, Calendar, ChartNoAxesColumn, Database, House, Map, Plus, Sprout, User } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 
 const NAV = [
+  { to: '/fields', label: 'My fields', icon: <Sprout size={28} strokeWidth={2.2} />, end: true },
   { to: '/history', label: 'Plot history', icon: <Calendar size={30} strokeWidth={2.2} /> },
   { to: '/statistics', label: 'Statistics', icon: <ChartNoAxesColumn size={30} strokeWidth={2.6} /> },
   { to: '/data', label: 'Data', icon: <Database size={24} strokeWidth={2.2} /> },
@@ -19,7 +20,7 @@ export function Sidebar() {
       <NavLink to="/" className="nav-home" aria-label="Home"><House size={32} strokeWidth={2.4} /></NavLink>
       <div className="nav-items">
         {NAV.map((item) => (
-          <NavLink key={item.to} to={item.to} className="nav-item">
+          <NavLink key={item.to} to={item.to} className="nav-item" end={'end' in item}>
             {item.icon}
             <span>{item.label}</span>
           </NavLink>
@@ -58,6 +59,18 @@ export function Card({ title, children, className = '' }: { title?: string; chil
   );
 }
 
+/**
+ * Action button. Greyed out (and not clickable) whenever the action is not possible: `disabled` is the only switch,
+ * so the screen never shows an enabled button that does nothing.
+ */
+export function Btn({
+  variant = 'primary', disabled, onClick, children,
+}: { variant?: 'primary' | 'save' | 'secondary'; disabled?: boolean; onClick?: () => void; children: ReactNode }) {
+  return (
+    <button type="button" className={`btn btn-${variant}`} disabled={disabled} onClick={onClick}>{children}</button>
+  );
+}
+
 /** Status line for loading, errors and "not available" (instead of showing made-up numbers). */
 export function Notice({ kind = 'info', children }: { kind?: 'info' | 'error' | 'loading'; children: ReactNode }) {
   return <div className={`note-box notice notice-${kind}`} role={kind === 'error' ? 'alert' : 'status'}>{children}</div>;
@@ -91,14 +104,16 @@ interface SliderProps {
   step?: number;
   display: string;
   marks: [string, string, string];
+  /** Color scale of the track: rain goes dry (red) to wet (blue); heat goes cold (blue) to hot (red). */
+  tone?: 'rain' | 'heat';
   onChange: (v: number) => void;
 }
 
 /** Horizontal "What if?" slider: gradient fill up to a navy thumb. */
-export function Slider({ icon, label, value, min, max, step = 1, display, marks, onChange }: SliderProps) {
+export function Slider({ icon, label, value, min, max, step = 1, display, marks, tone, onChange }: SliderProps) {
   const pct = ((value - min) / (max - min)) * 100;
   return (
-    <label className="slider">
+    <label className={`slider ${tone ? `slider-${tone}` : ''}`}>
       <span className="slider-head">{icon}<span>{label}</span><output>{display}</output></span>
       <span className="slider-track">
         <span className="slider-fill" style={{ width: `${pct}%`, backgroundSize: `${10000 / Math.max(pct, 1)}% 100%` }} />

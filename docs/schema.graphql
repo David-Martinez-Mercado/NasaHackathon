@@ -13,6 +13,11 @@ input ActualizarParcelaInput {
   """Nueva forma como polígono (no se combina con punto)."""
   poligono: GeoJSON
 
+  """
+  Reemplaza las preferencias de la parcela, en la misma transacción que el resto de los cambios.
+  """
+  preferencias: PreferenciasInput
+
   """Nueva ubicación como punto (no se combina con poligono)."""
   punto: PuntoInput
 
@@ -459,6 +464,11 @@ type Query {
   """Recalcula con otro escenario de lluvia y temperatura sin guardar."""
   simularEscenario(input: SimulacionInput!): [RotacionEvaluada!]!
 
+  """
+  Otros cultivos que se podrían sembrar en la parcela, ordenados con datos de ml/ (rotación observada, precio esperado) y una regla general de rotación. No es el motor de reglas agronómicas: no usa agua, suelo ni maquinaria.
+  """
+  sugerenciasCultivo(parcelaId: ID!): SugerenciasCultivo!
+
   """Salidas de modelos sin capa: "rendimiento", "rotacion", "ciclo"."""
   tablaModelo(clave: String!): TablaModelo
 }
@@ -593,6 +603,57 @@ enum SistemaRiego {
   GOTEO
   GRAVEDAD
   TEMPORAL
+}
+
+"""
+Un cultivo que se podría sembrar en lugar del actual, con los datos que lo respaldan (nada se inventa: lo que falta viene null).
+"""
+type SugerenciaCultivo {
+  """
+  Cambio % del precio entre el último dato y el último mes pronosticado (c10, exploratorio).
+  """
+  cambioPrecioPct: Float
+
+  """
+  Código del catálogo (query cultivos); se puede guardar como cultivoActual.
+  """
+  cultivo: String!
+  nombre: String!
+
+  """
+  true = otra familia botánica que el cultivo base (regla general de rotación). null si no se conoce alguna de las dos.
+  """
+  otraFamilia: Boolean
+
+  """
+  % de los píxeles de cultivo de Weld que tenían el cultivo base el año anterior y sembraron este (modelo c02, CDL).
+  """
+  probabilidadSiguientePct: Float
+
+  """
+  0–100. Orden relativo entre las opciones, no una probabilidad de éxito.
+  """
+  puntaje: Int!
+
+  """Unidad del precio, p. ej. "$ / BU"."""
+  unidadPrecio: String
+}
+
+type SugerenciasCultivo {
+  """Límites que hay que mostrar junto a las sugerencias."""
+  advertencias: [String!]!
+
+  """Cultivo desde el que se calcula (el actual o el último del historial)."""
+  cultivoBase: String
+
+  """Cómo se calculó el puntaje, en una frase."""
+  metodo: String!
+
+  """
+  "actual" o "historial": de dónde salió el cultivo base. null si no hay.
+  """
+  origenBase: String
+  sugerencias: [SugerenciaCultivo!]!
 }
 
 type TablaModelo {

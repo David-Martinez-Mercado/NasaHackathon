@@ -127,9 +127,9 @@ export function FieldMap() {
       map.addSource('heat', { type: 'image', url, coordinates });
       map.addLayer({ id: 'heat', type: 'raster', source: 'heat', paint: { 'raster-fade-duration': 0 } }, 'field-fill');
     }
-    map.setPaintProperty('heat', 'raster-opacity', layer.clipToFields ? 0.82 : 0.68);
+    map.setPaintProperty('heat', 'raster-opacity', layer.clipToFields ? 0.88 : 0.72);
     map.setLayoutProperty('heat', 'visibility', 'visible');
-    map.setPaintProperty('field-fill', 'fill-opacity', layer.clipToFields ? 0 : 0.22);
+    map.setPaintProperty('field-fill', 'fill-opacity', 0); // the orange tint would change the layer colors
     map.setLayoutProperty('field-line', 'visibility', 'visible');
   }, [ready, cfg.layer, cfg.draw, fields]);
 

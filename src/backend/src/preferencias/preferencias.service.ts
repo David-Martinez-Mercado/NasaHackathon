@@ -43,7 +43,7 @@ export class PreferenciasService {
   }
 
   /** Reglas de la captura que no caben en un decorador (cruzan varios campos). */
-  private validar(input: PreferenciasInput): void {
+  validar(input: PreferenciasInput): void {
     const preferidos = input.cultivosPreferidos ?? [];
     const excluidos = input.cultivosExcluidos ?? [];
     const repetidos = preferidos.filter((codigo) => excluidos.includes(codigo));

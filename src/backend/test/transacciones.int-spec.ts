@@ -189,6 +189,26 @@ describe('Transacciones de la API GraphQL (PostgreSQL/PostGIS real)', () => {
       expect((await prisma.parcela.findUnique({ where: { id }, select: { version: true } }))?.version).toBe(3);
     });
 
+    it('cambia nombre y preferencias en una sola transacción; si las preferencias fallan, el nombre tampoco cambia', async () => {
+      const ok = await gql(app, `mutation($id: ID!, $input: ActualizarParcelaInput!) {
+        actualizarParcela(id: $id, input: $input) { version nombre preferencias { sistemaRiego tipoSuelo prioridades { agua } } } }`,
+        { id, input: { version: 1, nombre: 'Editada', preferencias: { sistemaRiego: 'GOTEO', tipoSuelo: 'ARENOSO', prioridades: { agua: 10, suelo: 20, erosion: 30, ingreso: 40 } } } });
+      expect(ok.body.errors).toBeUndefined();
+      expect(ok.body.data.actualizarParcela).toMatchObject({ version: 2, nombre: 'Editada', preferencias: { sistemaRiego: 'GOTEO', tipoSuelo: 'ARENOSO', prioridades: { agua: 10 } } });
+
+      const mala = await gql(app, ACTUALIZAR.replace('ActualizarParcelaInput!', 'ActualizarParcelaInput!'), { id, input: { version: 2, nombre: 'No debe quedar', preferencias: { sistemaRiego: 'TEMPORAL', cultivosPreferidos: ['unicornio'] } } });
+      expect(codigo(mala)).toBe('VALIDACION_FALLIDA');
+      const fila = await prisma.parcela.findUnique({ where: { id }, select: { nombre: true, version: true } });
+      expect(fila).toEqual({ nombre: 'Editada', version: 2 });
+    });
+
+    it('solo preferencias (sin otros cambios) también sube la versión', async () => {
+      const res = await gql(app, ACTUALIZAR, { id, input: { version: 1, preferencias: { sistemaRiego: 'GRAVEDAD' } } });
+      expect(res.body.errors).toBeUndefined();
+      expect(res.body.data.actualizarParcela.version).toBe(2);
+      expect((await prisma.preferencias.findUnique({ where: { parcelaId: id } }))?.sistemaRiego).toBe('GRAVEDAD');
+    });
+
     it('rechaza cultivos desconocidos, cambios vacíos, punto y polígono a la vez, e ids inexistentes', async () => {
       expect(codigo(await gql(app, ACTUALIZAR, { id, input: { version: 1, cultivoActual: 'unicornio' } }))).toBe('VALIDACION_FALLIDA');
       expect(codigo(await gql(app, ACTUALIZAR, { id, input: { version: 1 } }))).toBe('VALIDACION_FALLIDA');
