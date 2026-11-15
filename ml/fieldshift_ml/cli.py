@@ -216,5 +216,47 @@ def serve(
     uvicorn.run(create_app(), host=host, port=port, log_level="info")
 
 
+global_app = typer.Typer(help="Entrenamiento con celdas de todo el mundo (NASA POWER)")
+app.add_typer(global_app, name="global")
+
+
+@global_app.command("download")
+def global_download(
+    limit: Annotated[int | None, typer.Option(help="Solo las primeras N celdas (prueba)")] = None,
+    workers: Annotated[int, typer.Option(help="Consultas en paralelo")] = 6,
+    per_band: Annotated[int, typer.Option(help="Celdas por cada 10° de latitud")] = 45,
+) -> None:
+    """Baja el historial diario 1981-hoy de las celdas candidatas (se puede repetir: salta las que ya están)."""
+    from fieldshift_ml.global_train import download
+
+    _setup_logging()
+    print(download.run(limit, workers, per_band))
+
+
+@global_app.command("eval")
+def global_eval(
+    concept: Annotated[str, typer.Option(help="c05b, c08a o c04")],
+    n_boot: Annotated[int, typer.Option(help="Remuestreos del intervalo")] = 100,
+) -> None:
+    """Entrena con celdas de todo el mundo y mide en años futuros, en regiones apartadas y en Weld."""
+    _setup_logging()
+    if concept == "c04":
+        from fieldshift_ml.global_train import forecast as g
+
+        rows, info = g.evaluate(n_boot)
+    else:
+        from fieldshift_ml.global_train import tabular as g
+
+        rows, info = g.evaluate(concept, n_boot)
+    import pandas as pd
+
+    table = pd.DataFrame([r.__dict__ for r in rows])
+    out = get_settings().subdir("results") / "global"
+    out.mkdir(parents=True, exist_ok=True)
+    table.to_csv(out / f"{concept}.csv", index=False)
+    print(table.to_string(index=False))
+    print({k: v for k, v in info.items() if k not in ("pipeline", "model")})
+
+
 if __name__ == "__main__":
     app()
