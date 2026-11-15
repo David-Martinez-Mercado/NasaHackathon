@@ -1,0 +1,92 @@
+// Base de datos de Field Shift: PostgreSQL 16 + PostGIS. Documentada en docs/modelo-datos.md.
+// Cambios solo con migraciones (npm run prisma:migrate); nunca a mano en la base.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis]
+}
+
+enum Prioridad {
+  AGUA
+  SUELO
+  INGRESO
+  BALANCE
+}
+
+/// Parcela del agricultor: punto o polígono en WGS84. La geometría se lee y escribe con SQL parametrizado.
+model Parcela {
+  id           String   @id @default(uuid()) @db.Uuid
+  nombre       String?  @db.VarChar(120)
+  geom         Unsupported("geometry(Geometry, 4326)")
+  centroideLat Float
+  centroideLon Float
+  creadaEn     DateTime @default(now())
+
+  preferencias Preferencias?
+  escenarios   Escenario[]
+
+  @@index([geom], type: Gist)
+}
+
+/// Prioridades y restricciones del agricultor (una fila por parcela).
+model Preferencias {
+  id                 String    @id @default(uuid()) @db.Uuid
+  parcelaId          String    @unique @db.Uuid
+  riego              Boolean
+  aguaRiegoMm        Float?
+  maquinaria         String[]
+  cultivosPreferidos String[]
+  cultivosExcluidos  String[]
+  prioridad          Prioridad @default(BALANCE)
+  actualizadaEn      DateTime  @updatedAt
+
+  parcela Parcela @relation(fields: [parcelaId], references: [id], onDelete: Cascade)
+}
+
+/// Escenario guardado con los sliders de lluvia y temperatura y el resultado calculado.
+model Escenario {
+  id         String   @id @default(uuid()) @db.Uuid
+  parcelaId  String   @db.Uuid
+  nombre     String?  @db.VarChar(120)
+  lluviaPct  Int
+  tempDeltaC Float
+  resultado  Json
+  creadoEn   DateTime @default(now())
+
+  parcela Parcela @relation(fields: [parcelaId], references: [id], onDelete: Cascade)
+
+  @@index([parcelaId, creadoEn])
+}
+
+/// Caché de respuestas de fuentes externas (la usa ingeniero-datos).
+/// La clave combina coordenada redondeada y parámetros; `fuente` es el origen (p. ej. "nasa-power").
+model CacheDatos {
+  id         String    @id @default(uuid()) @db.Uuid
+  clave      String
+  fuente     String
+  respuesta  Json
+  obtenidaEn DateTime  @default(now())
+  expiraEn   DateTime?
+
+  @@unique([clave, fuente])
+  @@index([expiraEn])
+}
+
+/// Catálogo de cultivos. Los parámetros agronómicos (agua, temperaturas, ciclo...) los llena agronomo-reglas
+/// desde docs/cultivos/cultivos.json; mientras `verificado` sea false no son datos con fuente.
+model Cultivo {
+  id              String   @id @default(uuid()) @db.Uuid
+  codigo          String   @unique @db.VarChar(40)
+  nombre          String   @db.VarChar(80)
+  familiaBotanica String   @db.VarChar(60)
+  parametros      Json?
+  fuente          String?
+  verificado      Boolean  @default(false)
+  actualizadoEn   DateTime @updatedAt
+}

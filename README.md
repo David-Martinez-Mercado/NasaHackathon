@@ -72,7 +72,7 @@ SALIDA ESPERADA: archivos, formato, nivel de detalle
 ```
 OBJETIVO: Dejar listo para el viernes el núcleo: datos NASA + motor de rotación + API + sliders.
 CONTEXTO: Hackatón el 14 de nov. Somos 4. Los recursos NASA están en F:\FieldShift-Recursos\NASA\.
-RESTRICCIONES: NestJS + GraphQL + PostgreSQL/PostGIS + Angular. IA solo si sobra tiempo. Sin dron.
+RESTRICCIONES: NestJS + GraphQL + PostgreSQL/PostGIS + React. IA solo si sobra tiempo. Sin dron.
 SALIDA ESPERADA: docs/plan.md por día y responsable, y las primeras tareas delegadas.
 ```
 **Analizador**

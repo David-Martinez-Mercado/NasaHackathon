@@ -68,3 +68,23 @@ Aplicada a c02, c03, c04, c05a, c05b y c08b (`ml/`). Para el motor de reglas y q
   hay 16 años (2008–2023).
 - El notebook avisa que `FAST = True` es solo para probar y no para sacar conclusiones.
 - Afecta a: agronomo-reglas e ingeniero-ia (qué pronósticos del ML pueden usar y con qué confianza).
+
+## 2026-11-15 — Arranca el backend; el frontend pasa a React
+- **Frontend: React** (antes Angular/Ionic). Se actualizaron las reglas del proyecto, `README.md` y el agente `frontend-agricultor`
+  (Apollo Client en lugar de Apollo Angular). El resto del stack no cambia: NestJS + GraphQL code-first (Apollo),
+  PostgreSQL 16 + PostGIS, Prisma.
+- **Carpetas:** el servidor vive en `src/backend/` y el cliente en `src/frontend/` (estructura de las reglas del proyecto, la misma que usa
+  la rama `frontend`, para que las ramas se unan sin conflictos de rutas); `ml/` queda aparte en la raíz.
+- **Versiones fijadas:** NestJS 11, `@nestjs/graphql` 13 con Apollo Server 5 (requiere `@as-integrations/express5`),
+  Prisma 6, TypeScript 5.9 y Node 20 o superior. Existen NestJS 12 y Prisma 7, pero no se usan aún: no se verificó que
+  funcionen juntos.
+- **Motor y datos como puertos:** `src/backend/src/motor/motor.port.ts` y `src/backend/src/datos/datos.port.ts` definen lo que el
+  backend espera de `agronomo-reglas` e `ingeniero-datos`. Mientras no existan, responden `NO_IMPLEMENTADO` o
+  `FUENTE_NO_DISPONIBLE`; el backend nunca inventa recomendaciones.
+- **`ParcelaContexto` [POR VERIFICAR]:** el backend solo transporta el contexto; su formato lo debe fijar
+  `docs/contrato-datos.md`, que aún no existe.
+- **Rangos de los sliders (supuesto):** lluvia de −100 a +100 %, temperatura de −10 a +10 °C. Ajustar con el frontend.
+- **`guardarEscenario` calcula en el servidor** con el motor; no acepta resultados enviados por el cliente.
+- **Sin autenticación todavía:** quien conozca el UUID de una parcela puede leerla. Decidir antes de publicar la demo.
+- **Tabla `Cultivo`:** solo nombre y familia botánica; los parámetros agronómicos los aporta `agronomo-reglas` con fuente.
+- Afecta a: agronomo-reglas, ingeniero-datos, ingeniero-ia, frontend-agricultor, devops-despliegue (añadir el backend al compose).

@@ -1,0 +1,21 @@
+# para dejar de rastrearlos habría que hacer `git rm --cached` y eso los borra de la carpeta de quien haga pull.
+
+# Dependencias, compilados y entornos
+node_modules/
+dist/
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+
+# Resultados y modelos regenerables (los manifiestos y fichas de modelos sí se versionan)
+ml/artifacts/
+ml/deploy/models/**/*.joblib
+ml/deploy/models/**/*.pkl
+*.tsbuildinfo
+coverage/
+
+# Carpeta apartada al cambiar de rama (copia vieja de ml/)
+ml.stale-pre-backend/
