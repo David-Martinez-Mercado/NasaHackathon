@@ -1,6 +1,7 @@
+import { Check } from 'lucide-react';
 import { useState } from 'react';
-import { useApp, useMapConfig } from '../AppContext';
-import { Card, Notice, Panel } from '../components/ui';
+import { useApp, useMapConfig, useSheet } from '../AppContext';
+import { Card, Notice, Panel, Spinner } from '../components/ui';
 import { LiveForecast } from '../components/LiveForecast';
 import { LevelPill, RISK_INFO } from '../components/risk';
 import { fetchErosionPoints, fetchRisks, fetchStressPoints, type LayerKind, type RiskKey } from '../data';
@@ -18,6 +19,7 @@ export function Risks() {
   const { currentField, fields, fieldsError } = useApp();
   const risks = useRemote(() => fetchRisks(currentField!.id), [currentField?.id], !!currentField);
   const [selected, setSelected] = useState<RiskKey>('heat');
+  const { requestMapView } = useSheet();
   const target = MAP_FOR[selected];
   const layer = useLayer(target === 'points' ? 'temperature' : target, target !== 'points');
   const points = useRemote(fetchStressPoints, [], target === 'points');
@@ -28,6 +30,8 @@ export function Risks() {
   );
 
   const byKey = new Map((risks.data ?? []).map((r) => [r.key, r]));
+  // The selected card is loading what it paints on the map.
+  const mapBusy = target === 'points' ? points.loading : layer.loading || (selected === 'erosion' && erosionPoints.loading);
   return (
     <Panel title="Zone risks">
       {fieldsError && <Notice kind="error">{fieldsError}</Notice>}
@@ -45,8 +49,19 @@ export function Risks() {
               const info = RISK_INFO[key];
               const Icon = info.icon;
               return (
-                <button key={key} type="button" className="risk" aria-pressed={selected === key} onClick={() => setSelected(key)}>
-                  <span className="risk-head"><Icon size={20} aria-hidden /><strong>{info.title}</strong><LevelPill level={r.level} /></span>
+                <button
+                  key={key} type="button" className="risk-card" aria-pressed={selected === key}
+                  aria-busy={(selected === key && mapBusy) || undefined}
+                  onClick={(e) => {
+                    setSelected(key);
+                    requestMapView(e.currentTarget);
+                  }}
+                >
+                  <span className="risk-head">
+                    <Icon size={20} aria-hidden /><strong>{info.title}</strong>
+                    {selected === key && (mapBusy ? <Spinner /> : <Check className="item-check" size={16} strokeWidth={3} aria-hidden />)}
+                    <LevelPill level={r.level} />
+                  </span>
                   <span className="risk-text">{info.describe(r)}</span>
                   <small className="risk-source">
                     {info.model} · {r.model}{r.asOf ? ` · data up to ${r.asOf}` : ''}

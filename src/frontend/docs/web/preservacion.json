@@ -1,0 +1,182 @@
+{
+  "_meta": {
+    "fuente": "Análisis estático de src/frontend (sin URL pública)",
+    "fecha": "2026-11-15",
+    "regla": "Todo lo listado debe seguir existiendo y funcionando igual tras el rediseño (mismos destinos, mismas mutaciones, mismos textos y datos). Los 'enlaces_rotos_o_dudosos' se reportan, no se arreglan."
+  },
+  "rutas": [
+    { "path": "/", "componente": "Home", "archivo": "src/main.tsx:23", "query_params": ["alert=drought|stress|erosion (Home.tsx:16-20, setParams replace)"] },
+    { "path": "/layers/:tool", "componente": "LayerPage", "archivo": "src/main.tsx:24", "valores_tool": ["temperature", "vulnerability", "rain", "drought", "humidity", "terrain", "water"], "otro_valor": "Navigate to / replace (Layers.tsx:168)" },
+    { "path": "/fields", "componente": "Fields", "archivo": "src/main.tsx:25" },
+    { "path": "/risks", "componente": "Risks", "archivo": "src/main.tsx:26" },
+    { "path": "/crops", "componente": "Crops", "archivo": "src/main.tsx:27" },
+    { "path": "/history", "componente": "History", "archivo": "src/main.tsx:28" },
+    { "path": "/statistics", "componente": "Statistics", "archivo": "src/main.tsx:29" },
+    { "path": "/data", "componente": "Data", "archivo": "src/main.tsx:30" },
+    { "path": "/fields/new", "componente": "AddField", "archivo": "src/main.tsx:31" },
+    { "path": "*", "componente": "Navigate to=\"/\" replace", "archivo": "src/main.tsx:32" }
+  ],
+  "enlaces": [
+    { "texto": "Home (icono House, aria-label=\"Home\")", "href": "/", "ubicacion": "header", "archivo": "src/components/ui.tsx:22", "tipo": "NavLink .nav-home" },
+    { "texto": "My fields", "href": "/fields", "ubicacion": "header", "archivo": "src/components/ui.tsx:6", "tipo": "NavLink end (no activo en /fields/new)", "icono": "Sprout" },
+    { "texto": "Risks", "href": "/risks", "ubicacion": "header", "archivo": "src/components/ui.tsx:7", "tipo": "NavLink", "icono": "ShieldAlert" },
+    { "texto": "Crops", "href": "/crops", "ubicacion": "header", "archivo": "src/components/ui.tsx:8", "tipo": "NavLink", "icono": "Wheat" },
+    { "texto": "Plot history", "href": "/history", "ubicacion": "header", "archivo": "src/components/ui.tsx:9", "tipo": "NavLink", "icono": "Calendar" },
+    { "texto": "Statistics", "href": "/statistics", "ubicacion": "header", "archivo": "src/components/ui.tsx:10", "tipo": "NavLink", "icono": "ChartNoAxesColumn" },
+    { "texto": "Data", "href": "/data", "ubicacion": "header", "archivo": "src/components/ui.tsx:11", "tipo": "NavLink", "icono": "Database" },
+    { "texto": "Add field", "href": "/fields/new", "ubicacion": "header", "archivo": "src/components/ui.tsx:12-16", "tipo": "NavLink", "icono": "Map + Plus (.nav-add)" },
+    { "texto": "See details and the map →", "href": "/risks", "ubicacion": "body", "archivo": "src/pages/Home.tsx:77", "tipo": "Link .see-all (solo si hay currentField)" },
+    { "texto": "See all options and change my priorities →", "href": "/crops", "ubicacion": "body", "archivo": "src/components/CropSuggestions.tsx:127", "tipo": "Link .see-all" }
+  ],
+  "anclas": [],
+  "gotos_js": [
+    { "codigo": "navigate(-1)", "archivo": "src/components/ui.tsx:43", "destino": "historial anterior (botón Back, aria-label=\"Back\", solo en Panel brand: Home y History)" },
+    { "codigo": "navigate('/fields/new')", "archivo": "src/pages/Fields.tsx:63", "destino": "/fields/new (botón .link 'Add your first field', solo si no hay parcelas)" },
+    { "codigo": "navigate('/fields')", "archivo": "src/pages/Other.tsx:51", "destino": "/fields tras crear parcela con éxito (después de refreshFields, selectField(created.id), setDraft([]))" },
+    { "codigo": "navigate('/fields/new')", "archivo": "src/map/FieldMap.tsx:197", "destino": "/fields/new (botón glass 'Field' + CirclePlus)" },
+    { "codigo": "navigate(cfg.tool === tool ? '/' : `/layers/${tool}`)", "archivo": "src/map/FieldMap.tsx:250", "destino": "/layers/{temperature|humidity|water|vulnerability|rain|drought|terrain}; si ya está activo vuelve a /" },
+    { "codigo": "setParams(kind ? { alert: kind } : {}, { replace: true })", "archivo": "src/pages/Home.tsx:20", "destino": "/?alert=erosion|drought|stress (toggle en tarjetas 'Critical alerts', Home.tsx:90)" },
+    { "codigo": "<Navigate to=\"/\" replace />", "archivo": "src/pages/Layers.tsx:168", "destino": "/ cuando :tool no es válido" }
+  ],
+  "controles_de_estado_sin_navegacion": [
+    { "control": "Selector de parcela (select .field-select)", "archivo": "src/pages/Home.tsx:43", "efecto": "selectField(id) — visible solo si hay >1 parcela" },
+    { "control": "Lista de parcelas (button role=option)", "archivo": "src/pages/Fields.tsx:69-78", "efecto": "selectField(f.id); deshabilitadas las demás mientras se edita" },
+    { "control": "Sliders 'What if?' Rainfall change (-50..50, paso 1) y Temperature anomaly (-2..4, paso 0.5)", "archivo": "src/pages/Home.tsx:52-61", "efecto": "setScenario global; repinta capas temperature/rain (debounce 300 ms) y LiveForecast (600 ms)" },
+    { "control": "Tarjetas de riesgo (9)", "archivo": "src/pages/Risks.tsx:48", "efecto": "setSelected(key) → capa/puntos en el mapa (MAP_FOR, Risks.tsx:10-13)" },
+    { "control": "Chips de presets y 4 sliders de prioridad (0..100, paso 5)", "archivo": "src/pages/Crops.tsx:74-83", "efecto": "re-ordena sugerencias en vivo (debounce 300 ms) sin guardar" },
+    { "control": "Tabs Data: Economy / Climate / Models / Local practice", "archivo": "src/pages/DataHub.tsx:9,20", "efecto": "estado local" },
+    { "control": "Chips de serie de precios", "archivo": "src/pages/DataHub.tsx:56-60", "efecto": "setPicked(series.id)" },
+    { "control": "Chips Temperature / Rain (Climate)", "archivo": "src/pages/DataHub.tsx:107", "efecto": "cambia capa del mapa" },
+    { "control": "Select 'After a crop of' (default 'maiz')", "archivo": "src/pages/DataHub.tsx:202-206", "efecto": "filtra tabla de rotación (top 6)" },
+    { "control": "Chips Elevation / Slope / Erosion potential", "archivo": "src/pages/Layers.tsx:138", "efecto": "cambia capa terrain" },
+    { "control": "Tabs Temperature / Humidity", "archivo": "src/pages/Other.tsx:173-176", "efecto": "cambia serie statistics:temperature|humidity" },
+    { "control": "Year picker (Previous year / Next year)", "archivo": "src/map/FieldMap.tsx:231-236", "efecto": "solo en /history; cambia el año mostrado" },
+    { "control": "Global mode (switch)", "archivo": "src/map/FieldMap.tsx:192-194", "efecto": "setGlobalMode; sustituye la toolbar por 3 variables (temperature, moisture, rain)" },
+    { "control": "Toolbar global: Temperature (observed) / Soil moisture (observed) / Rain over 7 days (observed)", "archivo": "src/map/FieldMap.tsx:48-52, 239-243", "efecto": "setGlobalVar" },
+    { "control": "Zoom in / Zoom out", "archivo": "src/map/FieldMap.tsx:221-222", "efecto": "map.zoomIn() / map.zoomOut()" },
+    { "control": "Clic/tap en el mapa en modo dibujo", "archivo": "src/map/FieldMap.tsx:108-110", "efecto": "añade vértice al borrador (solo /fields/new, cursor crosshair)" },
+    { "control": "Clear (borrador)", "archivo": "src/pages/Other.tsx:68", "efecto": "setDraft([])" },
+    { "control": "Update (LiveForecast)", "archivo": "src/components/LiveForecast.tsx:101-103", "efecto": "re-consulta prediccionesEnVivo" },
+    { "control": "Why? (details/summary)", "archivo": "src/components/CropSuggestions.tsx:64-67", "efecto": "despliega razones" }
+  ],
+  "formularios": [
+    {
+      "nombre": "Add a field",
+      "action": "GraphQL mutation crearParcela(input: CrearParcelaInput!)",
+      "method": "POST /graphql (VITE_API_URL o proxy /graphql)",
+      "funcion": "createField (src/data/index.ts:129-144)",
+      "disparador": "Btn 'Save field' (src/pages/Other.tsx:74); habilitado si draft.length >= 3, meses completos y no saving",
+      "campos": ["name (maxLength 120)", "description (maxLength 500)", "crop (select)", "monthsEmptyFrom", "monthsEmptyTo", "irrigation (Rainfed|Gravity|Sprinkler|Drip)", "soil (Clay|Sandy|Loam|Use satellite data)", "equipment[] (Seed drill|Row crop planter|No-till drill)", "priorities[4] (water, soil, erosion, income; default 40,80,25,90)", "polygon (vértices dibujados en el mapa)", "claveIdempotencia (crypto.randomUUID, se renueva tras éxito)"],
+      "exito": "refreshFields → selectField(created.id) → setDraft([]) → navigate('/fields')",
+      "archivo": "src/pages/Other.tsx:29-79, src/components/FieldForm.tsx"
+    },
+    {
+      "nombre": "My fields (Modify / Save / Cancel)",
+      "action": "GraphQL mutation actualizarParcela(id, input: ActualizarParcelaInput!) con version (CONFLICTO_VERSION)",
+      "method": "POST /graphql",
+      "funcion": "updateField (src/data/index.ts:152-161)",
+      "disparador": "Btn 'Save' (src/pages/Fields.tsx:87); 'Modify' activa edición; 'Cancel' descarta",
+      "campos": ["mismos de FieldForm salvo polígono (no se redibuja: 'To redraw it, add the field again.')"],
+      "exito": "Notice 'Changes saved.'",
+      "archivo": "src/pages/Fields.tsx"
+    },
+    {
+      "nombre": "Crops: Save as my priorities / Reset",
+      "action": "GraphQL mutation actualizarParcela (prioridades)",
+      "method": "POST /graphql",
+      "funcion": "updateField (src/data/index.ts:152)",
+      "disparador": "Btn 'Save as my priorities' (src/pages/Crops.tsx:85); 'Reset' restaura lo guardado",
+      "campos": ["priorities: water, soil, erosion, income"],
+      "exito": "Notice 'Priorities saved for this field.'",
+      "archivo": "src/pages/Crops.tsx:50-64"
+    },
+    {
+      "nombre": "Switch to {crop}",
+      "action": "GraphQL mutation actualizarParcela(version, cultivoActual)",
+      "method": "POST /graphql",
+      "funcion": "setFieldCrop (src/data/index.ts:164-167) vía useSwitchCrop",
+      "disparador": "Btn secondary en cada SuggestionCard (CropSuggestions.tsx:68, Crops.tsx:123, CropSuggestions.tsx:122)",
+      "campos": ["cultivoActual"],
+      "exito": "Notice '{field} now lists {crop} as its crop. You can change it any time in My fields.'",
+      "archivo": "src/components/CropSuggestions.tsx:74-93"
+    },
+    {
+      "nombre": "Plot history: Add description / Add the {year} record",
+      "action": "GraphQL mutation guardarHistorial(parcelaId, input: HistorialInput!)",
+      "method": "POST /graphql",
+      "funcion": "saveHistory (src/data/index.ts:276)",
+      "disparador": "Btn 'Save' (src/pages/Other.tsx:128); requiere crop si no hay registro",
+      "campos": ["year", "crop (select, si no hay registro)", "plantedOn (input date)", "description (textarea maxLength 500)"],
+      "exito": "Notice 'Saved.'",
+      "archivo": "src/pages/Other.tsx:86-132"
+    }
+  ],
+  "consultas_graphql_usadas": [
+    "parcelas(limite: 100)", "cultivos", "riesgosParcela", "sugerenciasCultivo(parcelaId, prioridades)", "estadoPredicciones", "tablaModelo(clave: rotacion|rendimiento|ciclo)",
+    "capa(tipo, escenario)", "puntos(tipo: ESTRES|EROSION)", "alertas", "resumenHumedad", "resumenClima", "series(prefijo: market:|statistics:)",
+    "datosNoDisponibles", "salud + estadoPredicciones { version }", "prediccionesEnVivo(parcelaId, escenario)", "climaGlobal(caja: CajaMundoInput)"
+  ],
+  "logos": [
+    { "src": "", "alt": "", "ubicacion": "No existe logo gráfico ni carpeta public/. La marca es tipográfica: título 'HOME' en verde #23654E peso 700 (.panel-header h1.brand, app.css:54) y <title>Field Shift</title>", "dimensiones": "" },
+    { "src": "lucide-react House", "alt": "aria-label=\"Home\"", "ubicacion": "sidebar, arriba (ui.tsx:22)", "dimensiones": "32px, strokeWidth 2.4" }
+  ],
+  "iconos_por_destino": {
+    "My fields": "Sprout", "Risks": "ShieldAlert", "Crops": "Wheat", "Plot history": "Calendar", "Statistics": "ChartNoAxesColumn", "Data": "Database", "Add field": "Map+Plus", "Account": "User",
+    "toolbar_mapa": { "temperature": "Thermometer", "humidity": "Droplet", "water": "Archive", "vulnerability": "TriangleAlert", "rain": "CloudRain", "drought": "Sun", "terrain": "Mountain" },
+    "toolbar_global": { "temperature": "Thermometer", "moisture": "Droplet", "rain": "CloudRain" },
+    "niveles_riesgo": { "low": "CircleCheck", "medium": "TriangleAlert", "high": "OctagonAlert" },
+    "riesgos": { "heat": "Thermometer", "drought": "Sun", "moisture": "Droplet", "stress": "ThermometerSun", "vulnerability": "Mountain", "erosion": "Mountain", "slope": "Ruler", "elevation": "MountainSnow", "rain": "CloudRain" },
+    "pines": { "sensor": "Cpu", "drought": "Sun", "stress": "ThermometerSun", "erosion": "Mountain", "reservoir": "Droplets", "tank": "Cylinder", "groundwater": "Droplet" }
+  },
+  "favicons_meta": {
+    "title": "Field Shift",
+    "description": "",
+    "og": {},
+    "favicon": "",
+    "lang": "en",
+    "viewport": "width=device-width, initial-scale=1.0",
+    "fuentes": "Google Fonts: Inter 300/400/500/600/700, Poppins 400/500 (index.html:9)"
+  },
+  "informacion": {
+    "nombre": "Field Shift",
+    "contacto": [],
+    "direcciones": [],
+    "redes": [],
+    "legal": [
+      "Decision support only. It does not replace local experience: check with your agronomist and neighboring farmers. (ui.tsx:48, en todos los paneles)",
+      "Not a decision: it orders options with model data and general crop traits that are not yet verified locally. Check with your agronomist. (CropSuggestions.tsx:129)",
+      "Scores order the options; they are not a chance of success. Rotation, price, yield and risk numbers come from models trained on Weld County, CO data. Check with your agronomist. (Crops.tsx:134)",
+      "The sliders repaint the heat-wave and rain layers. They show how the model reacts to a change; they are not a climate projection. (Home.tsx:63)",
+      "Water balance and water reserves are not available: there is no model or data for them yet, so nothing is shown rather than made-up numbers. (Layers.tsx:111)",
+      "Atribución del mapa base: VITE_BASEMAP_ATTRIBUTION (ej. 'Imagery © Esri, Maxar, Earthstar Geographics', .env.example); licencia [POR VERIFICAR]",
+      "Observed data from NASA POWER, not forecasts: the models only apply to Weld County. (GlobalLayer.tsx:133)"
+    ],
+    "precios": [],
+    "otros_datos_clave": [
+      "Zona de los modelos: Weld County, Colorado (U.S.); centro por defecto del mapa [-104.71, 40.42], zoom 11 (data/index.ts:19-20)",
+      "Escenario por defecto: rainPct 0, tempDelta 0; rangos lluvia -50..+50 %, temperatura -2..+4 °C (paso 0.5)",
+      "Presets de prioridades (Crops.tsx:9-14): Balanced 50/50/50/50; Protect the soil water40 soil100 erosion90 income20; Maximize income 30/20/20/100; Save water 100/40/40/30",
+      "Prioridades por defecto de FieldForm: [40, 80, 25, 90] = water, soil, erosion, income (FieldForm.tsx:13)",
+      "Umbrales de puntuación: Good >= 70, Fair 40-69, Poor < 40 (CropSuggestions.tsx:15-16)",
+      "Alertas: Erosion points, Droughts, Stress points; sin dato: 'N/A' / 'Not loaded on the server yet' (data/index.ts:395-411)",
+      "Notas fijas de Risks.tsx:62-64: umbrales provisionales; 2 puntos meteorológicos ~50 km; 2,499 píxeles de estrés en Weld County; erosión = potencial relativo",
+      "Calidad de modelos medida sobre el 20 % más reciente de los datos (DataHub.tsx:159)",
+      "Textos de LiveForecast (LiveForecast.tsx:33-38): c05b Heat-wave risk / next 7 days; c08a Chance of rain tomorrow / tomorrow; c08b Expected monthly rain / next 6 months; c04 Root-zone soil moisture / next 4 weeks",
+      "Etiquetas de fuente: Live / Saved batch / Not available (LiveForecast.tsx:8)",
+      "Colores de datos que NO son decoración y deben preservarse: rampas de capas globales (GlobalLayer.tsx:16-18), parcela #E8A531 60 % con borde blanco punteado (FieldMap.tsx:98-102), gradientes de slider rain/heat (app.css:269-270), colores de series (#4464E8 precios; #34B3F1 y #292D30 estadísticas), niveles low/medium/high (app.css:274-277)",
+      "Textos i18n: TODO src/data/i18n.ts (diccionarios EXACT, SOURCE, CROP_NAMES, MODEL_NAMES, TEXT, TEMPLATES) y las traducciones en LiveForecast.tsx:10-45 y risk.tsx:19-63 deben preservarse literalmente; no se tocan en el rediseño",
+      "Nombres de cultivo (i18n.ts:57-61): frijol Bean, maiz Maize, maiz_grano Grain maize, avena Oats, sorgo Sorghum, trigo Wheat, trigo_invierno Winter wheat, cebada Barley, chile Chili pepper, papa Potato, alfalfa Alfalfa, veza Vetch (green manure), soya Soybean, girasol Sunflower, remolacha Sugar beet, barbecho Fallow, mijo Millet, triticale Triticale, otro Other, otro_heno Other hay",
+      "Opciones de formulario: meses Jan..Dec; riego Rainfed/Gravity/Sprinkler/Drip; suelo Clay/Sandy/Loam/Use satellite data; equipo Seed drill/Row crop planter/No-till drill",
+      "Variables de entorno: VITE_API_URL (default /graphql), VITE_BASEMAP_TILES_URL, VITE_BASEMAP_ATTRIBUTION, BACKEND_URL (vite proxy)",
+      "Despliegue: Cloudflare Workers assets ./dist con not_found_handling single-page-application (wrangler.jsonc)"
+    ]
+  },
+  "enlaces_rotos_o_dudosos": [
+    { "elemento": "Botón Account (.nav-user, aria-label=\"Account\")", "archivo": "src/components/ui.tsx:31", "problema": "sin onClick ni destino: no hace nada" },
+    { "elemento": "Panel de Plot history con title=\"HOME\" brand", "archivo": "src/pages/Other.tsx:142", "problema": "muestra 'HOME' y botón Back en la página de historial" },
+    { "elemento": "Botón Back en Home", "archivo": "src/components/ui.tsx:43", "problema": "navigate(-1) sale de la app si se entró directo a /" },
+    { "elemento": "Year picker", "archivo": "src/map/FieldMap.tsx:233-235", "problema": "sin límites de año" },
+    { "elemento": "Texto 'Use \"Add field\"…'", "archivo": "src/pages/Home.tsx:49", "problema": "menciona la acción sin enlazarla" },
+    { "elemento": "Navegación con <button onClick={navigate}>", "archivo": "src/map/FieldMap.tsx:197, 250; src/pages/Fields.tsx:63", "problema": "navegan pero no son enlaces (sin href)" }
+  ]
+}

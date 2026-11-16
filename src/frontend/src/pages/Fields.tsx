@@ -1,6 +1,7 @@
+import { Check } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useApp, useMapConfig } from '../AppContext';
+import { Link } from 'react-router-dom';
+import { useApp, useMapConfig, useSheet } from '../AppContext';
 import { CropSuggestions } from '../components/CropSuggestions';
 import { EMPTY_VALUES, FieldForm, monthsIncomplete, sameValues } from '../components/FieldForm';
 import { Btn, Card, Notice, Panel } from '../components/ui';
@@ -10,7 +11,7 @@ import { useRemote } from '../hooks';
 /** "My fields": see every saved field and change what was captured, without drawing or typing everything again. */
 export function Fields() {
   const { fields, fieldsError, currentField, selectField, refreshFields } = useApp();
-  const navigate = useNavigate();
+  const { requestMapView } = useSheet();
   const crops = useRemote(fetchCrops, []);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<FieldValues>(EMPTY_VALUES);
@@ -28,7 +29,7 @@ export function Fields() {
   }, [version]);
 
   const dirty = !sameValues(draft, saved);
-  const canSave = editing && dirty && !monthsIncomplete(draft) && !saving;
+  const canSave = editing && dirty && !monthsIncomplete(draft);
 
   function startEditing() {
     setDraft(saved);
@@ -60,23 +61,31 @@ export function Fields() {
       {fieldsError && <Notice kind="error">{fieldsError}</Notice>}
       {fields && fields.length === 0 && !fieldsError && (
         <Notice>
-          You have no fields yet. <button type="button" className="link" onClick={() => navigate('/fields/new')}>Add your first field</button>
+          You have no fields yet. <Link className="link" to="/fields/new">Add your first field</Link>
         </Notice>
       )}
       {fields && fields.length > 0 && (
         <Card title="Your fields">
-          <div className="field-list" role="listbox" aria-label="Your fields">
-            {fields.map((f) => (
-              <button
-                key={f.id} type="button" role="option" aria-selected={f.id === currentField?.id}
-                className="field-item" disabled={editing && f.id !== currentField?.id}
-                onClick={() => selectField(f.id)}
-              >
-                <strong>{f.name}</strong>
-                <span>{f.values.crop ? crops.data?.find((c) => c.code === f.values.crop)?.name ?? f.values.crop : 'No crop set'}{f.areaHa ? ` · ${f.areaHa.toFixed(1)} ha` : ''}</span>
-              </button>
-            ))}
-          </div>
+          <ul className="field-list" aria-label="Your fields">
+            {fields.map((f) => {
+              const selected = f.id === currentField?.id;
+              return (
+                <li key={f.id}>
+                  <button
+                    type="button" aria-current={selected ? 'true' : undefined}
+                    className="field-item" disabled={editing && !selected}
+                    onClick={(e) => {
+                      selectField(f.id);
+                      requestMapView(e.currentTarget);
+                    }}
+                  >
+                    <span className="item-title"><strong>{f.name}</strong>{selected && <Check className="item-check" size={16} strokeWidth={3} aria-hidden />}</span>
+                    <span className="item-meta">{f.values.crop ? crops.data?.find((c) => c.code === f.values.crop)?.name ?? f.values.crop : 'No crop set'}{f.areaHa ? ` · ${f.areaHa.toFixed(1)} ha` : ''}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         </Card>
       )}
 
@@ -84,7 +93,7 @@ export function Fields() {
         <>
           <div className="edit-bar" role="toolbar" aria-label="Edit field">
             <Btn variant="primary" disabled={editing} onClick={startEditing}>Modify</Btn>
-            <Btn variant="save" disabled={!canSave} onClick={save}>{saving ? 'Saving…' : 'Save'}</Btn>
+            <Btn variant="save" disabled={!canSave} loading={saving} loadingLabel="Saving…" onClick={save}>Save</Btn>
             {editing && <Btn variant="secondary" disabled={saving} onClick={cancel}>Cancel</Btn>}
           </div>
           {editing && !dirty && <small className="note-list">Change something to enable Save.</small>}

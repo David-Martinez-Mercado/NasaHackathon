@@ -86,7 +86,7 @@ export function LiveForecast({ withSliders = false, title = 'Forecast for your f
   const data = live.data;
   if (!currentField) return <Notice>Add a field to see live forecasts.</Notice>;
   return (
-    <Card title={title} className="live">
+    <Card title={title} className="live" busy={live.loading && !!data}>
       {live.error && <Notice kind="error">{live.error}</Notice>}
       {live.loading && !data && <Notice kind="loading">Asking the weather API…</Notice>}
       {data && (
@@ -98,8 +98,11 @@ export function LiveForecast({ withSliders = false, title = 'Forecast for your f
           {data.results.length === 0 && <p className="empty">No forecast is available for this place.</p>}
           <ul className="note-list">{data.warnings.map((w) => <li key={w}>{translateWarning(w)}</li>)}</ul>
           <div className="live-foot">
-            <Btn variant="secondary" disabled={live.loading} onClick={() => setTick(tick + 1)}>
-              <RefreshCw size={14} aria-hidden /> {live.loading ? 'Updating…' : 'Update'}
+            <Btn
+              variant="secondary" size="sm" icon={<RefreshCw size={16} aria-hidden />}
+              loading={live.loading} loadingLabel="Updating…" onClick={() => setTick(tick + 1)}
+            >
+              Update
             </Btn>
             {data.latencyMs != null && <small>Answered in {Math.round(data.latencyMs)} ms</small>}
           </div>

@@ -31,12 +31,18 @@ const spacing = (values: number[], fallback: number) => {
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 /** "Global mode": colours the map cells in view with the latest observed weather. Only what is on screen is requested. */
-export function GlobalLayer({ map, ready }: { map: maplibregl.Map | null; ready: boolean }) {
+export function GlobalLayer({ map, ready, onBusy }: { map: maplibregl.Map | null; ready: boolean; onBusy?: (busy: boolean) => void }) {
   const { globalVar: name } = useApp();
   const [data, setData] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState(0);
+
+  // The Global mode button shows a spinner while the cells in view load.
+  useEffect(() => {
+    onBusy?.(loading);
+  }, [loading, onBusy]);
+  useEffect(() => () => onBusy?.(false), [onBusy]);
 
   useEffect(() => {
     if (!ready || !map) return;
@@ -123,7 +129,7 @@ export function GlobalLayer({ map, ready }: { map: maplibregl.Map | null; ready:
         ? `${data.celdas.length} cells${data.datosAl ? ` · data up to ${data.datosAl}` : ''}${data.muestreado ? ' · zoom in for more detail' : ''}${data.faltantes ? ` · ${data.faltantes} without data` : ''}`
         : '';
   return (
-    <div className="glass global-panel">
+    <div className="map-panel global-panel">
       <div className="global-title">Global mode · {TITLE[name]} · observed, last 7 days</div>
       <div className="global-legend">
         <span>{v.min}{v.unit}</span>

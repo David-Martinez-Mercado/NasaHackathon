@@ -1,14 +1,16 @@
-import { useRef, useState } from 'react';
+import { ChevronUp } from 'lucide-react';
+import { useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { useApp, useMapConfig } from '../AppContext';
+import { useApp, useMapConfig, useSheet } from '../AppContext';
 import { EMPTY_VALUES, FieldForm, monthsIncomplete } from '../components/FieldForm';
-import { Btn, Card, Notice, Panel, ReadField } from '../components/ui';
+import { Btn, Card, Notice, Panel, ReadField, Tabs, tabId } from '../components/ui';
 import {
   createField, errorMessage, fetchCrops, fetchSeries, saveHistory, type Crop, type Field, type FieldValues,
   type LngLat, type PlotRecord,
 } from '../data';
-import { useRemote } from '../hooks';
+import { useMatchMedia, useRemote } from '../hooks';
+import { Q_WIDE } from '../layout';
 
 const cropName = (crops: Crop[] | null, code: string) => crops?.find((c) => c.code === code)?.name ?? code;
 
@@ -37,7 +39,13 @@ export function AddField() {
   const retryKey = useRef(crypto.randomUUID());
   useMapConfig({ draw: true }, []);
 
-  const canSave = draft.length >= 3 && !monthsIncomplete(values) && !saving;
+  const canSave = draft.length >= 3 && !monthsIncomplete(values);
+  const sheet = useSheet();
+  // Sheet mode: the drawing starts with the sheet collapsed; this opens the form once there is an outline.
+  const openDetails = () => {
+    sheet.afterSettle(() => document.querySelector<HTMLElement>('#panel-body input, #panel-body select')?.focus());
+    sheet.snapTo('expanded', 'tap');
+  };
 
   async function save() {
     setSaving(true);
@@ -57,21 +65,26 @@ export function AddField() {
   }
 
   return (
-    <Panel title="Add a field">
-      <FieldForm
-        values={values} onChange={setValues} crops={crops.data} cropsError={crops.error}
-        footer={
-          <div className="draw-status">
+    <Panel
+      title="Add a field"
+      status={
+        <div className="draw-status">
+          <span className="draw-text">
             {draft.length < 3
               ? 'Click on the map to mark the corners of your field.'
               : <>Calculated area: <b>{areaHa(draft).toFixed(1)} ha</b></>}
-            {draft.length > 0 && <button type="button" className="link" onClick={() => setDraft([])}>Clear</button>}
-          </div>
-        }
-      />
+          </span>
+          {draft.length > 0 && <button type="button" className="link" onClick={() => setDraft([])}>Clear</button>}
+          {sheet.isSheet && draft.length >= 3 && sheet.snap !== 'expanded' && (
+            <Btn variant="secondary" size="sm" icon={<ChevronUp size={16} aria-hidden />} onClick={openDetails}>Field details</Btn>
+          )}
+        </div>
+      }
+    >
+      <FieldForm values={values} onChange={setValues} crops={crops.data} cropsError={crops.error} />
       {error && <Notice kind="error">{error}</Notice>}
       <div className="form-actions">
-        <Btn variant="save" disabled={!canSave} onClick={save}>{saving ? 'Saving…' : 'Save field'}</Btn>
+        <Btn variant="save" disabled={!canSave} loading={saving} loadingLabel="Saving…" onClick={save}>Save field</Btn>
         {draft.length < 3 && <small>Draw the field on the map first.</small>}
       </div>
     </Panel>
@@ -79,6 +92,9 @@ export function AddField() {
 }
 
 /* ---------- Plot history ---------- */
+
+/** Earliest year the server accepts for a history record (backend HistorialInput, @Min(1950)). */
+const HISTORY_MIN_YEAR = 1950;
 
 const dateLabel = (iso: string | null) =>
   iso ? new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }).toUpperCase() : 'Not recorded';
@@ -91,6 +107,7 @@ function DescriptionEditor({ field, year, record, crops }: { field: Field; year:
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ kind: 'error' | 'info'; text: string } | null>(null);
   const needsCrop = !record;
+  const titleId = useId();
   async function save() {
     setSaving(true);
     setMessage(null);
@@ -110,7 +127,7 @@ function DescriptionEditor({ field, year, record, crops }: { field: Field; year:
     }
   }
   return (
-    <Card title={needsCrop ? `Add the ${year} record` : 'Add description'}>
+    <Card title={needsCrop ? `Add the ${year} record` : 'Add description'} titleId={titleId} className="form">
       {needsCrop && (
         <>
           <label className="label">What was planted
@@ -122,10 +139,10 @@ function DescriptionEditor({ field, year, record, crops }: { field: Field; year:
           <label className="label">Planting date<input type="date" value={planted} onChange={(e) => setPlanted(e.target.value)} /></label>
         </>
       )}
-      <textarea placeholder="Write..." rows={3} value={text} maxLength={500} onChange={(e) => setText(e.target.value)} />
+      <textarea placeholder="Write..." rows={3} value={text} maxLength={500} aria-labelledby={titleId} onChange={(e) => setText(e.target.value)} />
       {message && <Notice kind={message.kind}>{message.text}</Notice>}
       <div className="form-actions">
-        <Btn variant="save" disabled={saving || (needsCrop && !crop)} onClick={save}>{saving ? 'Saving…' : 'Save'}</Btn>
+        <Btn variant="save" disabled={needsCrop && !crop} loading={saving} loadingLabel="Saving…" onClick={save}>Save</Btn>
       </div>
     </Card>
   );
@@ -135,8 +152,14 @@ export function History() {
   const { currentField, fields, fieldsError } = useApp();
   const crops = useRemote(fetchCrops, []);
   const [picked, setPicked] = useState<number | null>(null);
-  const year = picked ?? currentField?.history[0]?.year ?? new Date().getFullYear();
-  useMapConfig({ points: [], year: { value: year, onChange: setPicked } }, [year]);
+  const thisYear = new Date().getFullYear();
+  const year = picked ?? currentField?.history[0]?.year ?? thisYear;
+  // Year picker limits: from the earliest year the server accepts (HistorialInput: 1950) to the current year, widened if
+  // the field already has records outside that range. A history is about past seasons, so no future years.
+  const recorded = currentField?.history.map((r) => r.year) ?? [];
+  const minYear = Math.min(HISTORY_MIN_YEAR, ...recorded);
+  const maxYear = Math.max(thisYear, ...recorded);
+  useMapConfig({ points: [], year: { value: year, onChange: setPicked, min: minYear, max: maxYear } }, [year, minYear, maxYear]);
   const record = currentField?.history.find((r) => r.year === year);
   return (
     <Panel title="HOME" brand>
@@ -162,19 +185,26 @@ export function History() {
 
 /* ---------- Statistics ---------- */
 
+const STAT_TABS = [
+  { id: 'temperature', label: 'Temperature' },
+  { id: 'humidity', label: 'Humidity' },
+] as const;
+
+/** Recharts tooltip in the app's control style (radius, border, type size). */
+export const TOOLTIP_STYLE = { borderRadius: 10, border: '1px solid #80878F', fontSize: 13, padding: '6px 10px' };
+
 export function Statistics() {
   const [tab, setTab] = useState<'temperature' | 'humidity'>('temperature');
   const stats = useRemote(() => fetchSeries('statistics:'), []);
   useMapConfig({ hidden: true }, []);
   const series = stats.data?.find((s) => s.id === `statistics:${tab}`) ?? null;
   const unit = series?.unit === '%' ? '%' : '°';
+  const wideScreen = useMatchMedia(Q_WIDE);
+  const tick = { fontSize: wideScreen ? 14 : 12, fill: '#474B4E', fontFamily: 'Poppins' };
   return (
     <Panel title="Statistics" wide>
-      <div className="tabs">
-        <button aria-pressed={tab === 'temperature'} onClick={() => setTab('temperature')}>Temperature</button>
-        <button aria-pressed={tab === 'humidity'} onClick={() => setTab('humidity')}>Humidity</button>
-      </div>
-      <Card className="stats-card">
+      <Tabs tabs={STAT_TABS} value={tab} onChange={setTab} panelId="stats-panel" />
+      <Card className="stats-card" role="tabpanel" id="stats-panel" aria-labelledby={tabId('stats-panel', tab)} busy={stats.loading && !!series}>
         <h2>{series?.title ?? 'Temperature and humidity over time'}</h2>
         {stats.error && <Notice kind="error">{stats.error}</Notice>}
         {stats.loading && !series && <Notice kind="loading">Loading…</Notice>}
@@ -184,16 +214,18 @@ export function Statistics() {
               <span><i style={{ background: '#34B3F1' }} />{series.labelA ?? 'A'}</span>
               <span><i style={{ background: '#292D30' }} />{series.labelB ?? 'B'}</span>
             </div>
-            <ResponsiveContainer width="100%" height={380}>
-              <LineChart data={series.points} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="#C9CBCD" strokeDasharray="4 4" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 14, fill: '#474B4E', fontFamily: 'Poppins' }} tickLine={false} axisLine={false} />
-                <YAxis tickFormatter={(v) => `${v}${unit}`} tick={{ fontSize: 14, fill: '#474B4E', fontFamily: 'Poppins' }} tickLine={false} axisLine={false} domain={['auto', 'auto']} />
-                <Tooltip formatter={(v) => `${v}${unit}`} />
-                <Line isAnimationActive={false} type="monotone" dataKey="a" name={series.labelA ?? 'A'} stroke="#34B3F1" strokeWidth={5} dot={false} />
-                <Line isAnimationActive={false} type="monotone" dataKey="b" name={series.labelB ?? 'B'} stroke="#292D30" strokeWidth={5} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
+            <div className="chart-box chart-box-stats">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={series.points} margin={{ top: 8, right: wideScreen ? 30 : 12, left: 0, bottom: 0 }}>
+                  <CartesianGrid stroke="#C9CBCD" strokeDasharray="4 4" vertical={false} />
+                  <XAxis dataKey="label" tick={tick} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={16} />
+                  <YAxis width={44} tickFormatter={(v) => `${v}${unit}`} tick={tick} tickLine={false} axisLine={false} domain={['auto', 'auto']} />
+                  <Tooltip formatter={(v) => `${v}${unit}`} contentStyle={TOOLTIP_STYLE} wrapperStyle={{ pointerEvents: 'none' }} />
+                  <Line isAnimationActive={false} type="monotone" dataKey="a" name={series.labelA ?? 'A'} stroke="#34B3F1" strokeWidth={wideScreen ? 5 : 3} dot={false} />
+                  <Line isAnimationActive={false} type="monotone" dataKey="b" name={series.labelB ?? 'B'} stroke="#292D30" strokeWidth={wideScreen ? 5 : 3} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
             <ul className="note-list">{[series.source, ...series.notes].map((n) => <li key={n}>{n}</li>)}</ul>
           </>
         )}

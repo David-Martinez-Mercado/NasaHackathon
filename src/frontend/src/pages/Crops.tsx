@@ -70,10 +70,10 @@ export function Crops() {
       {fields && !currentField && !fieldsError && <Notice>Add a field to compare crops.</Notice>}
       {currentField && (
         <>
-          <Card title="What matters most to you?">
+          <Card title="What matters most to you?" titleId="crops-priorities-title">
             <Chips
               options={PRESET_NAMES as readonly string[]} value={activePreset ?? ''}
-              onChange={(n) => setPrio(PRESETS[n])}
+              onChange={(n) => setPrio(PRESETS[n])} labelledBy="crops-priorities-title"
             />
             {SLIDERS.map(({ key, label, marks }) => (
               <Slider
@@ -82,7 +82,7 @@ export function Crops() {
               />
             ))}
             <div className="edit-bar">
-              <Btn variant="save" disabled={!dirty || saving} onClick={save}>{saving ? 'Saving…' : 'Save as my priorities'}</Btn>
+              <Btn variant="save" disabled={!dirty} loading={saving} loadingLabel="Saving…" onClick={save}>Save as my priorities</Btn>
               <Btn variant="secondary" disabled={!dirty || saving} onClick={() => setPrio(saved)}>Reset</Btn>
             </div>
             {dirty && <small className="note-list">Trying these priorities. Nothing is saved until you press Save.</small>}
@@ -107,7 +107,7 @@ export function Crops() {
           {result.error && <Notice kind="error">{result.error}</Notice>}
           {result.loading && !data && <Notice kind="loading">Comparing crops…</Notice>}
           {data && (
-            <Card title="Options">
+            <Card title="Options" busy={result.loading}>
               {data.current && (
                 <>
                   <p className="suggest-intro">Your {data.baseFrom === 'history' ? 'last crop' : 'current crop'}, scored the same way:</p>

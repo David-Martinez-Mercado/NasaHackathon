@@ -212,3 +212,11 @@ el backend lo llama con token, tiempo límite, circuit breaker y respaldo al lot
 - **Migraciones y carga de predicciones** se ejecutan desde la laptop contra la cadena directa de Neon (el plan Free de Render no tiene pre-deploy); la API usa la cadena pooled.
 - **Sin servicio ML en vivo** por ahora (`ML_SERVICE_URL` vacío): el backend usa el respaldo del lote (`exports/v2`).
 - **Límites:** la API se duerme a los 15 min (primer acceso ≈ 30 s). Cuotas y detalles de los planes gratuitos [POR VERIFICAR] al crear las cuentas.
+
+## 2026-11-15 — Rediseño responsive y estados de interacción del frontend (decisión del usuario)
+- Rama `feat/rediseno-responsive`. Documentos del equipo de diseño en `src/frontend/docs/web/` (00-decisiones, 01-brief, preservacion.json, 02-colorimetria, …).
+- **Móvil:** bottom sheet sobre el mapa (un solo mapa maplibre, no se desmonta). **Accesibilidad:** WCAG 2.2 AA tiene prioridad sobre el Figma 1280×800, con ajustes mínimos. **Idioma:** la interfaz sigue en inglés.
+- **Color:** `--text-muted` pasa a `#5F6368`; el ámbar se separa en texto (`#9A5200`) y borde/icono (`#B86200`); foco unificado con anillo doble blanco + `#003488`; los overlays del mapa con texto blanco usan vidrio oscuro `rgba(20,28,24,.62)`. Los colores de datos (riesgo, capas, cultivos) no cambian.
+- Todos los controles tienen estados hover, active (cambio de color, sin `brightness`), selected (no solo por color), focus-visible, disabled y loading (`aria-busy` + spinner).
+- **Layout (05-diseno.md):** hoja inferior en <600 px y 600–767 px vertical; rail de 72 px de 600 a 1023 px; escritorio ≥1024 con panel `clamp(360px,38vw,488px)`. Navegación móvil: barra inferior (Home, My fields, Risks, Crops, More con popover). Botones que navegan pasan a `<a>`/`Link` con el mismo destino. Textos nuevos en inglés solo para controles nuevos.
+- **Pendientes resueltos por el usuario (Telegram, 2026-11-15):** dibujo de parcela con teclado (P20) NO, se queda con ratón/táctil; "Add field" de Home como enlace SÍ; límites del selector de año SÍ; botón para ocultar el panel en escritorio SÍ.

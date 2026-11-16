@@ -1,7 +1,7 @@
-import { StrictMode } from 'react';
+import { StrictMode, useEffect, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { AppProvider } from './AppContext';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { AppProvider, useSheet } from './AppContext';
 import { Sidebar } from './components/ui';
 import { FieldMap } from './map/FieldMap';
 import { Crops } from './pages/Crops';
@@ -13,11 +13,32 @@ import { AddField, History, Statistics } from './pages/Other';
 import { Risks } from './pages/Risks';
 import './styles/app.css';
 
+/**
+ * The app frame. data-panel says whether the desktop panel column is shown; any navigation shows it again.
+ * data-panel-reveal marks the moment the panel comes back, the only time its entry is animated.
+ */
+function Shell({ children }: { children: ReactNode }) {
+  const { panelOpen, setPanelOpen, panelReveal, endPanelReveal } = useSheet();
+  const { pathname } = useLocation();
+  useEffect(() => setPanelOpen(true), [pathname, setPanelOpen]);
+  useEffect(() => {
+    if (!panelReveal) return;
+    const id = window.setTimeout(endPanelReveal, 400);
+    return () => window.clearTimeout(id);
+  }, [panelReveal, endPanelReveal]);
+  return (
+    <div className="app" data-panel={panelOpen ? 'open' : 'closed'} data-panel-reveal={panelReveal || undefined}>
+      {children}
+    </div>
+  );
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <AppProvider>
-        <div className="app">
+        <Shell>
+          <a className="skip-link" href="#panel">Skip to panel</a>
           <Sidebar />
           <Routes>
             <Route path="/" element={<Home />} />
@@ -32,7 +53,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           <FieldMap />
-        </div>
+        </Shell>
       </AppProvider>
     </BrowserRouter>
   </StrictMode>,

@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react';
+import { CircleAlert } from 'lucide-react';
+import { useId, type ReactNode } from 'react';
 import type { Crop, FieldValues, Irrigation, Soil } from '../data';
-import { Card, Chips, Notice, PriorityBar } from './ui';
+import { Card, Chips, Notice, PriorityBar, ToggleChip } from './ui';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const IRRIGATION: readonly Irrigation[] = ['Rainfed', 'Gravity', 'Sprinkler', 'Drip'];
@@ -30,15 +31,18 @@ interface Props {
   cropsError?: string | null;
   /** Read-only view of the same form (the "Modify" button turns it on). */
   disabled?: boolean;
-  /** Shown at the end of the first card (the drawing status in "Add a field"). */
+  /** Shown at the end of the first card. */
   footer?: ReactNode;
 }
 
 /** The field form, shared by "Add a field" and "My fields" so both capture exactly the same values. */
 export function FieldForm({ values: v, onChange, crops, cropsError, disabled, footer }: Props) {
+  const id = useId();
   const set = <K extends keyof FieldValues>(key: K, value: FieldValues[K]) => onChange({ ...v, [key]: value });
   const month = (value: number | null) => (value == null ? '' : String(value));
   const toggle = (e: string) => set('equipment', v.equipment.includes(e) ? v.equipment.filter((x) => x !== e) : [...v.equipment, e]);
+  const incomplete = monthsIncomplete(v);
+  const hintId = `${id}-months-hint`;
   return (
     <fieldset className="form-set" disabled={disabled}>
       <Card className="form">
@@ -52,28 +56,46 @@ export function FieldForm({ values: v, onChange, crops, cropsError, disabled, fo
           </select>
         </label>
         {cropsError && <Notice kind="error">{cropsError}</Notice>}
-        <div className="label">Months the field stays empty</div>
-        <div className="months">
-          From
-          <select value={month(v.monthsEmptyFrom)} onChange={(e) => set('monthsEmptyFrom', e.target.value ? Number(e.target.value) : null)}>
-            <option value="">month</option>{MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-          </select>
-          To
-          <select value={month(v.monthsEmptyTo)} onChange={(e) => set('monthsEmptyTo', e.target.value ? Number(e.target.value) : null)}>
-            <option value="">month</option>{MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-          </select>
-        </div>
-        {monthsIncomplete(v) && <small className="field-hint">Choose both months, or leave both empty.</small>}
-        <div className="label">Irrigation system</div>
-        <Chips options={IRRIGATION} value={v.irrigation} onChange={(x) => set('irrigation', x)} />
-        <h3>Perceived soil type <small>satellite data recommended*</small></h3>
-        <Chips options={SOIL} value={v.soil} onChange={(x) => set('soil', x)} />
-        <div className="label">Equipment available</div>
-        <div className="chips">
-          {EQUIPMENT.map((e) => (
-            <button key={e} type="button" className="chip" aria-pressed={v.equipment.includes(e)} onClick={() => toggle(e)}>{e}</button>
-          ))}
-        </div>
+        <fieldset className="group">
+          <legend className="label">Months the field stays empty</legend>
+          <div className="months">
+            <label htmlFor={`${id}-from`}>From</label>
+            <select
+              id={`${id}-from`} value={month(v.monthsEmptyFrom)} aria-describedby={incomplete ? hintId : undefined}
+              aria-invalid={(incomplete && v.monthsEmptyFrom == null) || undefined}
+              onChange={(e) => set('monthsEmptyFrom', e.target.value ? Number(e.target.value) : null)}
+            >
+              <option value="">month</option>{MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+            </select>
+            <label htmlFor={`${id}-to`}>To</label>
+            <select
+              id={`${id}-to`} value={month(v.monthsEmptyTo)} aria-describedby={incomplete ? hintId : undefined}
+              aria-invalid={(incomplete && v.monthsEmptyTo == null) || undefined}
+              onChange={(e) => set('monthsEmptyTo', e.target.value ? Number(e.target.value) : null)}
+            >
+              <option value="">month</option>{MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+            </select>
+          </div>
+          <div aria-live="polite">
+            {incomplete && (
+              <small id={hintId} className="field-hint"><CircleAlert size={16} aria-hidden />Choose both months, or leave both empty.</small>
+            )}
+          </div>
+        </fieldset>
+        <fieldset className="group">
+          <legend className="label" id={`${id}-irrigation`}>Irrigation system</legend>
+          <Chips options={IRRIGATION} value={v.irrigation} onChange={(x) => set('irrigation', x)} labelledBy={`${id}-irrigation`} />
+        </fieldset>
+        <fieldset className="group">
+          <legend className="legend-h3" id={`${id}-soil`}>Perceived soil type <small>satellite data recommended*</small></legend>
+          <Chips options={SOIL} value={v.soil} onChange={(x) => set('soil', x)} labelledBy={`${id}-soil`} />
+        </fieldset>
+        <fieldset className="group">
+          <legend className="label">Equipment available</legend>
+          <div className="chips">
+            {EQUIPMENT.map((e) => <ToggleChip key={e} label={e} pressed={v.equipment.includes(e)} onToggle={() => toggle(e)} />)}
+          </div>
+        </fieldset>
         {footer}
       </Card>
       <Card className="priorities">

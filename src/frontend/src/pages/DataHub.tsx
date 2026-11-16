@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { useMapConfig } from '../AppContext';
+import { useMapConfig, useSheet } from '../AppContext';
 import { Card, Chips, Notice, Panel, ReadField } from '../components/ui';
 import { fetchClimate, fetchPredictionStatus, fetchSeries, fetchTable, type ModelInfo, type Series } from '../data';
 import { cropLabel } from '../data/i18n';
 import { useLayer, useRemote } from '../hooks';
+import { TOOLTIP_STYLE } from './Other';
 
 const TABS = ['Economy', 'Climate', 'Models', 'Local practice'] as const;
 type Tab = (typeof TABS)[number];
@@ -17,7 +18,7 @@ export function Data() {
   const [tab, setTab] = useState<Tab>('Economy');
   return (
     <Panel title={`Data: ${tab}`}>
-      <Chips options={TABS} value={tab} onChange={setTab} />
+      <Chips options={TABS} value={tab} onChange={setTab} labelledBy="panel-title" />
       {tab === 'Economy' && <Economy />}
       {tab === 'Climate' && <Climate />}
       {tab === 'Models' && <Models />}
@@ -47,28 +48,29 @@ function Economy() {
 
   return (
     <>
-      <Card className="chart-card">
-        <h3>Price trend</h3>
+      <Card className="chart-card" busy={market.loading && !!series}>
+        <h3 id="price-trend-title">Price trend</h3>
         {market.error && <Notice kind="error">{market.error}</Notice>}
         {market.loading && !series && <Notice kind="loading">Loading prices…</Notice>}
         {series && (
           <>
-            <div className="chips">
-              {(market.data ?? []).map((s) => (
-                <button key={s.id} type="button" className="chip" aria-pressed={s.id === series.id} onClick={() => setPicked(s.id)}>{seriesLabel(s)}</button>
-              ))}
-            </div>
+            <Chips
+              options={(market.data ?? []).map((s) => s.id)} value={series.id} onChange={setPicked}
+              labelOf={(id) => seriesLabel((market.data ?? []).find((s) => s.id === id) ?? series)} labelledBy="price-trend-title"
+            />
             <small>{series.unit} · dashed = forecast, exploratory only · {series.source}</small>
-            <ResponsiveContainer width="100%" height={190}>
-              <LineChart data={chart} margin={{ top: 12, right: 12, left: -14, bottom: 0 }}>
-                <CartesianGrid stroke="#E6E9EE" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#697386' }} tickLine={false} axisLine={{ stroke: '#C9CBCD' }} minTickGap={24} />
-                <YAxis tick={{ fontSize: 10, fill: '#697386' }} tickLine={false} axisLine={{ stroke: '#C9CBCD' }} domain={['auto', 'auto']} />
-                <Tooltip />
-                <Line isAnimationActive={false} dataKey="actual" name="Price" stroke="#4464E8" strokeWidth={2} dot={{ r: 2 }} connectNulls={false} />
-                <Line isAnimationActive={false} dataKey="forecast" name="Forecast" stroke="#4464E8" strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls={false} />
-              </LineChart>
-            </ResponsiveContainer>
+            <div className="chart-box chart-box-economy">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chart} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
+                  <CartesianGrid stroke="#E6E9EE" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#697386' }} tickLine={false} axisLine={{ stroke: '#C9CBCD' }} minTickGap={24} />
+                  <YAxis width={44} tick={{ fontSize: 12, fill: '#697386' }} tickLine={false} axisLine={{ stroke: '#C9CBCD' }} domain={['auto', 'auto']} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} wrapperStyle={{ pointerEvents: 'none' }} />
+                  <Line isAnimationActive={false} dataKey="actual" name="Price" stroke="#4464E8" strokeWidth={2} dot={{ r: 2 }} connectNulls={false} />
+                  <Line isAnimationActive={false} dataKey="forecast" name="Forecast" stroke="#4464E8" strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
             <ul className="note-list">{series.notes.map((n) => <li key={n}>{n}</li>)}</ul>
           </>
         )}
@@ -78,14 +80,20 @@ function Economy() {
         {yields.loading && !yields.data && <Notice kind="loading">Loading…</Notice>}
         {yields.data && (
           <>
-            <table className="data-table">
-              <thead><tr><th>Crop</th><th>Model estimate</th><th>Past average</th></tr></thead>
-              <tbody>
-                {base.map((r) => (
-                  <tr key={String(r.crop)}><td>{pretty(String(r.crop))}</td><td>{r.predicted_t_ha} t/ha</td><td>{r.hist_yield_t_ha} t/ha</td></tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="table-wrap" role="region" aria-label="Yield" tabIndex={0}>
+              <table className="data-table data-table-reflow">
+                <thead><tr><th>Crop</th><th>Model estimate</th><th>Past average</th></tr></thead>
+                <tbody>
+                  {base.map((r) => (
+                    <tr key={String(r.crop)}>
+                      <td data-label="Crop">{pretty(String(r.crop))}</td>
+                      <td data-label="Model estimate" className="num">{r.predicted_t_ha} t/ha</td>
+                      <td data-label="Past average" className="num">{r.hist_yield_t_ha} t/ha</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             <ul className="note-list">{yields.data.notes.map((n) => <li key={n}>{n}</li>)}</ul>
           </>
         )}
@@ -98,13 +106,20 @@ function Economy() {
 
 function Climate() {
   const [view, setView] = useState<'Temperature' | 'Rain'>('Temperature');
+  const { requestMapView } = useSheet();
   const layer = useLayer(view === 'Rain' ? 'rain' : 'temperature');
   const climate = useRemote(fetchClimate, []);
   useMapConfig({ layer: layer.data, points: [] }, [layer.data]);
   const c = climate.data;
   return (
     <>
-      <Chips options={['Temperature', 'Rain'] as const} value={view} onChange={setView} />
+      <Chips
+        options={['Temperature', 'Rain'] as const} value={view}
+        onChange={(v) => {
+          setView(v);
+          requestMapView();
+        }}
+      />
       {(climate.error || layer.error) && <Notice kind="error">{climate.error ?? layer.error}</Notice>}
       {climate.loading && !c && <Notice kind="loading">Loading…</Notice>}
       {c && (
@@ -204,10 +219,12 @@ function Practice() {
                 {prevCrops.map((c) => <option key={c} value={c}>{pretty(c)}</option>)}
               </select>
             </label>
-            <table className="data-table">
-              <thead><tr><th>Next crop</th><th>Share of fields</th></tr></thead>
-              <tbody>{next.map((r) => <tr key={String(r.next_crop)}><td>{pretty(String(r.next_crop))}</td><td>{r.probability_pct}%</td></tr>)}</tbody>
-            </table>
+            <div className="table-wrap" role="region" aria-label="What farmers plant next" tabIndex={0}>
+              <table className="data-table">
+                <thead><tr><th>Next crop</th><th>Share of fields</th></tr></thead>
+                <tbody>{next.map((r) => <tr key={String(r.next_crop)}><td>{pretty(String(r.next_crop))}</td><td className="num">{r.probability_pct}%</td></tr>)}</tbody>
+              </table>
+            </div>
             <ul className="note-list">{rotation.data.notes.map((n) => <li key={n}>{n}</li>)}</ul>
           </>
         )}
@@ -216,14 +233,20 @@ function Practice() {
         {cycle.error && <Notice kind="error">{cycle.error}</Notice>}
         {cycle.data && (
           <>
-            <table className="data-table">
-              <thead><tr><th>Crop</th><th>Typical (10 years)</th><th>Latest season</th></tr></thead>
-              <tbody>
-                {cycle.data.rows.map((r) => (
-                  <tr key={`${r.crop}-${r.year}`}><td>{pretty(String(r.crop))}</td><td>{r.median_days_last_10y ?? '—'} days</td><td>{r.observed_days} days ({r.year})</td></tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="table-wrap" role="region" aria-label="Days from planting to harvest" tabIndex={0}>
+              <table className="data-table data-table-reflow">
+                <thead><tr><th>Crop</th><th>Typical (10 years)</th><th>Latest season</th></tr></thead>
+                <tbody>
+                  {cycle.data.rows.map((r) => (
+                    <tr key={`${r.crop}-${r.year}`}>
+                      <td data-label="Crop">{pretty(String(r.crop))}</td>
+                      <td data-label="Typical (10 years)" className="num">{r.median_days_last_10y ?? '—'} days</td>
+                      <td data-label="Latest season" className="num">{r.observed_days} days ({r.year})</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             <ul className="note-list">{cycle.data.notes.map((n) => <li key={n}>{n}</li>)}</ul>
           </>
         )}

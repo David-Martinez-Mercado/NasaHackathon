@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Navigate, useParams } from 'react-router-dom';
-import { useApp, useMapConfig } from '../AppContext';
+import { useApp, useMapConfig, useSheet } from '../AppContext';
 import { CropSuggestions } from '../components/CropSuggestions';
 import { Card, Chips, Notice, Panel, ReadField } from '../components/ui';
 import { fetchHumidity, fetchUnavailable, valueAt, type GridLayer } from '../data';
@@ -130,12 +130,19 @@ type TerrainName = keyof typeof TERRAIN;
 function Terrain() {
   const { currentField } = useApp();
   const [view, setView] = useState<TerrainName>('Elevation');
+  const { requestMapView } = useSheet();
   const info = TERRAIN[view];
   const layer = useLayer(info.kind);
   useMapConfig({ layer: layer.data, tool: 'terrain', points: [] }, [layer.data]);
   return (
     <Panel title="Terrain">
-      <Chips options={Object.keys(TERRAIN) as TerrainName[]} value={view} onChange={setView} />
+      <Chips
+        options={Object.keys(TERRAIN) as TerrainName[]} value={view} labelledBy="panel-title"
+        onChange={(v) => {
+          setView(v);
+          requestMapView();
+        }}
+      />
       {layer.error && <Notice kind="error">{layer.error}</Notice>}
       {layer.loading && !layer.data && <Notice kind="loading">Loading layer…</Notice>}
       <Card>

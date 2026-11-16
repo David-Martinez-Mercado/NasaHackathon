@@ -1,3 +1,4 @@
+import { ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../AppContext';
@@ -62,10 +63,14 @@ export function SuggestionCard({ s, baseName, action, current }: CardProps) {
       </div>
       <FactorBars factors={s.factors} />
       <details className="why">
-        <summary>Why?</summary>
+        <summary><ChevronRight className="chev" size={16} strokeWidth={2.6} aria-hidden />Why?</summary>
         <ul className="note-list">{reasons(s, baseName).map((r) => <li key={r}>{r}</li>)}</ul>
       </details>
-      {action && <Btn variant="secondary" disabled={action.disabled} onClick={action.onClick}>{action.busy ? 'Saving…' : action.label}</Btn>}
+      {action && (
+        <Btn variant="secondary" size="sm" disabled={action.disabled} loading={action.busy} loadingLabel="Saving…" onClick={action.onClick}>
+          {action.label}
+        </Btn>
+      )}
     </li>
   );
 }
@@ -104,7 +109,7 @@ export function CropSuggestions({ field, title = 'Suggested crops', limit = 3 }:
   const baseName = nameOf(data?.baseCrop);
 
   return (
-    <Card title={title} className="suggestions">
+    <Card title={title} className="suggestions" busy={suggestions.loading && !!data}>
       {suggestions.error && <Notice kind="error">{suggestions.error}</Notice>}
       {suggestions.loading && !data && <Notice kind="loading">Looking at the data…</Notice>}
       {data && (

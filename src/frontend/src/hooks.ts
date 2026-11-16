@@ -1,4 +1,4 @@
-import { useEffect, useState, type DependencyList } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore, type DependencyList } from 'react';
 import { useApp } from './AppContext';
 import { DEFAULT_SCENARIO, errorMessage, fetchLayer, SCENARIO_LAYERS, type GridLayer, type LayerKind } from './data';
 
@@ -45,4 +45,17 @@ export function useLayer(kind: LayerKind, enabled = true): Remote<GridLayer> {
   const wanted = useDebounced(scenario, 300);
   const effective = SCENARIO_LAYERS.includes(kind) ? wanted : DEFAULT_SCENARIO;
   return useRemote(() => fetchLayer(kind, effective), [kind, effective.rainPct, effective.tempDelta], enabled);
+}
+
+/** Live result of a CSS media query (re-renders when it changes). */
+export function useMatchMedia(query: string): boolean {
+  const subscribe = useCallback(
+    (onChange: () => void) => {
+      const list = window.matchMedia(query);
+      list.addEventListener('change', onChange);
+      return () => list.removeEventListener('change', onChange);
+    },
+    [query],
+  );
+  return useSyncExternalStore(subscribe, () => window.matchMedia(query).matches, () => false);
 }
