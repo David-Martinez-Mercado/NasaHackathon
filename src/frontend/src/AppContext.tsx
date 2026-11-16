@@ -13,19 +13,13 @@ import type { SheetController, Snap, SnapSource } from './sheet';
 /** Variable shown by global mode; chosen with the same bottom buttons as the normal layers. */
 export type GlobalVar = 'temperature' | 'moisture' | 'rain';
 
-export interface LegendItem {
-  kind: MapPoint['kind'];
-  label: string;
-}
-
 /** What the current page wants the shared map to show. */
 export interface MapConfig {
   layer?: GridLayer | null;
   points?: MapPoint[];
-  pointLegend?: { title: string; items: LegendItem[] };
   tool?: MapTool | null;
   draw?: boolean;
-  /** Year picker over the map. `min`/`max` are optional limits (not set by any page yet). */
+  /** Year picker over the map, with optional limits (Plot history sets them: 1950 to the current year). */
   year?: { value: number; onChange: (year: number) => void; min?: number; max?: number };
   hidden?: boolean;
 }

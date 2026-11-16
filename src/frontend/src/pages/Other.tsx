@@ -1,7 +1,6 @@
 import { ChevronUp } from 'lucide-react';
-import { useId, useRef, useState } from 'react';
+import { lazy, Suspense, useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useApp, useMapConfig, useSheet } from '../AppContext';
 import { EMPTY_VALUES, FieldForm, monthsIncomplete } from '../components/FieldForm';
 import { Btn, Card, Notice, Panel, ReadField, Tabs, tabId } from '../components/ui';
@@ -9,8 +8,10 @@ import {
   createField, errorMessage, fetchCrops, fetchSeries, saveHistory, type Crop, type Field, type FieldValues,
   type LngLat, type PlotRecord,
 } from '../data';
-import { useMatchMedia, useRemote } from '../hooks';
-import { Q_WIDE } from '../layout';
+import { useRemote } from '../hooks';
+
+/** recharts is only downloaded when a chart is shown (it is not needed on Home or the map pages). */
+const StatsChart = lazy(() => import('./charts').then((m) => ({ default: m.StatsChart })));
 
 const cropName = (crops: Crop[] | null, code: string) => crops?.find((c) => c.code === code)?.name ?? code;
 
@@ -190,17 +191,12 @@ const STAT_TABS = [
   { id: 'humidity', label: 'Humidity' },
 ] as const;
 
-/** Recharts tooltip in the app's control style (radius, border, type size). */
-export const TOOLTIP_STYLE = { borderRadius: 10, border: '1px solid #80878F', fontSize: 13, padding: '6px 10px' };
-
 export function Statistics() {
   const [tab, setTab] = useState<'temperature' | 'humidity'>('temperature');
   const stats = useRemote(() => fetchSeries('statistics:'), []);
   useMapConfig({ hidden: true }, []);
   const series = stats.data?.find((s) => s.id === `statistics:${tab}`) ?? null;
   const unit = series?.unit === '%' ? '%' : '°';
-  const wideScreen = useMatchMedia(Q_WIDE);
-  const tick = { fontSize: wideScreen ? 14 : 12, fill: '#474B4E', fontFamily: 'Poppins' };
   return (
     <Panel title="Statistics" wide>
       <Tabs tabs={STAT_TABS} value={tab} onChange={setTab} panelId="stats-panel" />
@@ -215,16 +211,7 @@ export function Statistics() {
               <span><i style={{ background: '#292D30' }} />{series.labelB ?? 'B'}</span>
             </div>
             <div className="chart-box chart-box-stats">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={series.points} margin={{ top: 8, right: wideScreen ? 30 : 12, left: 0, bottom: 0 }}>
-                  <CartesianGrid stroke="#C9CBCD" strokeDasharray="4 4" vertical={false} />
-                  <XAxis dataKey="label" tick={tick} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={16} />
-                  <YAxis width={44} tickFormatter={(v) => `${v}${unit}`} tick={tick} tickLine={false} axisLine={false} domain={['auto', 'auto']} />
-                  <Tooltip formatter={(v) => `${v}${unit}`} contentStyle={TOOLTIP_STYLE} wrapperStyle={{ pointerEvents: 'none' }} />
-                  <Line isAnimationActive={false} type="monotone" dataKey="a" name={series.labelA ?? 'A'} stroke="#34B3F1" strokeWidth={wideScreen ? 5 : 3} dot={false} />
-                  <Line isAnimationActive={false} type="monotone" dataKey="b" name={series.labelB ?? 'B'} stroke="#292D30" strokeWidth={wideScreen ? 5 : 3} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
+              <Suspense fallback={null}><StatsChart series={series} unit={unit} /></Suspense>
             </div>
             <ul className="note-list">{[series.source, ...series.notes].map((n) => <li key={n}>{n}</li>)}</ul>
           </>

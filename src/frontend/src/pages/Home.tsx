@@ -42,6 +42,11 @@ export function Home() {
   return (
     <Panel title="HOME" brand>
       {fieldsError && <Notice kind="error">{fieldsError}</Notice>}
+      {!fields && !fieldsError && (
+        <Card title="Field" aria-busy="true">
+          <select className="field-select" disabled aria-label="Field"><option>Loading…</option></select>
+        </Card>
+      )}
       {fields && fields.length > 1 && (
         <Card title="Field" titleId="home-field-title">
           <select className="field-select" aria-labelledby="home-field-title" value={currentField?.id ?? ''} onChange={(e) => selectField(e.target.value)}>

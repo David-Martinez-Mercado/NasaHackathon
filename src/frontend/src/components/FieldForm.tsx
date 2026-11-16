@@ -46,7 +46,7 @@ export function FieldForm({ values: v, onChange, crops, cropsError, disabled, fo
   return (
     <fieldset className="form-set" disabled={disabled}>
       <Card className="form">
-        <h3>General characteristics</h3>
+        <h2 className="h3">General characteristics</h2>
         <label>Field name<input placeholder="Chili field" value={v.name} maxLength={120} onChange={(e) => set('name', e.target.value)} /></label>
         <label>Description<input placeholder="Description" value={v.description} maxLength={500} onChange={(e) => set('description', e.target.value)} /></label>
         <label>Crop type
@@ -99,7 +99,7 @@ export function FieldForm({ values: v, onChange, crops, cropsError, disabled, fo
         {footer}
       </Card>
       <Card className="priorities">
-        <h3>Farmer priorities</h3>
+        <h2 className="h3">Farmer priorities</h2>
         <div className="priority-row">
           {PRIORITIES.map((p, i) => (
             <PriorityBar

@@ -1,5 +1,5 @@
 import {
-  Archive, ChevronDown, ChevronLeft, ChevronRight, CirclePlus, CloudRain, Cpu, Cylinder, Droplet, Droplets, Globe, Info, Mountain,
+  Archive, ChevronLeft, ChevronRight, CirclePlus, CloudRain, Cpu, Cylinder, Droplet, Droplets, Globe, Info, Mountain,
   PanelLeftOpen, Sun, Thermometer, ThermometerSun, TriangleAlert, ZoomIn, ZoomOut, type LucideIcon,
 } from 'lucide-react';
 import maplibregl, { type GeoJSONSource, type ImageSource } from 'maplibre-gl';
@@ -83,6 +83,7 @@ export function FieldMap() {
   const panelWasOpen = useRef(sheet.panelOpen);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const paddingRef = useRef<maplibregl.PaddingOptions>(NO_PADDING);
+  const heatUrl = useRef<string | null>(null);
   const drawing = useRef(false);
   const draftRef = useRef<LngLat[]>([]);
   const [ready, setReady] = useState(false);
@@ -123,6 +124,11 @@ export function FieldMap() {
       setReady(true);
     });
     map.on('move', () => repaint((n) => n + 1));
+    // A layer replaced before its image finished loading makes maplibre abort the previous load: expected, not an error.
+    map.on('error', (e) => {
+      if ((e.error as { name?: string } | undefined)?.name === 'AbortError') return;
+      console.error(e.error);
+    });
     const observer = new ResizeObserver(() => map.resize());
     observer.observe(container.current!);
     map.on('click', (e) => {
@@ -194,11 +200,14 @@ export function FieldMap() {
     const outlines = fieldsRef.current.filter((f) => f.boundary.length >= 3).map((f) => f.boundary);
     const url = renderGrid(layer, layer.clipToFields && outlines.length ? outlines : undefined);
     const source = map.getSource('heat') as ImageSource | undefined;
-    if (source) source.updateImage({ url, coordinates });
+    if (source) {
+      if (heatUrl.current !== url) source.updateImage({ url, coordinates });
+    }
     else {
       map.addSource('heat', { type: 'image', url, coordinates });
       map.addLayer({ id: 'heat', type: 'raster', source: 'heat', paint: { 'raster-fade-duration': 0 } }, 'field-fill');
     }
+    heatUrl.current = url;
     map.setPaintProperty('heat', 'raster-opacity', layer.clipToFields ? 0.88 : 0.72);
     map.setLayoutProperty('heat', 'visibility', 'visible');
     map.setPaintProperty('field-fill', 'fill-opacity', 0); // the orange tint would change the layer colors
@@ -304,23 +313,6 @@ export function FieldMap() {
               </div>
             </div>
           )}
-          {!layer && cfg.pointLegend && (
-            <details
-              key={sheet.isSheet ? 'sheet' : 'side'} className="map-panel legend legend-list"
-              ref={(el) => {
-                if (el && !el.dataset.init) {
-                  el.open = !sheet.isSheet; // open next to the panel, folded over a full-screen map
-                  el.dataset.init = '1';
-                }
-              }}
-            >
-              <summary className="legend-title">{cfg.pointLegend.title}<ChevronDown className="chev" size={16} aria-hidden /></summary>
-              {cfg.pointLegend.items.map((item) => {
-                const Icon = PIN_ICON[item.kind];
-                return <div key={item.label} className="legend-item"><Icon size={18} aria-hidden /> {item.label}</div>;
-              })}
-            </details>
-          )}
         </div>
 
         <div className="map-area map-area-info">
@@ -388,7 +380,8 @@ export function FieldMap() {
                 const active = cfg.tool === tool;
                 return (
                   <Link
-                    key={tool} to={active ? '/' : `/layers/${tool}`} className="map-tool" aria-label={label} title={label}
+                    key={tool} to={active ? '/' : `/layers/${tool}`} className="map-tool" title={label}
+                    aria-label={active ? `Hide ${label.charAt(0).toLowerCase()}${label.slice(1)}` : label}
                     aria-current={active ? 'page' : undefined}
                   >
                     <Icon strokeWidth={2.2} aria-hidden />

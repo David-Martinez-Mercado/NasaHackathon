@@ -90,11 +90,15 @@
   --glass: rgba(217, 217, 217, 0.25);
   --glass-strong: rgba(217, 217, 217, 0.5);
   --glass-scrim: rgba(20, 28, 24, 0.62);
-  --glass-scrim-hover: rgba(20, 28, 24, 0.75);
-  --glass-scrim-active: rgba(20, 28, 24, 0.85);
+  --glass-scrim-hover: rgba(40, 50, 44, 0.86);  /* between the scrim and the pressed tone, on any imagery */
+  --glass-scrim-active: rgba(58, 70, 62, 0.94); /* near-opaque: lighter than the scrim on dark imagery, darker on bright */
+  --glass-border-active: rgba(255, 255, 255, 0.75);
   --glass-light: rgba(236, 240, 243, 0.7);
   --glass-light-hover: rgba(255, 255, 255, 0.92);
   --glass-light-active: #d5dde3;
+  --glass-selected-bg-hover: #eef1f4;
+  /* Pressed layer button: far enough from the light glass on dark imagery (1.45) and on bright imagery (2.4); ink 6.7. */
+  --map-tool-bg-active: #9aa5ae;
   --glass-selected-bg: #ffffff;
   --glass-selected-indicator: #1e6433;
   --pin-label-dark: rgba(30, 30, 30, 0.7);
@@ -125,16 +129,22 @@
 
   /* ---- list items / card buttons / nav ---- */
   --item-bg-hover: #f7f9fb;
-  --item-bg-active: #dde4e9;
+  --item-bg-active: #d5dde3;                   /* 1.37 vs white (02 §5: pressed >= 1.3) */
   --item-border-hover: var(--border-control);
   --item-selected-bg: #eef6ee;
+  --item-selected-bg-hover: #e0eee0;
+  --item-selected-bg-active: #bfdcbf;          /* 1.34 vs the selected tint */
   --item-selected-border: var(--action);
   --risk-selected-border: var(--brand-strong);
   --alert-selected-bg: #faedae;
   --alert-selected-border: var(--accent);
+  --alert-selected-bg-hover: #f6e48f;
+  --alert-selected-bg-active: #e8cc5c;         /* 1.34 vs the selected yellow */
   --nav-bg-hover: #f5f7f9;
-  --nav-bg-active: #e3e8ec;
+  --nav-bg-active: #d5dde3;                    /* 1.37 vs white */
   --nav-selected-bg: var(--bg);
+  --nav-selected-bg-hover: #e3e8ec;
+  --nav-selected-bg-active: #c9d3da;           /* 1.33 vs the selected background; brand text 4.73 */
   --nav-selected-text: var(--brand-strong);
 
   /* ---- inputs ---- */
@@ -369,8 +379,8 @@ svg { flex: none; }
 }
 .card h2, .section-title { font-size: var(--fs-xl); line-height: 1.2; font-weight: 400; }
 .card h2 { margin: 0 0 var(--space-4); }
-.card h3, .legend-h3 { font-size: var(--fs-md); line-height: 22px; font-weight: 700; margin-bottom: 8px; }
-.card h3 small, .legend-h3 small { font-size: var(--fs-xs); font-weight: 400; color: var(--text-muted); margin-left: 6px; }
+.card h3, .card .h3, .legend-h3 { font-size: var(--fs-md); line-height: 22px; font-weight: 700; margin-bottom: 8px; }
+.card h3 small, .card .h3 small, .legend-h3 small { font-size: var(--fs-xs); font-weight: 400; color: var(--text-muted); margin-left: 6px; }
 .section-title { margin: 4px 0 -2px; }
 .section-sub { font-size: var(--fs-sm); line-height: 20px; }
 .label { display: block; font-size: var(--fs-sm); line-height: 20px; margin: 8px 0 4px; }
@@ -476,11 +486,13 @@ small.note-list { padding-left: 0; }
 .chip-text { display: inline-grid; }
 /* Reserves the bold width so selecting a chip never changes its size. */
 .chip-text::after { content: attr(data-label); font-weight: 700; visibility: hidden; height: 0; overflow: hidden; }
-.chip:active:not(:disabled) { background: var(--chip-bg-active); border-color: var(--chip-border-hover); color: var(--chip-text-hover); }
+.chip:not([aria-checked='true'], [aria-pressed='true']):active:not(:disabled) { background: var(--chip-bg-active); border-color: var(--chip-border-hover); color: var(--chip-text-hover); }
 .chip:is([aria-checked='true'], [aria-pressed='true']) {
   background: var(--chip-selected-bg); border-color: var(--chip-selected-bg); color: var(--chip-selected-text); font-weight: 700;
 }
-.chip:is([aria-checked='true'], [aria-pressed='true']):active:not(:disabled) { background: var(--chip-selected-bg-active); border-color: var(--chip-selected-bg-active); }
+.chip:is([aria-checked='true'], [aria-pressed='true']):active:not(:disabled) {
+  background: var(--chip-selected-bg-active); border-color: var(--chip-selected-bg-active); color: var(--chip-selected-text);
+}
 .chip:disabled { background: var(--readonly-bg); border-color: var(--disabled-border); color: var(--readonly-text); cursor: default; }
 .chip:disabled:is([aria-checked='true'], [aria-pressed='true']) { background: var(--readonly-selected); border-color: var(--readonly-selected); color: #fff; }
 
@@ -751,12 +763,12 @@ small.note-list { padding-left: 0; }
   .data-table-reflow td:first-child { display: block; font-weight: 600; }
   .data-table-reflow td:first-child::before { content: none; }
 }
-.model-card h3 small { font-weight: 400; }
+.model-card .h3 small { font-weight: 400; }
 .model-role, .model-metric { font-size: var(--fs-sm); line-height: 20px; margin-bottom: 4px; }
 .model-role { color: var(--text-muted); }
 
 /* ---------- charts ---------- */
-.chart-card h3 { font-size: var(--fs-md); }
+.chart-card .h3 { font-size: var(--fs-md); }
 .chart-card small { display: block; margin-bottom: 8px; font-size: var(--fs-xs); line-height: 16px; color: #697386; }
 .chart-box { width: 100%; min-width: 0; }
 .chart-box-economy { height: clamp(200px, 30dvh, 260px); }
@@ -788,7 +800,8 @@ small.note-list { padding-left: 0; }
 .map-area { min-width: 0; min-height: 0; pointer-events: none; }
 .map-area > * { pointer-events: auto; }
 .map-area-tl { grid-column: 1; grid-row: 1; display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: flex-start; }
-.map-area-tr { grid-column: 2; grid-row: 1 / 3; justify-self: end; align-self: start; max-width: min(220px, 45cqw); }
+.map-area-tr { grid-column: 2; grid-row: 1 / 3; justify-self: end; align-self: start; max-width: min(220px, 45cqw); min-width: 0; }
+.legend { max-width: 100%; }
 .map-area-info { grid-column: 1; grid-row: 2; justify-self: start; max-width: min(360px, 100%); display: flex; flex-direction: column; gap: var(--space-2); }
 .map-area-info > * { min-height: 0; max-height: 100%; overflow-y: auto; overscroll-behavior: contain; flex: 0 1 auto; }
 .map-area-side { grid-column: 2; grid-row: 1 / 3; justify-self: end; align-self: center; }
@@ -805,7 +818,8 @@ small.note-list { padding-left: 0; }
   -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); box-shadow: var(--shadow-overlay);
   color: #fff; font-size: var(--fs-sm); font-weight: 600; line-height: 20px; text-decoration: none;
 }
-.map-btn:active:not(:disabled) { background: var(--glass-scrim-active); }
+.map-btn:active:not(:disabled) { background: var(--glass-scrim-active); border-color: var(--glass-border-active); }
+.map-btn:focus-visible { box-shadow: 0 0 0 2px var(--focus-ring-inner), var(--shadow-overlay); }
 .map-btn:disabled { background: rgba(20, 28, 24, 0.45); color: rgba(255, 255, 255, 0.6); cursor: not-allowed; }
 .map-icon-btn { width: 40px; height: 40px; min-height: 40px; padding: 0; border-radius: var(--radius-sm); }
 
@@ -832,21 +846,17 @@ small.note-list { padding-left: 0; }
 .legend-body { display: flex; gap: 8px; margin-top: 4px; }
 .legend-bar { width: 8px; min-height: clamp(96px, 20cqh, 150px); border-radius: 15px; background: var(--ramp-v); }
 .legend-ticks { display: flex; flex-direction: column; justify-content: space-between; padding: 4px 0; font-variant-numeric: tabular-nums; }
-.legend-list { display: grid; gap: 10px; padding: 8px 12px 10px; font-size: var(--fs-sm); line-height: 20px; }
-.legend-list summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; cursor: pointer; list-style: none; }
-.legend-list summary::-webkit-details-marker { display: none; }
-.legend-list summary .chev { transition: rotate var(--dur-micro) var(--ease-out); }
-.legend-list[open] summary .chev { rotate: 180deg; }
-.legend-list[open] summary { margin-bottom: 6px; }
-.legend-item { display: flex; align-items: center; gap: 10px; }
-.legend-item + .legend-item { margin-top: 8px; }
-.legend-item svg { color: #34b3f1; }
 @container map-ui (max-width: 480px) or (max-height: 420px) {
-  .legend:not(.legend-list) { width: min(200px, 50cqw); }
+  .legend { width: min(200px, 45cqw); min-width: 0; }
   .legend-body { flex-direction: column; gap: 4px; }
   /* Same colors, horizontal: low on the left. */
   .legend-bar { width: 100%; height: 8px; min-height: 0; background: var(--ramp-h); }
   .legend-ticks { flex-direction: row-reverse; justify-content: space-between; padding: 0; }
+}
+
+/* A strip of map this short is for seeing the field and tapping back to half: only the top buttons stay. */
+@container map-ui (max-height: 160px) {
+  .map-area-tr, .map-area-info, .map-area-side, .map-area-bar { display: none; }
 }
 
 /* ---------- zoom ---------- */
@@ -892,7 +902,7 @@ small.note-list { padding-left: 0; }
   border-radius: var(--radius-sm); background: var(--glass-light); color: var(--ink);
 }
 .map-tool svg { width: var(--tool-icon); height: var(--tool-icon); }
-.map-tool:active { background: var(--glass-light-active); }
+.map-tool:active { background: var(--map-tool-bg-active); }
 .map-tool:is([aria-current='page'], [aria-pressed='true']) { background: var(--glass-selected-bg); color: var(--brand-strong); }
 .map-tool:is([aria-current='page'], [aria-pressed='true'])::after {
   content: ''; position: absolute; left: 10px; right: 10px; bottom: 3px; height: 3px; border-radius: 2px; background: var(--glass-selected-indicator);
@@ -971,6 +981,18 @@ small.note-list { padding-left: 0; }
   .nav-user { width: 44px; height: 44px; }
   .panel-header { block-size: 48px; }
 }
+/* Phones in landscape (360-400 px tall): Home + 7 items + Account must all fit and stay pressable (>= 24 px, WCAG 2.5.8). */
+@media (max-height: 400px) {
+  .sidebar { padding: 4px; }
+  .nav-home { width: 36px; height: 36px; }
+  .nav-items { margin-block: 4px; gap: 0; }
+  .nav-item { height: 38px; }
+  .nav-user { width: 36px; height: 36px; }
+}
+/* Below that nothing fits: scroll as a safety net (the tooltip is clipped, the name stays accessible). */
+@media (max-height: 352px) {
+  .sidebar { overflow-y: auto; }
+}
 
 /* ======================================================================= sheet mode (phones, narrow portrait tablets) */
 @media (max-width: 599px), (max-width: 767px) and (orientation: portrait) {
@@ -998,10 +1020,15 @@ small.note-list { padding-left: 0; }
   .panel.is-moving { will-change: transform; }
   .panel.is-moving .panel-body { pointer-events: none; }
   .sheet-handle {
-    display: grid; place-items: center; flex: none; width: 100%; height: 28px; border-radius: 16px 16px 0 0; background: var(--surface);
-    touch-action: none; cursor: grab;
+    display: grid; place-items: center; flex: none; width: 100%; height: 44px;
+    border-radius: 16px 16px 0 0; background: var(--surface); touch-action: none; cursor: grab;
   }
-  .sheet-handle::before { content: ''; width: 36px; height: 4px; border-radius: var(--radius-pill); background: var(--border-control); }
+  .sheet-handle::before {
+    content: ''; width: 36px; height: 4px; border-radius: var(--radius-pill); background: var(--border-control);
+    transition: background-color var(--dur-micro) var(--ease-color);
+  }
+  .sheet-handle:active { background: var(--item-bg-active); }
+  .sheet-handle:active::before { background: var(--neutral-600); transition-duration: 0ms; }
   .sheet-handle:focus-visible { outline-offset: -4px; box-shadow: inset 0 0 0 4px var(--focus-ring-inner); }
   .panel.is-sheet .panel-header { block-size: 56px; touch-action: none; user-select: none; -webkit-user-select: none; }
   .panel-header h1 { font-size: var(--fs-lg); }
@@ -1060,8 +1087,14 @@ small.note-list { padding-left: 0; }
   :is(.field-item, .risk-card, .alert):hover:not(:disabled):not(:active):not([aria-current='true'], [aria-pressed='true']) {
     background: var(--item-bg-hover); border-color: var(--item-border-hover);
   }
-  .nav-item:hover:not(.active), .nav-home:hover:not(.active), .nav-user:hover { background: var(--nav-bg-hover); color: var(--ink); }
-  .nav-item:active:not(.active), .nav-home:active, .nav-user:active { background: var(--nav-bg-active); }
+  .nav-item:hover:not(.active):not(:active), .nav-home:hover:not(.active):not(:active), .nav-user:hover:not(:active) { background: var(--nav-bg-hover); color: var(--ink); }
+  .nav-item.active:hover:not(:active) { background: var(--nav-selected-bg-hover); }
+  .field-item[aria-current='true']:hover:not(:active), .risk-card[aria-pressed='true']:hover:not(:active) { background: var(--item-selected-bg-hover); }
+  .alert[aria-pressed='true']:hover:not(:active) { background: var(--alert-selected-bg-hover); }
+  .map-tool:is([aria-current='page'], [aria-pressed='true']):hover:not(:active) { background: var(--glass-selected-bg-hover); }
+  .sheet-handle:hover:not(:active) { background: var(--nav-bg-hover); }
+  .sheet-handle:hover:not(:active)::before { background: var(--neutral-600); }
+  .skip-link:hover:not(:active) { background: var(--item-selected-bg); text-decoration: underline; }
   .more-menu a:hover:not(.active), .nav-user-row:hover { background: var(--item-bg-hover); }
   :is(.form input, .form select, .form textarea, .card textarea, .field-select):hover:not(:focus, :disabled, [aria-invalid='true']) { border-color: var(--input-border-hover); }
   .map-btn:hover:not(:disabled):not(:active):not([aria-pressed='true']) { background: var(--glass-scrim-hover); }
@@ -1070,9 +1103,26 @@ small.note-list { padding-left: 0; }
   .map-tool:hover:not(:active):not([aria-current='page'], [aria-pressed='true']) { background: var(--glass-light-hover); }
   .nav-item:hover::after { opacity: 1; transition-delay: var(--delay-tooltip); }
 }
-/* Pressed colors that do not depend on hover support. */
-.more-menu a:active, .nav-user-row:active, .bottom-item:active .pill { background: var(--nav-bg-active); }
-.nav-item:active:not(.active), .nav-home:active { background: var(--nav-bg-active); }
+/* Pressed colors that do not depend on hover support (touch included). Selected variants get their own deeper tone, so
+   pressing always changes color by >= 1.3 even when reduced motion removes the sink/scale. */
+.more-menu a:active, .nav-user-row:active, .bottom-item:active .pill,
+.nav-item:active, .nav-home:active, .nav-user:active { background: var(--nav-bg-active); color: var(--ink); }
+.nav-item.active:active, .bottom-item:is(.active, .is-active):active .pill, .more-menu a.active:active {
+  background: var(--nav-selected-bg-active); color: var(--nav-selected-text);
+}
+.bottom-item:is(.active, .is-active):active { color: var(--nav-selected-text); }
+.field-item[aria-current='true']:active, .risk-card[aria-pressed='true']:active { background: var(--item-selected-bg-active); }
+.alert[aria-pressed='true']:active { background: var(--alert-selected-bg-active); }
+.map-tool:is([aria-current='page'], [aria-pressed='true']):active { background: var(--glass-light-active); }
+.skip-link:active { background: var(--item-bg-active); }
+.skip-link:focus-visible { box-shadow: 0 0 0 2px var(--focus-ring-inner), var(--shadow-overlay); }
+.bottom-item:not(.active, .is-active):active { color: var(--ink); }
+/* maplibre's attribution toggle joins the app's focus ring and pressed state. */
+.maplibregl-ctrl-attrib-button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; box-shadow: 0 0 0 2px var(--focus-ring-inner); }
+.maplibregl-ctrl .maplibregl-ctrl-attrib-button:not(:disabled):active { background-color: #fff; } /* its resting fill is half-white over the map */
+/* More open: the button shows it (M3). */
+.bottom-item[aria-expanded='true'] { color: var(--nav-selected-text); }
+.bottom-item[aria-expanded='true'] .pill { background: var(--nav-selected-bg); }
 
 /* ======================================================================= motion (06-motion.md §4) */
 /* PRESSABLE: keep this list identical in the three blocks below. */
@@ -1100,7 +1150,7 @@ small.note-list { padding-left: 0; }
       .link, .see-all, .why summary, .more-menu a, .nav-user-row):active:not(:disabled, [aria-disabled='true']) {
     transform: translateY(var(--press-y));
   }
-  :is(.icon-btn, .map-btn, .map-tool):active:not(:disabled, [aria-disabled='true']) {
+  :is(.icon-btn, .sheet-handle, .map-btn, .map-tool):active:not(:disabled, [aria-disabled='true']) {
     transform: scale(var(--press-scale));
   }
   .bottom-item:active .pill { transform: scale(var(--press-scale)); }

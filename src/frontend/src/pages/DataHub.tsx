@@ -1,11 +1,13 @@
-import { useMemo, useState } from 'react';
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { useMapConfig, useSheet } from '../AppContext';
 import { Card, Chips, Notice, Panel, ReadField } from '../components/ui';
 import { fetchClimate, fetchPredictionStatus, fetchSeries, fetchTable, type ModelInfo, type Series } from '../data';
 import { cropLabel } from '../data/i18n';
 import { useLayer, useRemote } from '../hooks';
-import { TOOLTIP_STYLE } from './Other';
+import type { PricePoint } from './charts';
+
+/** recharts is only downloaded when the price chart is shown. */
+const PriceChart = lazy(() => import('./charts').then((m) => ({ default: m.PriceChart })));
 
 const TABS = ['Economy', 'Climate', 'Models', 'Local practice'] as const;
 type Tab = (typeof TABS)[number];
@@ -35,7 +37,7 @@ function Economy() {
   const yields = useRemote(() => fetchTable('rendimiento'), []);
   const [picked, setPicked] = useState<string | null>(null);
   const series = market.data?.find((s) => s.id === picked) ?? market.data?.[0] ?? null;
-  const chart = useMemo(() => {
+  const chart = useMemo((): PricePoint[] => {
     if (!series) return [];
     const lastActual = series.points.map((p) => p.forecast).lastIndexOf(false);
     return series.points.map((p, i) => ({
@@ -49,7 +51,7 @@ function Economy() {
   return (
     <>
       <Card className="chart-card" busy={market.loading && !!series}>
-        <h3 id="price-trend-title">Price trend</h3>
+        <h2 id="price-trend-title" className="h3">Price trend</h2>
         {market.error && <Notice kind="error">{market.error}</Notice>}
         {market.loading && !series && <Notice kind="loading">Loading prices…</Notice>}
         {series && (
@@ -60,16 +62,7 @@ function Economy() {
             />
             <small>{series.unit} · dashed = forecast, exploratory only · {series.source}</small>
             <div className="chart-box chart-box-economy">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chart} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
-                  <CartesianGrid stroke="#E6E9EE" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#697386' }} tickLine={false} axisLine={{ stroke: '#C9CBCD' }} minTickGap={24} />
-                  <YAxis width={44} tick={{ fontSize: 12, fill: '#697386' }} tickLine={false} axisLine={{ stroke: '#C9CBCD' }} domain={['auto', 'auto']} />
-                  <Tooltip contentStyle={TOOLTIP_STYLE} wrapperStyle={{ pointerEvents: 'none' }} />
-                  <Line isAnimationActive={false} dataKey="actual" name="Price" stroke="#4464E8" strokeWidth={2} dot={{ r: 2 }} connectNulls={false} />
-                  <Line isAnimationActive={false} dataKey="forecast" name="Forecast" stroke="#4464E8" strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls={false} />
-                </LineChart>
-              </ResponsiveContainer>
+              <Suspense fallback={null}><PriceChart data={chart} /></Suspense>
             </div>
             <ul className="note-list">{series.notes.map((n) => <li key={n}>{n}</li>)}</ul>
           </>
@@ -114,7 +107,7 @@ function Climate() {
   return (
     <>
       <Chips
-        options={['Temperature', 'Rain'] as const} value={view}
+        options={['Temperature', 'Rain'] as const} value={view} labelledBy="panel-title"
         onChange={(v) => {
           setView(v);
           requestMapView();
@@ -174,7 +167,7 @@ function Models() {
           <Notice>Version {s.version} · data up to {s.asOf}. Quality is measured on the most recent 20% of the data, which the model never saw while learning.</Notice>
           {s.models.map((m) => (
             <Card key={m.concept} className="model-card">
-              <h3>{m.name} <small>{m.concept}</small></h3>
+              <h2 className="h3">{m.name} <small>{m.concept}</small></h2>
               <p className="model-role">{ROLE(m)} · {m.algorithm}</p>
               <p className="model-metric">
                 <b>{m.metric.replace(/_/g, ' ')}</b>: {m.value == null ? 'n/a' : Number(m.value.toFixed(3))}

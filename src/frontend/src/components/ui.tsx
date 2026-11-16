@@ -134,7 +134,7 @@ function BottomNav() {
       ))}
       <button
         ref={moreRef} type="button" className={`bottom-item ${inMore ? 'is-active' : ''}`}
-        aria-expanded={open} aria-controls="nav-more" aria-haspopup="true" onClick={toggle}
+        aria-expanded={open} aria-controls="nav-more" onClick={toggle}
       >
         <span className="pill"><Ellipsis size={24} strokeWidth={2} aria-hidden />{inMore && <i className="more-dot" aria-hidden />}</span>
         <span className="bottom-label">More</span>
@@ -248,7 +248,9 @@ export function Panel({ title, brand, wide, status, children }: PanelProps) {
     sheet.setPanelOpen(false);
   };
   const onBodyFocus = () => {
-    if (sheetMode && sheet.snapRef.current === 'peek') sheet.snapTo('half', 'auto');
+    if (!sheetMode || sheet.snapRef.current !== 'peek') return;
+    sheet.afterSettle(() => (document.activeElement as HTMLElement | null)?.scrollIntoView({ block: 'nearest' }));
+    sheet.snapTo('half', 'auto');
   };
 
   return (
